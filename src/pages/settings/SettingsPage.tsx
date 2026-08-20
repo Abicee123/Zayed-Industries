@@ -1,134 +1,98 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { User, Building, Bell, Shield, Save, LogOut } from "lucide-react";
+import { UserCircle, Shield, Bell, Key, LogOut, Building2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { useAuthStore } from "../../store/authStore";
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState("profile");
-  
-  // Bring in the logout function
-  const logout = useAuthStore((state) => state.logout);
+  // We pull the real user, role, and the new signOut function from your Auth Store
+  const { user, role, signOut } = useAuthStore();
 
-  const tabs = [
-    { id: "profile", label: "My Profile", icon: User },
-    { id: "company", label: "Company Details", icon: Building },
-    { id: "notifications", label: "Notifications", icon: Bell },
-    { id: "security", label: "Security", icon: Shield },
-  ];
+  const handleSignOut = async () => {
+    await signOut();
+    // Once signOut finishes, the Gatekeeper in AppRouter will instantly kick you back to the login screen!
+  };
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 max-w-4xl mx-auto h-full flex flex-col pb-6">
+      
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-semibold text-slate-800">Settings</h2>
-        <p className="text-slate-500 mt-1">Manage your account preferences and company details.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-semibold text-slate-800">System Settings</h2>
+          <p className="text-slate-500 mt-1">Manage your account and preferences.</p>
+        </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1">
         
-        {/* Settings Sidebar */}
-        <aside className="w-full md:w-64 shrink-0 flex flex-col gap-6">
-          <nav className="flex flex-row md:flex-col gap-2 overflow-x-auto pb-2 md:pb-0">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-                    isActive 
-                      ? "bg-white/60 text-slate-900 shadow-sm ring-1 ring-black/5 backdrop-blur-md" 
-                      : "text-slate-500 hover:bg-white/40 hover:text-slate-900"
-                  }`}
-                >
-                  <tab.icon className={`h-5 w-5 ${isActive ? "text-slate-900" : "text-slate-400"}`} />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </nav>
+        {/* Left Column: Navigation/Tabs (Scales for mobile) */}
+        <div className="md:col-span-1 space-y-2">
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-900 text-white font-medium shadow-md transition-all">
+            <UserCircle className="h-5 w-5" /> Account Profile
+          </button>
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-white/60 hover:text-slate-900 font-medium transition-all">
+            <Building2 className="h-5 w-5" /> Company Preferences
+          </button>
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-white/60 hover:text-slate-900 font-medium transition-all">
+            <Bell className="h-5 w-5" /> Notifications
+          </button>
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-600 hover:bg-white/60 hover:text-slate-900 font-medium transition-all">
+            <Shield className="h-5 w-5" /> Security
+          </button>
+        </div>
 
-          {/* New Logout Button injected into Settings */}
-          <div className="pt-6 border-t border-white/50">
-            <Button 
-              onClick={() => logout()} 
-              variant="outline"
-              className="w-full flex items-center justify-start gap-3 bg-white/40 border-white/60 text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-all px-4 py-6 rounded-xl shadow-sm"
-            >
-              <LogOut className="h-5 w-5" />
-              <span className="font-medium">Sign Out</span>
-            </Button>
-          </div>
-        </aside>
-
-        {/* Settings Content Area */}
-        <motion.div 
-          key={activeTab}
-          initial={{ opacity: 0, x: 10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.2 }}
-          className="flex-1 rounded-2xl border border-white/60 bg-white/50 p-6 md:p-8 shadow-sm backdrop-blur-md"
-        >
-          {activeTab === "profile" && (
-            <div className="space-y-6">
-              <div className="border-b border-white/50 pb-5">
-                <h3 className="text-lg font-semibold text-slate-800">Profile Information</h3>
-                <p className="text-sm text-slate-500 mt-1">Update your personal details and public profile.</p>
+        {/* Right Column: Settings Content */}
+        <div className="md:col-span-2 space-y-6">
+          
+          {/* Profile Card */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-white/60 bg-white/50 p-6 shadow-sm backdrop-blur-md">
+            <h3 className="text-lg font-semibold text-slate-800 mb-6">Profile Information</h3>
+            
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mb-8">
+              <div className="h-20 w-20 rounded-2xl bg-slate-200 flex items-center justify-center text-slate-500 shadow-inner">
+                <UserCircle className="h-10 w-10" />
               </div>
-              
-              <div className="flex items-center gap-6">
-                <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-900 text-2xl font-bold text-white shadow-md">
-                  Z
+              <div className="space-y-1">
+                <p className="text-xl font-semibold text-slate-800">
+                  {user?.email ? user.email.split('@')[0].toUpperCase() : "System User"}
+                </p>
+                <p className="text-slate-500">{user?.email || "No email provided"}</p>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 text-xs font-semibold uppercase tracking-wider mt-2">
+                  <Key className="h-3 w-3" />
+                  {role || "User"} Access
                 </div>
-                <Button variant="outline" className="bg-white/50 border-white/60 hover:bg-white/80">
-                  Change Avatar
-                </Button>
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">Full Name</label>
-                  <input 
-                    type="text" 
-                    defaultValue="Admin User"
-                    className="w-full rounded-xl border-none bg-white/60 px-4 py-2.5 text-sm outline-none ring-1 ring-slate-200 transition-all focus:bg-white focus:ring-2 focus:ring-slate-400"
-                  />
-                </div>
-                <div className="space-y-2">
+            <div className="space-y-4 border-t border-slate-200/60 pt-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
                   <label className="text-sm font-medium text-slate-700">Email Address</label>
-                  <input 
-                    type="email" 
-                    defaultValue="admin@zaydindustries.com"
-                    className="w-full rounded-xl border-none bg-white/60 px-4 py-2.5 text-sm outline-none ring-1 ring-slate-200 transition-all focus:bg-white focus:ring-2 focus:ring-slate-400"
-                  />
+                  <input type="email" disabled value={user?.email || ""} className="w-full h-11 rounded-xl border-none bg-white/60 px-4 text-sm text-slate-500 outline-none ring-1 ring-slate-200 opacity-70 cursor-not-allowed" />
                 </div>
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium text-slate-700">Role / Title</label>
-                  <input 
-                    type="text" 
-                    defaultValue="Founder & CEO"
-                    className="w-full rounded-xl border-none bg-white/60 px-4 py-2.5 text-sm outline-none ring-1 ring-slate-200 transition-all focus:bg-white focus:ring-2 focus:ring-slate-400"
-                  />
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Role Level</label>
+                  <input type="text" disabled value={role ? role.toUpperCase() : ""} className="w-full h-11 rounded-xl border-none bg-white/60 px-4 text-sm text-slate-500 outline-none ring-1 ring-slate-200 opacity-70 cursor-not-allowed" />
                 </div>
               </div>
             </div>
-          )}
+          </motion.div>
 
-          {activeTab !== "profile" && (
-            <div className="flex h-64 items-center justify-center text-slate-400">
-              {tabs.find(t => t.id === activeTab)?.label} settings will go here.
-            </div>
-          )}
-
-          <div className="mt-8 flex justify-end border-t border-white/50 pt-6">
-            <Button className="gap-2 bg-slate-900 text-white hover:bg-slate-800 shadow-md transition-all">
-              <Save className="h-4 w-4" />
-              Save Changes
+          {/* Danger Zone */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-2xl border border-rose-100 bg-rose-50/50 p-6 shadow-sm backdrop-blur-md">
+            <h3 className="text-lg font-semibold text-rose-800 mb-2">Session Management</h3>
+            <p className="text-sm text-rose-600/80 mb-6">Securely log out of the Zayd Industries Operating System. You will need to re-enter your credentials to access the system again.</p>
+            
+            <Button 
+              onClick={handleSignOut}
+              className="w-full sm:w-auto bg-rose-600 text-white hover:bg-rose-700 shadow-md flex items-center justify-center gap-2 h-11 px-6 rounded-xl"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign Out of System
             </Button>
-          </div>
-        </motion.div>
+          </motion.div>
 
+        </div>
       </div>
     </div>
   );
