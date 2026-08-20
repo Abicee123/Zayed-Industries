@@ -12,7 +12,7 @@ export default function FinancePage() {
 
   const [activeTab, setActiveTab] = useState<"projects" | "expenses">("projects");
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterCompanyId, setFilterCompanyId] = useState<string>("all"); // NEW: Global Dashboard Filter
+  const [filterCompanyId, setFilterCompanyId] = useState<string>("all"); 
   
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [selectedProjectDetails, setSelectedProjectDetails] = useState<any>(null); 
@@ -25,7 +25,6 @@ export default function FinancePage() {
     company_id: currentCompanyId?.toString() || "", project_id: "", category: "Software", description: "", amount: 0, expense_date: today
   });
 
-  // NEW: Dynamic Filtering Logic that controls both Lists AND the top KPI Math
   const getFilteredData = (dataArray: any[]) => {
     if (role === 'admin' && !activeWorkspace) {
       if (filterCompanyId === "all") return dataArray;
@@ -70,14 +69,12 @@ export default function FinancePage() {
   return (
     <div className="max-w-[1200px] mx-auto space-y-8 animate-in fade-in duration-700 pb-8">
       
-      {/* HEADER & GLOBAL FILTER */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div>
           <p className="text-[11px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-2 bg-blue-50 inline-block px-3 py-1 rounded-full">Analytics</p>
           <h1 className="text-4xl font-bold tracking-tight text-slate-900 mt-2">Master Ledger.</h1>
         </div>
         
-        {/* NEW: Master Admin Global Financial Filter */}
         {role === 'admin' && !activeWorkspace && (
           <div className="sm:w-72 shrink-0">
             <select
@@ -93,7 +90,6 @@ export default function FinancePage() {
         )}
       </div>
 
-      {/* Global KPI Cards (Now fully dynamic based on filter) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex flex-col justify-between transition-all">
            <div className="h-10 w-10 bg-emerald-50 rounded-xl flex items-center justify-center mb-4"><TrendingUp className="h-5 w-5 text-emerald-600" /></div>
@@ -117,13 +113,11 @@ export default function FinancePage() {
         </div>
       </div>
 
-      {/* TABS */}
       <div className="flex gap-4 border-b border-slate-200">
          <button onClick={() => setActiveTab('projects')} className={`pb-3 text-sm font-bold tracking-wide transition-all border-b-2 ${activeTab === 'projects' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>Project Profitability</button>
          <button onClick={() => setActiveTab('expenses')} className={`pb-3 text-sm font-bold tracking-wide transition-all border-b-2 ${activeTab === 'expenses' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>Miscellaneous Expenses</button>
       </div>
 
-      {/* TAB: PROJECT PROFITABILITY GRID */}
       {activeTab === 'projects' && (
         <div className="space-y-6">
           <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-sm flex">
@@ -185,7 +179,6 @@ export default function FinancePage() {
         </div>
       )}
 
-      {/* TAB: EXPENSES */}
       {activeTab === 'expenses' && (
         <div className="space-y-6">
            <div className="flex justify-end">
@@ -224,13 +217,12 @@ export default function FinancePage() {
         </div>
       )}
 
-      {/* --- PROJECT FINANCIAL DOSSIER MODAL --- */}
+      {/* --- PROJECT FINANCIAL DOSSIER MODAL (Fixed Padding: sm:pl-[280px]) --- */}
       <AnimatePresence>
         {selectedProjectDetails && (
-          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-sm sm:pl-[280px]">
             <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }} className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-100">
               
-              {/* Dossier Header */}
               <div className="px-8 py-6 border-b border-slate-100 bg-[#FAFCFF] shrink-0">
                 <div className="flex items-center justify-between mb-2">
                   <div>
@@ -254,7 +246,6 @@ export default function FinancePage() {
                 })()}
               </div>
 
-              {/* Dossier Body */}
               <div className="flex-1 overflow-y-auto p-8 bg-white space-y-8 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full">
                 
                 {(() => {
@@ -271,7 +262,6 @@ export default function FinancePage() {
 
                   return (
                     <>
-                      {/* KPI ROW */}
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 text-center">
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Expected Revenue</p>
@@ -291,10 +281,7 @@ export default function FinancePage() {
                         </div>
                       </div>
 
-                      {/* THE LEDGERS */}
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        
-                        {/* LEFT: REVENUE (INVOICES) */}
                         <div className="space-y-4">
                           <h4 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
                             <FileText className="h-4 w-4 text-emerald-500" /> Billed Invoices
@@ -324,10 +311,7 @@ export default function FinancePage() {
                           )}
                         </div>
 
-                        {/* RIGHT: COSTS (PAYROLL & MISC) */}
                         <div className="space-y-6">
-                          
-                          {/* Payroll */}
                           <div className="space-y-4">
                             <h4 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
                               <Users className="h-4 w-4 text-blue-500" /> Employee Payouts
@@ -365,7 +349,6 @@ export default function FinancePage() {
                             )}
                           </div>
 
-                          {/* Expenses */}
                           <div className="space-y-4">
                             <h4 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
                               <Receipt className="h-4 w-4 text-amber-500" /> Misc Expenses
@@ -401,10 +384,10 @@ export default function FinancePage() {
         )}
       </AnimatePresence>
 
-      {/* --- ADD EXPENSE MODAL --- */}
+      {/* --- ADD EXPENSE MODAL (Fixed Padding: sm:pl-[280px]) --- */}
       <AnimatePresence>
         {isExpenseModalOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-sm sm:pl-[280px]">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100">
               <div className="px-8 pt-7 border-b border-slate-100 bg-[#FAFCFF] shrink-0">
                 <div className="flex items-center justify-between mb-5">
