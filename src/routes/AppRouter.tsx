@@ -11,8 +11,16 @@ import ProjectDetailsPage from "../pages/projects/ProjectDetailsPage";
 import InvoicesPage from "../pages/invoices/InvoicesPage";
 import SettingsPage from "../pages/settings/SettingsPage";
 import ProtectedRoute from "./ProtectedRoute";
+import { useEffect } from "react";
+import { useDataStore } from "../store/dataStore";
+
 
 export default function AppRouter() {
+  const fetchAllData = useDataStore((state) => state.fetchAllData);
+
+useEffect(() => {
+  fetchAllData();
+}, [fetchAllData]);
   return (
     <BrowserRouter>
       <Routes>
