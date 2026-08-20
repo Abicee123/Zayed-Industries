@@ -97,7 +97,7 @@ export default function DashboardPage() {
     return (
       <div className="space-y-8 pb-8 h-full flex flex-col">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div><h1 className="text-2xl font-semibold text-slate-900 tracking-tight">System Overview</h1><p className="text-sm text-slate-500 mt-1">Global metrics across all Radix OS subsidiaries.</p></div>
+          <div><h1 className="text-2xl font-semibold text-slate-900 tracking-tight">System Overview</h1><p className="text-sm text-slate-500 mt-1">Zayed Industries</p></div>
           <div className="flex items-center gap-3"><Button onClick={openAddCompany} className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl h-10 px-4 text-sm shadow-sm flex items-center transition-all"><Plus className="h-4 w-4 mr-2" /> Add Subsidiary</Button></div>
         </div>
 
