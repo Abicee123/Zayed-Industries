@@ -1,180 +1,405 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, Filter, X } from "lucide-react";
-import { Button } from "../../components/ui/button";
-import { useDataStore, type Customer } from "../../store/dataStore";
+import { Search, Plus, X, Building2, Phone, Mail, MapPin, Briefcase, FileText, Edit3, Trash2, UserSquare2, CheckCircle2, AlertCircle, CreditCard, TrendingUp } from "lucide-react";
+import { useAuthStore } from "../../store/authStore";
+import { useDataStore } from "../../store/dataStore";
+import { supabase } from "../../supabase";
 
 export default function CustomersPage() {
-  const { customers, addCustomer } = useDataStore();
-  
-  // States
+  const { role, activeWorkspace, companyId } = useAuthStore();
+  const { customers, companies, projects, invoices, fetchAllData } = useDataStore();
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [filterCompanyId, setFilterCompanyId] = useState<string>("all"); // NEW: Company Filter State
   
-  // Form States
-  const [companyName, setCompanyName] = useState("");
-  const [contactName, setContactName] = useState("");
-  const [status, setStatus] = useState<Customer["status"]>("Onboarding");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalTab, setModalTab] = useState<"profile" | "projects" | "finance">("profile");
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Live Filter
-  const filteredCustomers = customers.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.contact.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const currentCompanyId = role === 'admin' ? (activeWorkspace || "") : companyId;
 
-  const handleAddClient = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!companyName.trim() || !contactName.trim()) return;
+  const [formData, setFormData] = useState({
+    company_id: currentCompanyId?.toString() || "", 
+    name: "", 
+    contact_person: "", 
+    email: "", 
+    phone: "", 
+    address: ""
+  });
 
-    addCustomer({
-      name: companyName,
-      contact: contactName,
-      status: status
+  // NEW: Filter logic now respects the company dropdown for Master Admins
+  const visibleCustomers = customers.filter(c => {
+    const matchesSearch = c.name?.toLowerCase().includes(searchQuery.toLowerCase()) || c.contact_person?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (role === 'admin' && !activeWorkspace) {
+      const matchesCompany = filterCompanyId === "all" || c.company_id?.toString() === filterCompanyId;
+      return matchesSearch && matchesCompany;
+    }
+    
+    return matchesSearch && c.company_id === currentCompanyId;
+  }).sort((a, b) => a.name?.localeCompare(b.name));
+
+  const openNewCustomer = () => {
+    setSelectedCustomer(null);
+    setFormData({ 
+      company_id: currentCompanyId?.toString() || "", 
+      name: "", contact_person: "", email: "", phone: "", address: "" 
     });
+    setModalTab("profile");
+    setIsModalOpen(true);
+  };
 
-    // Reset and close
-    setCompanyName("");
-    setContactName("");
-    setStatus("Onboarding");
-    setIsModalOpen(false);
+  const openCustomerDossier = (customer: any) => {
+    setSelectedCustomer(customer);
+    setFormData({
+      company_id: customer.company_id?.toString() || "",
+      name: customer.name || "",
+      contact_person: customer.contact_person || "",
+      email: customer.email || "",
+      phone: customer.phone || "",
+      address: customer.address || ""
+    });
+    setModalTab("profile");
+    setIsModalOpen(true);
+  };
+
+  const handleSaveCustomer = async () => {
+    if (!formData.name.trim()) return alert("Company/Client Name is required.");
+    if (role === 'admin' && !activeWorkspace && !formData.company_id) return alert("Please select a network subsidiary.");
+
+    setIsSaving(true);
+    try {
+      const payload = {
+        company_id: parseInt(formData.company_id),
+        name: formData.name,
+        contact_person: formData.contact_person,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address
+      };
+
+      if (!selectedCustomer) {
+        const { error } = await supabase.from('customers').insert([payload]);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('customers').update(payload).eq('id', selectedCustomer.id);
+        if (error) throw error;
+      }
+      
+      await fetchAllData();
+      setIsModalOpen(false);
+    } catch (error: any) { 
+      alert(error.message); 
+    } finally { 
+      setIsSaving(false); 
+    }
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!selectedCustomer) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedCustomer.name}? This cannot be undone.`)) return;
+    
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from('customers').delete().eq('id', selectedCustomer.id);
+      if (error) throw error;
+      await fetchAllData();
+      setIsModalOpen(false);
+    } catch (error: any) { 
+      alert(`Error deleting client: ${error.message}`); 
+    } finally { 
+      setIsSaving(false); 
+    }
+  };
+
+  const getClientFinancials = (clientId: number) => {
+    const clientInvoices = invoices.filter(i => i.customer_id === clientId);
+    const totalBilled = clientInvoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
+    const totalPaid = clientInvoices.reduce((sum, inv) => sum + parseFloat(inv.amount_paid || 0), 0);
+    const totalPending = Math.max(0, totalBilled - totalPaid);
+    return { totalBilled, totalPaid, totalPending, invoiceCount: clientInvoices.length };
   };
 
   return (
-    <div className="space-y-6 relative h-full flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="max-w-[1200px] mx-auto space-y-8 animate-in fade-in duration-700 pb-8 relative z-0">
+      
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
         <div>
-          <h2 className="text-2xl font-semibold text-slate-800">Customer Relations</h2>
-          <p className="text-slate-500 mt-1">Track enterprise clients and lifetime value.</p>
+          <p className="text-[11px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-2 bg-blue-50 inline-block px-3 py-1 rounded-full">CRM & Networking</p>
+          <h1 className="text-4xl font-bold tracking-tight text-slate-900 mt-2">Client Hub.</h1>
         </div>
-        <Button 
-          onClick={() => setIsModalOpen(true)}
-          className="gap-2 bg-slate-900 text-white hover:bg-slate-800 shadow-md"
-        >
-          <Plus className="h-4 w-4" /> Add Client
-        </Button>
+        {(role === 'admin' || role === 'head') && (
+          <button onClick={openNewCustomer} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white shadow-lg shadow-blue-900/20 hover:shadow-xl hover:-translate-y-0.5 px-6 py-3.5 rounded-2xl text-[13px] font-bold transition-all flex items-center shrink-0">
+            <Plus className="h-4 w-4 mr-2" /> Add Client
+          </button>
+        )}
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex-1 overflow-hidden rounded-2xl border border-white/60 bg-white/50 shadow-sm backdrop-blur-md flex flex-col"
-      >
-        <div className="flex items-center justify-between border-b border-white/50 p-5">
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Search by company or contact..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border-none bg-white/60 py-2 pl-9 pr-4 text-sm outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-400 transition-all" 
-            />
+      {/* SEARCH BAR AND COMPANY FILTER */}
+      <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <input type="text" placeholder="Search clients by company name or contact person..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full h-11 pl-11 pr-4 rounded-xl border-none text-sm font-medium outline-none bg-transparent focus:ring-0 placeholder:text-slate-400" />
+        </div>
+
+        {/* Master Admin Company Filter Dropdown */}
+        {role === 'admin' && !activeWorkspace && (
+          <div className="sm:w-64 shrink-0 border-t sm:border-t-0 sm:border-l border-slate-100 pt-2 sm:pt-0 sm:pl-2">
+            <select
+              value={filterCompanyId}
+              onChange={(e) => setFilterCompanyId(e.target.value)}
+              className="w-full h-11 rounded-xl bg-slate-50 border-none px-4 text-sm font-bold text-slate-700 outline-none cursor-pointer hover:bg-slate-100 transition-colors focus:ring-4 focus:ring-blue-500/10 appearance-none"
+              style={{ backgroundImage: `url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px' }}
+            >
+              <option value="all">Global (All Subsidiaries)</option>
+              {companies.map(c => <option key={c.id} value={c.id.toString()}>{c.name}</option>)}
+            </select>
           </div>
-          <Button variant="outline" className="bg-white/50 border-white/60 hover:bg-white/80 hidden sm:flex"><Filter className="h-4 w-4 mr-2" /> Filter</Button>
-        </div>
+        )}
+      </div>
 
-        <div className="overflow-x-auto flex-1">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="text-xs uppercase text-slate-400 bg-white/40 border-b border-white/50 sticky top-0">
-              <tr>
-                <th className="px-6 py-4 font-medium">Company Name</th>
-                <th className="px-6 py-4 font-medium">Primary Contact</th>
-                <th className="px-6 py-4 font-medium">Projects</th>
-                <th className="px-6 py-4 font-medium">Total Spent</th>
-                <th className="px-6 py-4 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/50">
-              <AnimatePresence>
-                {filteredCustomers.map((c) => (
-                  <motion.tr 
-                    key={c.id} 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="hover:bg-white/60 transition-colors"
-                  >
-                    <td className="px-6 py-4 font-medium text-slate-800">{c.name}</td>
-                    <td className="px-6 py-4">{c.contact}</td>
-                    <td className="px-6 py-4">{c.projects}</td>
-                    <td className="px-6 py-4 font-medium">{c.spent}</td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
-                        c.status === 'Active' ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' : 
-                        c.status === 'Onboarding' ? 'bg-blue-50 text-blue-700 ring-blue-600/20' : 
-                        'bg-slate-100 text-slate-700 ring-slate-600/20'
-                      }`}>
-                        {c.status}
+      {/* CLIENT GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        {visibleCustomers.length === 0 ? (
+          <div className="col-span-full h-64 border border-slate-200 border-dashed rounded-3xl flex flex-col items-center justify-center text-slate-400 bg-slate-50/50">
+            <UserSquare2 className="h-10 w-10 mb-3 text-slate-300" />
+            <p className="text-sm font-bold uppercase tracking-wider">No Clients Found</p>
+          </div>
+        ) : (
+          visibleCustomers.map(client => {
+            const financials = getClientFinancials(client.id);
+            const clientProjects = projects.filter(p => p.customer_id === client.id).length;
+            
+            return (
+              <motion.div key={client.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={() => openCustomerDossier(client)} className="bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all flex flex-col relative overflow-hidden group cursor-pointer">
+                
+                <div className="p-6 pb-5 border-b border-slate-50">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 border border-slate-200 flex items-center justify-center text-slate-400 shadow-sm shrink-0">
+                       <Building2 className="h-5 w-5" />
+                    </div>
+                    {financials.totalPending > 0 && (
+                      <span className="bg-amber-50 text-amber-600 border border-amber-100 text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3"/> Balance Due
                       </span>
-                    </td>
-                  </motion.tr>
-                ))}
-              </AnimatePresence>
-            </tbody>
-          </table>
-          
-          {filteredCustomers.length === 0 && (
-            <div className="py-12 text-center text-slate-500">
-              No clients found matching "{searchQuery}"
-            </div>
-          )}
-        </div>
-      </motion.div>
+                    )}
+                  </div>
+                  
+                  <h3 className="text-lg font-bold text-slate-900 tracking-tight group-hover:text-blue-900 transition-colors">{client.name}</h3>
+                  <div className="space-y-1.5 mt-3">
+                    <p className="text-[12px] font-medium text-slate-600 flex items-center gap-2"><UserSquare2 className="h-3.5 w-3.5 text-slate-400" /> {client.contact_person || 'No Primary Contact'}</p>
+                    {client.phone && <p className="text-[12px] font-medium text-slate-600 flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-slate-400" /> {client.phone}</p>}
+                    {/* Add subsidiary label for Master Admin global view */}
+                    {role === 'admin' && !activeWorkspace && (
+                       <p className="text-[10px] font-bold text-blue-600/80 uppercase tracking-widest flex items-center gap-2 mt-2 pt-2 border-t border-slate-50"><Building2 className="h-3 w-3" /> {companies.find(c => c.id === client.company_id)?.name}</p>
+                    )}
+                  </div>
+                </div>
 
-      {/* Add Client Modal */}
+                <div className="bg-[#FAFCFF] p-5 flex items-center justify-between mt-auto">
+                   <div>
+                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Active / Past Projects</p>
+                     <p className="text-sm font-bold text-slate-800 flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5 text-blue-500" /> {clientProjects}</p>
+                   </div>
+                   <div className="text-right">
+                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Lifetime Value (Billed)</p>
+                     <p className="text-lg font-black text-emerald-600 tracking-tight">₹{financials.totalBilled.toLocaleString()}</p>
+                   </div>
+                </div>
+
+              </motion.div>
+            )
+          })
+        )}
+      </div>
+
+      {/* --- CLIENT DOSSIER MODAL --- */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm"
-            />
-            
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-md overflow-hidden rounded-2xl border border-white/60 bg-white/80 p-6 shadow-2xl backdrop-blur-xl"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-slate-800">Add New Client</h3>
-                <button onClick={() => setIsModalOpen(false)} className="rounded-lg p-2 text-slate-400 hover:bg-white hover:text-slate-700 transition-colors shadow-sm ring-1 ring-black/5">
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              <form onSubmit={handleAddClient} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">Company Name</label>
-                  <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="e.g., Acme Corp" className="w-full rounded-xl border-none bg-white/60 px-4 py-3 text-sm outline-none ring-1 ring-slate-200 transition-all focus:bg-white focus:ring-2 focus:ring-slate-400" autoFocus />
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-sm">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden border border-slate-100">
+              
+              <div className="px-8 pt-7 border-b border-slate-100 bg-[#FAFCFF] shrink-0">
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">CRM Dossier</span>
+                    <h3 className="text-2xl font-bold text-slate-900 tracking-tight mt-1.5">{selectedCustomer ? selectedCustomer.name : 'Register New Client'}</h3>
+                  </div>
+                  <button onClick={() => setIsModalOpen(false)} className="h-9 w-9 bg-white border border-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 shadow-sm transition-colors"><X className="h-4 w-4" /></button>
                 </div>
                 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">Primary Contact</label>
-                  <input type="text" required value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="e.g., Jane Smith" className="w-full rounded-xl border-none bg-white/60 px-4 py-3 text-sm outline-none ring-1 ring-slate-200 transition-all focus:bg-white focus:ring-2 focus:ring-slate-400" />
+                <div className="flex gap-8 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+                  <button onClick={() => setModalTab('profile')} className={`pb-3 text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${modalTab === 'profile' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>1. Profile & Details</button>
+                  <button onClick={() => setModalTab('projects')} disabled={!selectedCustomer} className={`pb-3 text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'projects' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>2. Projects History</button>
+                  <button onClick={() => setModalTab('finance')} disabled={!selectedCustomer} className={`pb-3 text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'finance' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>3. Billing & Payments</button>
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">Initial Status</label>
-                  <select 
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value as Customer["status"])}
-                    className="w-full rounded-xl border-none bg-white/60 px-4 py-3 text-sm outline-none ring-1 ring-slate-200 transition-all focus:bg-white focus:ring-2 focus:ring-slate-400 appearance-none"
-                  >
-                    <option value="Onboarding">Onboarding</option>
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
+              <div className="flex-1 overflow-y-auto p-8 bg-white [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full">
+                
+                {/* TAB 1: PROFILE & DETAILS */}
+                {modalTab === 'profile' && (
+                  <div className="space-y-6 max-w-3xl mx-auto">
+                    {role === 'admin' && !activeWorkspace && (
+                      <div className="p-5 rounded-2xl bg-slate-50 border border-slate-100 mb-6">
+                        <label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest block mb-3 px-1">Owning Subsidiary</label>
+                        <select value={formData.company_id} onChange={(e) => setFormData({...formData, company_id: e.target.value})} className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none cursor-pointer">
+                          <option value="" disabled>-- Assign to Company --</option>
+                          {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
+                    )}
 
-                <div className="mt-8 flex gap-3 pt-4 border-t border-white/50">
-                  <Button type="button" onClick={() => setIsModalOpen(false)} variant="outline" className="flex-1 bg-white/50 border-white/60 hover:bg-white/80">Cancel</Button>
-                  <Button type="submit" disabled={!companyName.trim() || !contactName.trim()} className="flex-1 bg-slate-900 text-white hover:bg-slate-800 shadow-md disabled:opacity-50">Save Client</Button>
+                    <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 space-y-5">
+                       <h4 className="text-sm font-bold text-slate-800 uppercase tracking-widest border-b border-slate-200 pb-3 mb-4 flex items-center gap-2"><Building2 className="h-4 w-4 text-slate-400"/> Enterprise Details</h4>
+                       <div>
+                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Company / Entity Name *</label>
+                         <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full h-12 rounded-xl border border-slate-200 px-4 text-sm font-bold outline-none focus:border-blue-500 shadow-sm" />
+                       </div>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                         <div>
+                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Head / Primary Contact</label>
+                           <input type="text" placeholder="John Doe" value={formData.contact_person} onChange={(e) => setFormData({...formData, contact_person: e.target.value})} className="w-full h-12 rounded-xl border border-slate-200 px-4 text-sm font-medium outline-none focus:border-blue-500 shadow-sm" />
+                         </div>
+                         <div>
+                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Contact Email</label>
+                           <input type="email" placeholder="contact@company.com" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full h-12 rounded-xl border border-slate-200 px-4 text-sm font-medium outline-none focus:border-blue-500 shadow-sm" />
+                         </div>
+                         <div>
+                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Phone Number</label>
+                           <input type="text" placeholder="+1 234 567 8900" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full h-12 rounded-xl border border-slate-200 px-4 text-sm font-medium outline-none focus:border-blue-500 shadow-sm" />
+                         </div>
+                         <div className="md:col-span-2">
+                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Registered Address</label>
+                           <textarea value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full h-24 rounded-xl border border-slate-200 p-4 text-sm font-medium outline-none focus:border-blue-500 shadow-sm resize-none" placeholder="123 Business Avenue..." />
+                         </div>
+                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 2: PROJECTS HISTORY */}
+                {modalTab === 'projects' && selectedCustomer && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+                       <h4 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2"><Briefcase className="h-4 w-4 text-blue-500"/> Project Engagements</h4>
+                    </div>
+
+                    {projects.filter(p => p.customer_id === selectedCustomer.id).length === 0 ? (
+                      <p className="text-sm text-slate-400 italic text-center py-10">No projects linked to this client yet.</p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {projects.filter(p => p.customer_id === selectedCustomer.id).map(proj => (
+                          <div key={proj.id} className="bg-slate-50 border border-slate-100 rounded-2xl p-5 hover:bg-blue-50/50 transition-colors cursor-default">
+                             <div className="flex justify-between items-start mb-3">
+                               <p className="font-bold text-slate-900 text-[15px]">{proj.name}</p>
+                               <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest ${proj.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{proj.status}</span>
+                             </div>
+                             <p className="text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed mb-4">{proj.description || 'No description provided.'}</p>
+                             <div className="flex justify-between items-end border-t border-slate-200 pt-3">
+                               <div>
+                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Expected Value</p>
+                                 <p className="text-sm font-black text-slate-800">₹{(proj.expected_amount || 0).toLocaleString()}</p>
+                               </div>
+                               <div className="text-right">
+                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Due Date</p>
+                                 <p className="text-xs font-bold text-slate-600">{proj.due_date ? new Date(proj.due_date).toLocaleDateString() : 'Unscheduled'}</p>
+                               </div>
+                             </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TAB 3: BILLING & PAYMENTS */}
+                {modalTab === 'finance' && selectedCustomer && (
+                  <div className="space-y-8">
+                    {(() => {
+                      const financials = getClientFinancials(selectedCustomer.id);
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 text-center">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Lifetime Value (Billed)</p>
+                            <p className="text-2xl font-black text-slate-700">₹{financials.totalBilled.toLocaleString()}</p>
+                          </div>
+                          <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-100 text-center">
+                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">Total Paid</p>
+                            <p className="text-2xl font-black text-emerald-700">₹{financials.totalPaid.toLocaleString()}</p>
+                          </div>
+                          <div className={`p-5 rounded-2xl border text-center ${financials.totalPending > 0 ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100'}`}>
+                            <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${financials.totalPending > 0 ? 'text-amber-600' : 'text-slate-400'}`}>Pending Balance</p>
+                            <p className={`text-2xl font-black ${financials.totalPending > 0 ? 'text-amber-600' : 'text-slate-400'}`}>₹{financials.totalPending.toLocaleString()}</p>
+                          </div>
+                        </div>
+                      )
+                    })()}
+
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-2 mb-4 flex items-center gap-2"><FileText className="h-4 w-4 text-emerald-500"/> Invoicing Ledger</h4>
+                      
+                      {invoices.filter(i => i.customer_id === selectedCustomer.id).length === 0 ? (
+                        <p className="text-sm text-slate-400 italic text-center py-10">No invoices issued to this client.</p>
+                      ) : (
+                        <div className="bg-white border border-slate-100 shadow-sm rounded-3xl overflow-hidden">
+                           <div className="grid grid-cols-12 gap-4 bg-slate-50 px-6 py-4 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                              <div className="col-span-3">Invoice No.</div>
+                              <div className="col-span-3">Project</div>
+                              <div className="col-span-2">Status</div>
+                              <div className="col-span-2 text-right">Billed (₹)</div>
+                              <div className="col-span-2 text-right">Paid (₹)</div>
+                           </div>
+                           <div className="divide-y divide-slate-50">
+                             {invoices.filter(i => i.customer_id === selectedCustomer.id).sort((a,b)=>new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(inv => (
+                               <div key={inv.id} className="grid grid-cols-12 gap-4 items-center px-6 py-4 hover:bg-slate-50/50 transition-colors">
+                                 <div className="col-span-3">
+                                   <p className="font-bold text-slate-900 text-[13px]">{inv.invoice_number}</p>
+                                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Due: {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : 'N/A'}</p>
+                                 </div>
+                                 <div className="col-span-3 text-[12px] font-medium text-slate-600 truncate">
+                                   {inv.project_id ? projects.find(p=>p.id===inv.project_id)?.name : 'General / Standalone'}
+                                 </div>
+                                 <div className="col-span-2">
+                                   <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest ${inv.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : inv.status === 'Partially Paid' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>{inv.status}</span>
+                                 </div>
+                                 <div className="col-span-2 text-right font-black text-slate-800 text-sm">
+                                   ₹{parseFloat(inv.total_amount || 0).toLocaleString()}
+                                 </div>
+                                 <div className="col-span-2 text-right font-bold text-emerald-600 text-sm">
+                                   ₹{parseFloat(inv.amount_paid || 0).toLocaleString()}
+                                 </div>
+                               </div>
+                             ))}
+                           </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 border-t border-slate-100 bg-[#FAFCFF] flex justify-between items-center shrink-0">
+                {selectedCustomer && (role === 'admin' || role === 'head') && modalTab === 'profile' ? (
+                  <button onClick={handleDeleteCustomer} disabled={isSaving} className="border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 rounded-xl h-12 px-5 flex items-center justify-center shadow-sm transition-colors"><Trash2 className="h-4 w-4" /></button>
+                ) : <div></div>}
+                
+                <div className="flex gap-3">
+                  <button onClick={() => setIsModalOpen(false)} className="rounded-xl border border-slate-200 bg-white h-12 px-8 font-bold text-sm text-slate-600 hover:bg-slate-50 shadow-sm transition-colors">Close</button>
+                  {modalTab === 'profile' && (
+                    <button onClick={handleSaveCustomer} disabled={isSaving} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-12 px-10 font-bold text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all">
+                      {isSaving ? "Saving..." : "Save Profile"}
+                    </button>
+                  )}
                 </div>
-              </form>
+              </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
     </div>
   );
 }

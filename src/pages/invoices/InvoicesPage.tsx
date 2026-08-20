@@ -12,7 +12,7 @@ export default function InvoicesPage() {
   const { invoices, invoiceItems, invoicePayments, projects, customers, companies, fetchAllData } = useDataStore();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterCompanyId, setFilterCompanyId] = useState<string>("all"); // NEW: Global Admin Filter
+  const [filterCompanyId, setFilterCompanyId] = useState<string>("all");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
@@ -28,8 +28,6 @@ export default function InvoicesPage() {
   });
 
   const [lineItems, setLineItems] = useState([{ description: "", quantity: 1, rate: 0 }]);
-  
-  // Payment Ledger State
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [newPayment, setNewPayment] = useState({ amount: 0, payment_date: today, payment_method: "Bank Transfer", reference_note: "" });
 
@@ -42,12 +40,17 @@ export default function InvoicesPage() {
     return matchesSearch && inv.company_id === currentCompanyId;
   });
 
+  // SMART CASCADE: Show all customers for the selected company
   const availableCustomers = customers.filter(c => c.company_id === parseInt(formData.company_id));
-  const availableProjects = projects.filter(p => p.company_id === parseInt(formData.company_id) && p.customer_id === parseInt(formData.customer_id));
+  
+  // SMART CASCADE: Unrestricted project list so users can select a project first to auto-fill the rest
+  const availableProjects = projects.filter(p => {
+    if (role === 'admin' && !activeWorkspace) return true;
+    return p.company_id === currentCompanyId;
+  });
   
   const currentInvoicePayments = selectedInvoice ? invoicePayments.filter(p => p.invoice_id === selectedInvoice.id) : [];
 
-  // Core Math
   const subtotal = lineItems.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
   const taxAmount = (subtotal * formData.tax_rate) / 100;
   const grandTotal = (subtotal + taxAmount) - formData.discount_amount;
@@ -57,13 +60,14 @@ export default function InvoicesPage() {
   const issuingCompany = companies.find(c => c.id === parseInt(formData.company_id));
   const selectedCustomer = customers.find(c => c.id === parseInt(formData.customer_id));
   const linkedProject = projects.find(p => p.id === parseInt(formData.project_id));
+  const internalBilledCompany = linkedProject?.internal_company_id ? companies.find(c => c.id === linkedProject.internal_company_id) : null;
 
   const openNewInvoice = () => {
     setSelectedInvoice(null);
     setFormData({
       company_id: currentCompanyId?.toString() || "", customer_id: "", project_id: "",
       invoice_number: `INV-${Math.floor(10000 + Math.random() * 90000)}`,
-      issue_date: today, due_date: "", tax_rate: 0, discount_amount: 0, status: "Pending"
+      issue_date: today, due_date: "", tax_rate: 0, discount_amount: 0, amount_paid: 0, status: "Pending"
     });
     setLineItems([{ description: "", quantity: 1, rate: 0 }]);
     setShowPaymentForm(false);
@@ -73,7 +77,9 @@ export default function InvoicesPage() {
   const openViewInvoice = (inv: any) => {
     setSelectedInvoice(inv);
     setFormData({
-      company_id: inv.company_id.toString(), customer_id: inv.customer_id?.toString() || "", project_id: inv.project_id?.toString() || "",
+      company_id: inv.company_id.toString(), 
+      customer_id: inv.customer_id?.toString() || "", 
+      project_id: inv.project_id?.toString() || "",
       invoice_number: inv.invoice_number, issue_date: inv.issue_date, due_date: inv.due_date,
       tax_rate: inv.tax_rate, discount_amount: inv.discount_amount, status: inv.status
     });
@@ -83,9 +89,28 @@ export default function InvoicesPage() {
     setIsModalOpen(true);
   };
 
+  // SMART CASCADE: If a project is selected, pull its exact company and customer automatically
+  const handleProjectSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const pid = e.target.value;
+    if (!pid) {
+      setFormData({ ...formData, project_id: "" });
+      return;
+    }
+    const proj = projects.find(p => p.id.toString() === pid);
+    if (proj) {
+      setFormData({
+        ...formData,
+        project_id: pid,
+        company_id: proj.company_id.toString(),
+        customer_id: proj.customer_id?.toString() || ""
+      });
+    }
+  };
+
   const handleSaveInvoice = async () => {
     if (!formData.company_id) return alert("Select a company.");
-    if (!formData.customer_id) return alert("Select a customer.");
+    // We allow customer_id to be empty ONLY if it's linked to an internal in-house project
+    if (!formData.customer_id && !linkedProject?.internal_company_id) return alert("Select a customer or an internal project.");
     if (!formData.due_date) return alert("Select a due date.");
     if (lineItems.some(i => !i.description.trim())) return alert("All line items must have a description.");
 
@@ -96,7 +121,8 @@ export default function InvoicesPage() {
       else if (totalPaid > 0 && totalPaid < grandTotal) computedStatus = 'Partially Paid';
 
       const payload = {
-        company_id: parseInt(formData.company_id), customer_id: parseInt(formData.customer_id),
+        company_id: parseInt(formData.company_id), 
+        customer_id: formData.customer_id ? parseInt(formData.customer_id) : null,
         project_id: formData.project_id ? parseInt(formData.project_id) : null,
         invoice_number: formData.invoice_number, issue_date: formData.issue_date, due_date: formData.due_date,
         subtotal, tax_rate: formData.tax_rate, discount_amount: formData.discount_amount, 
@@ -132,12 +158,8 @@ export default function InvoicesPage() {
     setIsSaving(true);
     try {
       const { error: paymentError } = await supabase.from('invoice_payments').insert([{
-        invoice_id: selectedInvoice.id,
-        company_id: parseInt(formData.company_id),
-        amount: newPayment.amount,
-        payment_date: newPayment.payment_date,
-        payment_method: newPayment.payment_method,
-        reference_note: newPayment.reference_note
+        invoice_id: selectedInvoice.id, company_id: parseInt(formData.company_id), amount: newPayment.amount,
+        payment_date: newPayment.payment_date, payment_method: newPayment.payment_method, reference_note: newPayment.reference_note
       }]);
       if (paymentError) throw paymentError;
 
@@ -160,7 +182,6 @@ export default function InvoicesPage() {
     setIsSaving(true);
     try {
       await supabase.from('invoice_payments').delete().eq('id', paymentId);
-      
       const paymentToRemove = currentInvoicePayments.find(p => p.id === paymentId);
       const newTotalPaid = totalPaid - (paymentToRemove ? paymentToRemove.amount : 0);
       let newStatus = formData.status;
@@ -168,7 +189,6 @@ export default function InvoicesPage() {
       else if (newTotalPaid < grandTotal) newStatus = 'Partially Paid';
       
       await supabase.from('invoices').update({ amount_paid: newTotalPaid, status: newStatus }).eq('id', selectedInvoice.id);
-      
       await fetchAllData();
       setFormData(prev => ({...prev, status: newStatus}));
     } catch (error: any) { alert(error.message); } finally { setIsSaving(false); }
@@ -178,8 +198,7 @@ export default function InvoicesPage() {
     if (!selectedInvoice) return;
     if (!window.confirm(`Delete invoice ${selectedInvoice.invoice_number}?`)) return;
     await supabase.from('invoices').delete().eq('id', selectedInvoice.id);
-    await fetchAllData();
-    setIsModalOpen(false);
+    await fetchAllData(); setIsModalOpen(false);
   };
 
   const handlePrint = () => window.print();
@@ -189,7 +208,7 @@ export default function InvoicesPage() {
     const rows = visibleInvoices.map(inv => [
       inv.invoice_number,
       companies.find(c => c.id === inv.company_id)?.name || 'Unknown',
-      customers.find(c => c.id === inv.customer_id)?.name || 'Unknown',
+      customers.find(c => c.id === inv.customer_id)?.name || 'Internal Transfer',
       inv.issue_date, inv.due_date, inv.total_amount, inv.amount_paid || 0, inv.status
     ]);
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
@@ -224,7 +243,6 @@ export default function InvoicesPage() {
   return (
     <div className="max-w-[1200px] mx-auto space-y-8 animate-in fade-in duration-700 pb-8 print:p-0 print:m-0">
       
-      {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 print:hidden">
         <div>
           <p className="text-[11px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-2 bg-blue-50 inline-block px-3 py-1 rounded-full">Billing & Ledger</p>
@@ -240,7 +258,6 @@ export default function InvoicesPage() {
         </div>
       </div>
 
-      {/* ENHANCED SEARCH & FILTER BAR */}
       <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-sm print:hidden flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -266,6 +283,14 @@ export default function InvoicesPage() {
         {visibleInvoices.length === 0 && <div className="col-span-full h-48 border border-slate-200 border-dashed rounded-3xl flex items-center justify-center text-slate-400 bg-slate-50/50"><p className="text-[11px] font-bold uppercase tracking-widest">No invoices found</p></div>}
         {visibleInvoices.map(inv => {
           const status = getDynamicStatus(inv);
+          
+          // Identify client mapping visually on the grid
+          const gridClientName = inv.customer_id 
+             ? customers.find(c => c.id === inv.customer_id)?.name 
+             : projects.find(p => p.id === inv.project_id)?.internal_company_id 
+                ? `${companies.find(c => c.id === projects.find(p => p.id === inv.project_id)?.internal_company_id)?.name} (Internal)` 
+                : 'Unknown Client';
+
           return (
             <motion.div key={inv.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={() => openViewInvoice(inv)} className="bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all flex flex-col relative overflow-hidden group cursor-pointer p-6">
               <div className="flex justify-between items-start mb-4">
@@ -273,7 +298,7 @@ export default function InvoicesPage() {
                 <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${getStatusStyle(status)}`}>{status}</span>
               </div>
               <div className="space-y-1.5 mb-6">
-                <p className="text-[12px] font-medium text-slate-600 flex items-center gap-2"><UserSquare2 className="h-3.5 w-3.5 text-slate-400" /> {customers.find(c => c.id === inv.customer_id)?.name || 'Unknown Client'}</p>
+                <p className="text-[12px] font-medium text-slate-600 flex items-center gap-2"><UserSquare2 className="h-3.5 w-3.5 text-slate-400" /> {gridClientName}</p>
                 {inv.project_id && <p className="text-[12px] font-medium text-slate-600 flex items-center gap-2"><Building2 className="h-3.5 w-3.5 text-slate-400" /> {projects.find(p => p.id === inv.project_id)?.name}</p>}
               </div>
               <div className="mt-auto pt-4 border-t border-slate-50 flex justify-between items-end">
@@ -309,6 +334,7 @@ export default function InvoicesPage() {
                 </div>
               </div>
 
+              {/* PDF Print Canvas */}
               <div className="flex-1 overflow-y-auto p-8 lg:p-12 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full bg-white print:p-6 print:overflow-visible print:h-auto">
                 
                 <div className="flex justify-between items-start mb-12 print:mb-6">
@@ -351,22 +377,39 @@ export default function InvoicesPage() {
                     </div>
                   )}
 
+                  {/* SMART CASCADE: BILLED TO RENDERING */}
                   <div className={`${role === 'admin' && !activeWorkspace ? '' : 'md:col-span-1'} print:col-span-2`}>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 print:text-[8px] print:mb-1">Billed To <span className="text-rose-500 print:hidden">*</span></p>
-                    <select value={formData.customer_id} onChange={(e) => setFormData({...formData, customer_id: e.target.value, project_id: ""})} disabled={!formData.company_id && (role === 'admin' && !activeWorkspace)} className="w-full bg-transparent text-lg font-bold text-slate-900 outline-none cursor-pointer border-b border-slate-200 pb-1 disabled:opacity-50 print:hidden">
-                       <option value="">-- Select Client --</option>
-                       {availableCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                    <div className="hidden print:block text-slate-800">
-                       <h3 className="text-sm font-bold">{selectedCustomer?.name || "Client Name"}</h3>
-                       {selectedCustomer?.phone && <p className="text-xs mt-0.5 font-medium">{selectedCustomer.phone}</p>}
-                       <p className="text-xs mt-1 text-slate-500 leading-relaxed max-w-xs">{selectedCustomer?.address || "Address details pending update..."}</p>
-                    </div>
+                    
+                    {linkedProject?.internal_company_id ? (
+                      <>
+                        <div className="w-full bg-blue-50/50 text-lg font-bold text-blue-900 border-b border-slate-200 pb-1 print:hidden px-2 rounded-t-lg">
+                          {internalBilledCompany?.name || 'Internal Company'} (In-House)
+                        </div>
+                        <div className="hidden print:block text-slate-800">
+                           <h3 className="text-sm font-bold">{internalBilledCompany?.name || "Internal Company"}</h3>
+                           <p className="text-xs mt-1 text-slate-500 leading-relaxed max-w-xs">Internal Sub-Contract / Operations Transfer</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <select value={formData.customer_id} onChange={(e) => setFormData({...formData, customer_id: e.target.value})} disabled={!formData.company_id && (role === 'admin' && !activeWorkspace)} className="w-full bg-transparent text-lg font-bold text-slate-900 outline-none cursor-pointer border-b border-slate-200 pb-1 disabled:opacity-50 print:hidden">
+                           <option value="">-- Select Client --</option>
+                           {availableCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                        <div className="hidden print:block text-slate-800">
+                           <h3 className="text-sm font-bold">{selectedCustomer?.name || "Client Name"}</h3>
+                           {selectedCustomer?.phone && <p className="text-xs mt-0.5 font-medium">{selectedCustomer.phone}</p>}
+                           <p className="text-xs mt-1 text-slate-500 leading-relaxed max-w-xs">{selectedCustomer?.address || "Address details pending update..."}</p>
+                        </div>
+                      </>
+                    )}
                   </div>
 
+                  {/* SMART CASCADE: LINKED PROJECT DROPDOWN */}
                   <div className={`${role === 'admin' && !activeWorkspace ? '' : 'md:col-span-2'} print:col-span-1 print:text-right`}>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 print:text-[8px] print:mb-1">Linked Project <span className="print:hidden">(Optional)</span></p>
-                    <select value={formData.project_id} onChange={(e) => setFormData({...formData, project_id: e.target.value})} disabled={!formData.customer_id} className="w-full bg-transparent text-lg font-bold text-blue-800 outline-none cursor-pointer border-b border-slate-200 pb-1 disabled:opacity-50 print:hidden">
+                    <select value={formData.project_id} onChange={handleProjectSelect} className="w-full bg-transparent text-lg font-bold text-blue-800 outline-none cursor-pointer border-b border-slate-200 pb-1 disabled:opacity-50 print:hidden">
                        <option value="">-- Standalone Invoice --</option>
                        {availableProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
@@ -481,14 +524,6 @@ export default function InvoicesPage() {
                     )}
                   </div>
                 )}
-                {!selectedInvoice && (
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-12 text-center print:hidden border-t border-slate-100 pt-8">Save this invoice to begin recording ledger transactions.</p>
-                )}
-
-                <div className="hidden print:block mt-10 pt-4 border-t border-slate-200 text-center">
-                  <p className="text-sm font-bold text-slate-800 tracking-tight">Thank you for your business!</p>
-                  <p className="text-[10px] text-slate-500 mt-1 font-medium">If you have any questions regarding this invoice, please contact us.</p>
-                </div>
 
               </div>
 

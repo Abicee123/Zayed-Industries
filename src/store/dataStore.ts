@@ -3,12 +3,12 @@ import { supabase } from "../supabase";
 import { useAuthStore } from "./authStore";
 
 interface DataState {
-  companies: any[]; projects: any[]; tasks: any[]; reports: any[]; employees: any[]; customers: any[]; invoices: any[]; invoiceItems: any[]; invoicePayments: any[]; messages: any[]; salaryPayments: any[]; announcements: any[]; expenses: any[]; isLoading: boolean;
+  companies: any[]; projects: any[]; tasks: any[]; reports: any[]; employees: any[]; customers: any[]; invoices: any[]; invoiceItems: any[]; invoicePayments: any[]; messages: any[]; salaryPayments: any[]; announcements: any[]; expenses: any[]; projectAllocations: any[]; isLoading: boolean;
   fetchAllData: () => Promise<void>;
 }
 
 export const useDataStore = create<DataState>((set) => ({
-  companies: [], projects: [], tasks: [], reports: [], employees: [], customers: [], invoices: [], invoiceItems: [], invoicePayments: [], messages: [], salaryPayments: [], announcements: [], expenses: [], isLoading: false,
+  companies: [], projects: [], tasks: [], reports: [], employees: [], customers: [], invoices: [], invoiceItems: [], invoicePayments: [], messages: [], salaryPayments: [], announcements: [], expenses: [], projectAllocations: [], isLoading: false,
 
   fetchAllData: async () => {
     set({ isLoading: true });
@@ -27,8 +27,9 @@ export const useDataStore = create<DataState>((set) => ({
       let invoicePaymentsQuery = supabase.from('invoice_payments').select('*').order('created_at', { ascending: false });
       let expensesQuery = supabase.from('expenses').select('*');
       let messagesQuery = supabase.from('messages').select('*').order('created_at', { ascending: true });
-      let salaryQuery = supabase.from('salary_payments').select('*');
+      let salaryQuery = supabase.from('salary_payments').select('*').order('created_at', { ascending: false });
       let announcementsQuery = supabase.from('announcements').select('*').order('created_at', { ascending: false });
+      let allocationsQuery = supabase.from('project_allocations').select('*');
 
       if (targetCompanyId) {
         companiesQuery = companiesQuery.eq('id', targetCompanyId);
@@ -43,16 +44,17 @@ export const useDataStore = create<DataState>((set) => ({
       const [ 
         { data: companies }, { data: projects }, { data: tasks }, { data: reports }, { data: employees }, 
         { data: customers }, { data: invoices }, { data: invoiceItems }, { data: invoicePayments }, { data: messages }, 
-        { data: salaryPayments }, { data: announcements }, { data: expenses } 
+        { data: salaryPayments }, { data: announcements }, { data: expenses }, { data: allocations } 
       ] = await Promise.all([
         companiesQuery, projectsQuery, tasksQuery, reportsQuery, employeesQuery, customersQuery, invoicesQuery, 
-        invoiceItemsQuery, invoicePaymentsQuery, messagesQuery, salaryQuery, announcementsQuery, expensesQuery
+        invoiceItemsQuery, invoicePaymentsQuery, messagesQuery, salaryQuery, announcementsQuery, expensesQuery, allocationsQuery
       ]);
 
       set({
         companies: companies || [], projects: projects || [], tasks: tasks || [], reports: reports || [], employees: employees || [],
         customers: customers || [], invoices: invoices || [], invoiceItems: invoiceItems || [], invoicePayments: invoicePayments || [], 
-        messages: messages || [], salaryPayments: salaryPayments || [], announcements: announcements || [], expenses: expenses || [], isLoading: false
+        messages: messages || [], salaryPayments: salaryPayments || [], announcements: announcements || [], expenses: expenses || [], 
+        projectAllocations: allocations || [], isLoading: false
       });
     } catch (error) {
       console.error("Error fetching data:", error);
