@@ -1,68 +1,111 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { Lock, Mail, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { useAuthStore } from "../../store/authStore";
 
 export default function LoginPage() {
-  const navigate = useNavigate();
-  // Bring in the login function from our global store
-  const login = useAuthStore((state) => state.login);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  
+  const signIn = useAuthStore((state) => state.signIn);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // 1. Update the Zustand state to authenticate the user
-    login({
-      id: "1",
-      name: "Admin User",
-      email: "admin@zaydindustries.com",
-      role: "admin"
-    });
+    setError("");
+    setIsLoggingIn(true);
 
-    // 2. Now navigate to the dashboard (the gatekeeper will let you through)
-    navigate("/dashboard");
+    const result = await signIn(email, password);
+    
+    if (result.error) {
+      setError(result.error);
+      setIsLoggingIn(false);
+    }
+    // If successful, the router will detect the session change and redirect automatically.
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+    <div className="min-h-[100dvh] w-full bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background decorative elements (scales safely on mobile) */}
+      <div className="absolute top-[-5%] left-[-10%] h-72 w-72 sm:h-96 sm:w-96 rounded-full bg-indigo-500/10 blur-[80px] sm:blur-[100px]" />
+      <div className="absolute bottom-[-5%] right-[-10%] h-72 w-72 sm:h-96 sm:w-96 rounded-full bg-blue-500/10 blur-[80px] sm:blur-[100px]" />
+
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md space-y-8 rounded-2xl bg-white p-8 shadow-sm border"
+        className="w-full max-w-md relative z-10 mx-auto"
       >
-        <div className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded bg-black text-xl font-bold text-white">
-            Z
-          </div>
-          <h2 className="text-2xl font-bold tracking-tight">Sign in to your account</h2>
-          <p className="mt-2 text-sm text-gray-500">
-            Zayd Industries Business OS
-          </p>
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-widest text-slate-900 uppercase">
+            Zayd Industries
+          </h1>
+          <p className="text-sm sm:text-base text-slate-500 mt-2">Enterprise Operating System</p>
         </div>
 
-        <form className="space-y-6" onSubmit={handleLogin}>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Email address</label>
-            <input 
-              type="email" 
-              defaultValue="admin@zaydindustries.com"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
-            />
+        <div className="rounded-3xl border border-white/60 bg-white/80 p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
+          <div className="flex justify-center mb-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-md">
+              <ShieldCheck className="h-6 w-6" />
+            </div>
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Password</label>
-            <input 
-              type="password" 
-              defaultValue="password123"
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-black focus:outline-none focus:ring-1 focus:ring-black"
-            />
-          </div>
+          <h2 className="text-lg sm:text-xl font-semibold text-slate-800 text-center mb-6">
+            Secure Global Login
+          </h2>
 
-          <Button type="submit" className="w-full">
-            Sign In
-          </Button>
-        </form>
+          {error && (
+            <div className="mb-6 rounded-xl bg-rose-50 p-4 text-sm text-rose-600 ring-1 ring-inset ring-rose-600/20 text-center">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700 ml-1">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <input 
+                  type="email" 
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full h-12 rounded-xl border-none bg-white/60 px-4 pl-12 text-base outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-900 transition-all"
+                  placeholder="admin@zaydindustries.com"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700 ml-1">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <input 
+                  type="password" 
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full h-12 rounded-xl border-none bg-white/60 px-4 pl-12 text-base outline-none ring-1 ring-slate-200 focus:bg-white focus:ring-2 focus:ring-slate-900 transition-all"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+
+            <Button 
+              type="submit" 
+              disabled={isLoggingIn}
+              className="w-full bg-slate-900 text-white hover:bg-slate-800 shadow-md h-12 mt-4 rounded-xl text-base font-medium transition-all flex items-center justify-center gap-2"
+            >
+              {isLoggingIn ? "Authenticating..." : "Access System"}
+              {!isLoggingIn && <ArrowRight className="h-5 w-5" />}
+            </Button>
+          </form>
+        </div>
+        
+        <p className="text-center text-xs text-slate-400 mt-6 px-4">
+          Authorized personnel only. Access is monitored and logged.
+        </p>
       </motion.div>
     </div>
   );

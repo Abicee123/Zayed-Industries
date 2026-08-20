@@ -1,44 +1,50 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"; // <-- Added BrowserRouter here
+import { useAuthStore } from "../store/authStore";
+import { useDataStore } from "../store/dataStore";
+import ProtectedRoute from "./ProtectedRoute";
 
-import LandingPage from "../pages/landing/LandingPage";
 import LoginPage from "../pages/auth/LoginPage";
 import DashboardPage from "../pages/dashboard/DashboardPage";
-import FinancePage from "../pages/finance/FinancePage";
-import EmployeesPage from "../pages/employees/EmployeesPage";
-import CustomersPage from "../pages/customers/CustomersPage";
 import ProjectsPage from "../pages/projects/ProjectsPage";
 import ProjectDetailsPage from "../pages/projects/ProjectDetailsPage";
+import EmployeesPage from "../pages/employees/EmployeesPage";
+import CustomersPage from "../pages/customers/CustomersPage";
+import FinancePage from "../pages/finance/FinancePage";
 import InvoicesPage from "../pages/invoices/InvoicesPage";
-import SettingsPage from "../pages/settings/SettingsPage";
-import ProtectedRoute from "./ProtectedRoute";
-import { useEffect } from "react";
-import { useDataStore } from "../store/dataStore";
-
 
 export default function AppRouter() {
   const fetchAllData = useDataStore((state) => state.fetchAllData);
+  const { checkSession, user } = useAuthStore();
 
-useEffect(() => {
-  fetchAllData();
-}, [fetchAllData]);
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
+
+  useEffect(() => {
+    if (user) {
+      fetchAllData();
+    }
+  }, [user, fetchAllData]);
+
   return (
+    /* We wrap everything in BrowserRouter to fix the crash! */
     <BrowserRouter>
       <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
-        
-        {/* Protected Routes */}
+
         <Route element={<ProtectedRoute />}>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/finance" element={<FinancePage />} />
-          <Route path="/employees" element={<EmployeesPage />} />
-          <Route path="/customers" element={<CustomersPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/projects/:id" element={<ProjectDetailsPage />} />
+          <Route path="/employees" element={<EmployeesPage />} />
+          <Route path="/customers" element={<CustomersPage />} />
+          <Route path="/finance" element={<FinancePage />} />
           <Route path="/invoices" element={<InvoicesPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
         </Route>
+
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   );
