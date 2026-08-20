@@ -1,124 +1,100 @@
-import { useState } from "react";
-import { Outlet, Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Briefcase, FileText, Settings, DollarSign, Menu, X } from "lucide-react";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { LayoutDashboard, Users, Briefcase, FileText, Settings, LogOut, ArrowLeft, Building2, Banknote, UserSquare2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion"; // <-- THIS IS THE MISSING IMPORT!
 import { useAuthStore } from "../store/authStore";
-import { motion } from "framer-motion";
-
-const sidebarLinks = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Finance", href: "/finance", icon: DollarSign },
-  { name: "Employees", href: "/employees", icon: Users },
-  { name: "Customers", href: "/customers", icon: Users },
-  { name: "Projects", href: "/projects", icon: Briefcase },
-  { name: "Invoices", href: "/invoices", icon: FileText },
-  { name: "Settings", href: "/settings", icon: Settings },
-];
-
-const animatedTitle = "ZAYD INDUSTRIES";
+import { useDataStore } from "../store/dataStore";
+import { useMemo } from "react";
 
 export default function AppLayout() {
-  const location = useLocation();
-  const user = useAuthStore((state) => state.user);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const { role, signOut, activeWorkspace, setActiveWorkspace } = useAuthStore();
+  const { companies, fetchAllData } = useDataStore();
+  const navigate = useNavigate();
+
+  const activeCompany = activeWorkspace ? companies.find(c => c.id === activeWorkspace) : null;
+
+  // DYNAMIC THEME ENGINE
+  const theme = useMemo(() => {
+    if (!activeWorkspace || !activeCompany) {
+      return { bg: "bg-[#f8fafc]", navHover: "hover:bg-slate-100", activeText: "text-slate-900", pattern: "" };
+    }
+    
+    const companyName = activeCompany.name || "";
+    const charSum = companyName.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+    
+    const themes = [
+      { bg: "bg-emerald-50/40", navHover: "hover:bg-emerald-100/50", activeText: "text-emerald-700", pattern: "radial-gradient(#10b98122 1px, transparent 1px)" },
+      { bg: "bg-indigo-50/40", navHover: "hover:bg-indigo-100/50", activeText: "text-indigo-700", pattern: "radial-gradient(#6366f122 1px, transparent 1px)" },
+      { bg: "bg-rose-50/40", navHover: "hover:bg-rose-100/50", activeText: "text-rose-700", pattern: "radial-gradient(#f43f5e22 1px, transparent 1px)" },
+      { bg: "bg-amber-50/40", navHover: "hover:bg-amber-100/50", activeText: "text-amber-700", pattern: "radial-gradient(#f59e0b22 1px, transparent 1px)" },
+    ];
+    return themes[charSum % themes.length];
+  }, [activeWorkspace, activeCompany]);
+
+  const handleExitWorkspace = async () => {
+    setActiveWorkspace(null);
+    await fetchAllData();
+    navigate("/dashboard");
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
+
+  const navLinks = [
+    { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { path: "/finance", icon: Banknote, label: "Finance" },
+    { path: "/employees", icon: Users, label: "Employees" },
+    { path: "/customers", icon: UserSquare2, label: "Customers" },
+    { path: "/projects", icon: Briefcase, label: "Projects" },
+    { path: "/invoices", icon: FileText, label: "Invoices" },
+    { path: "/settings", icon: Settings, label: "Settings" },
+  ];
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-gray-100 to-slate-50 text-slate-900 overflow-hidden">
+    <div className={`flex h-[100dvh] w-full transition-colors duration-1000 ${theme.bg} relative`}>
+      {/* Subtle Geometric Pattern Overlay */}
+      {theme.pattern && <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{ backgroundImage: theme.pattern, backgroundSize: '24px 24px' }} />}
       
-      {/* Left Sidebar */}
-      <aside 
-        className={`flex flex-col border-r border-white/50 bg-white/40 backdrop-blur-xl shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)] z-20 transition-all duration-300 ease-in-out shrink-0 ${
-          isSidebarOpen ? "w-64 translate-x-0 ml-0" : "w-64 -translate-x-full -ml-64"
-        }`}
-      >
-        {/* Sidebar Header with 'X' Close Button */}
-        <div className="flex h-16 items-center justify-between border-b border-white/50 px-4 shrink-0">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white text-xl font-bold shadow-md">
-            Z
-          </div>
-          <button
-            onClick={() => setIsSidebarOpen(false)}
-            className="rounded-lg p-2 text-slate-500 hover:bg-white/60 hover:text-slate-900 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 bg-white/50 ring-1 ring-black/5 shadow-sm"
-          >
-            <X className="h-4 w-4" />
+      {/* The Sidebar */}
+      <aside className="w-64 bg-white/80 backdrop-blur-xl border-r border-slate-200/60 flex flex-col z-10">
+        <div className="h-20 flex items-center px-6 border-b border-slate-100">
+          <div className="h-10 w-10 bg-slate-900 rounded-xl flex items-center justify-center text-white font-bold text-xl mr-3 shadow-md">Z</div>
+          <span className="font-bold text-slate-900 tracking-tight">Radix OS</span>
+        </div>
+        <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1.5">
+          {navLinks.map((link) => (
+            <NavLink key={link.path} to={link.path} className={({ isActive }) => `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${isActive ? `bg-white shadow-sm border border-slate-200/60 ${theme.activeText}` : `text-slate-500 ${theme.navHover}`}`}>
+              <link.icon className="h-4 w-4" /> {link.label}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="p-4 border-t border-slate-100">
+          <button onClick={handleSignOut} className="flex items-center gap-3 px-4 py-3 w-full text-left rounded-xl text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors">
+            <LogOut className="h-4 w-4" /> Sign Out
           </button>
         </div>
-        
-        <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
-          {sidebarLinks.map((link) => {
-            const isActive = location.pathname.includes(link.href);
-            return (
-              <Link
-                key={link.name}
-                to={link.href}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                  isActive 
-                    ? "bg-white/60 text-slate-900 shadow-sm ring-1 ring-black/5" 
-                    : "text-slate-500 hover:bg-white/40 hover:text-slate-900 hover:shadow-sm"
-                }`}
-              >
-                <link.icon className={`h-5 w-5 shrink-0 ${isActive ? "text-slate-900" : "text-slate-400"}`} />
-                <span className="whitespace-nowrap">{link.name}</span>
-              </Link>
-            );
-          })}
-        </nav>
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex flex-1 flex-col overflow-hidden transition-all duration-300">
+      <div className="flex-1 flex flex-col h-[100dvh] overflow-hidden relative z-10">
         
-        {/* Top Header */}
-        <header className="relative flex h-16 shrink-0 items-center justify-between border-b border-white/50 bg-white/40 backdrop-blur-xl px-4 sm:px-8 z-10 sticky top-0">
-          
-          {/* Left: Hamburger Menu (Only shows when sidebar is closed) */}
-          <div className="flex items-center text-sm text-slate-500 z-10 min-w-[40px]">
-            {!isSidebarOpen && (
-              <button
-                onClick={() => setIsSidebarOpen(true)}
-                className="group flex items-center justify-center rounded-lg p-2 text-slate-500 hover:bg-white/60 hover:text-slate-900 transition-all focus:outline-none focus:ring-2 focus:ring-slate-400 shadow-sm ring-1 ring-black/5 bg-white/50"
-              >
-                <Menu className="h-5 w-5 transition-transform group-hover:scale-110" />
+        {/* IMPERSONATION BANNER */}
+        <AnimatePresence>
+          {activeWorkspace && role === 'admin' && (
+            <motion.div initial={{ y: -50 }} animate={{ y: 0 }} exit={{ y: -50 }} className="bg-slate-900 text-white px-8 py-3 flex items-center justify-between shadow-lg z-50">
+              <div className="flex items-center gap-3">
+                <Building2 className="h-5 w-5 text-emerald-400" />
+                <span className="text-sm font-medium tracking-wide">Managing Workspace: <span className="font-bold text-emerald-400 ml-1">{activeCompany?.name}</span></span>
+              </div>
+              <button onClick={handleExitWorkspace} className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 hover:text-emerald-400 transition-colors bg-white/10 px-4 py-1.5 rounded-full">
+                <ArrowLeft className="h-4 w-4" /> Return to Global Network
               </button>
-            )}
-          </div>
-          
-          {/* Center: Continuous 3D Flip Animation */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden sm:flex z-0" style={{ perspective: "1000px" }}>
-            {animatedTitle.split("").map((char, index) => (
-              <motion.span
-                key={index}
-                animate={{
-                  opacity: [0, 1, 1, 0],
-                  x: [-40, 0, 0, 40],
-                  rotateY: [-90, 0, 0, 90],
-                }}
-                transition={{
-                  duration: 5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  times: [0, 0.1, 0.9, 1],
-                  delay: index * 0.1
-                }}
-                className="inline-block text-lg font-black tracking-widest text-slate-800"
-              >
-                {char === " " ? "\u00A0" : char}
-              </motion.span>
-            ))}
-          </div>
-
-          {/* Right: Profile */}
-          <div className="flex items-center gap-3 z-10">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-sm font-bold text-slate-700 ring-1 ring-slate-200 shadow-sm">
-              {user?.name?.charAt(0) || "U"}
-            </div>
-            <span className="text-sm font-medium text-slate-700 hidden sm:block">
-              {user?.name || "User"}
-            </span>
-          </div>
-        </header>
-
-        {/* Dynamic Page Content */}
-        <main className="flex-1 overflow-auto p-4 sm:p-8">
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <main className="flex-1 overflow-y-auto p-8">
           <Outlet />
         </main>
       </div>
