@@ -87,6 +87,11 @@ export default function AppLayout() {
 
   const currentUser = employees.find(e => e.id == employeeId);
 
+  // CRITICAL FIX: Safe extraction of user credentials for avatars
+  const displayEmail = user?.email || 'User';
+  const displayInitial = currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : displayEmail.charAt(0).toUpperCase();
+  const displayName = currentUser?.name || displayEmail.split('@')[0];
+
   return (
     <div className="flex h-[100dvh] w-full bg-[#F8F9FC] text-slate-800 overflow-hidden font-sans sm:p-4 lg:p-6 selection:bg-blue-900 selection:text-white relative print:p-0 print:bg-white print:block print:h-auto">
       
@@ -139,11 +144,15 @@ export default function AppLayout() {
                 <div className="flex items-center justify-between bg-slate-50 rounded-2xl p-3 border border-slate-100 mb-4 shadow-sm hover:border-slate-200 transition-colors">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="h-9 w-9 rounded-full bg-white border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
-                      {currentUser?.profile_image_url ? <img src={currentUser.profile_image_url} alt="" className="h-full w-full object-cover"/> : <span className="text-[12px] font-bold text-slate-400">{user?.email?.charAt(0).toUpperCase()}</span>}
+                      {currentUser?.profile_image_url ? (
+                        <img src={currentUser.profile_image_url} alt="" className="h-full w-full object-cover"/>
+                      ) : (
+                        <span className="text-[12px] font-bold text-slate-400">{displayInitial}</span>
+                      )}
                     </div>
                     <div className="min-w-0 flex-1 pr-2">
-                      <p className="text-[13px] font-bold text-slate-900 truncate leading-tight">{currentUser?.name || user?.email?.split('@')[0]}</p>
-                      <p className="text-[9px] text-slate-500 uppercase tracking-widest mt-0.5 leading-none">{role}</p>
+                      <p className="text-[13px] font-bold text-slate-900 truncate leading-tight">{displayName}</p>
+                      <p className="text-[9px] text-slate-500 uppercase tracking-widest mt-0.5 leading-none">{role || 'Operator'}</p>
                     </div>
                   </div>
                   <button onClick={handleSignOut} className="h-8 w-8 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition-all shadow-sm shrink-0" title="Sign Out">
@@ -234,7 +243,7 @@ export default function AppLayout() {
            </div>
         </div>
 
-        {/* --- CHAT DRAWER (Full screen on mobile, Sidebar on desktop) --- */}
+        {/* --- CHAT DRAWER --- */}
         <AnimatePresence>
           {isChatOpen && (
             <>
