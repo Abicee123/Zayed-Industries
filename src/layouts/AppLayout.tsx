@@ -87,7 +87,6 @@ export default function AppLayout() {
 
   const currentUser = employees.find(e => e.id == employeeId);
 
-  // CRITICAL FIX: Safe extraction of user credentials for avatars
   const displayEmail = user?.email || 'User';
   const displayInitial = currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : displayEmail.charAt(0).toUpperCase();
   const displayName = currentUser?.name || displayEmail.split('@')[0];
@@ -134,8 +133,13 @@ export default function AppLayout() {
               <nav className="flex-1 overflow-y-auto px-6 space-y-2 [&::-webkit-scrollbar]:hidden pt-2">
                 {visibleLinks.map((link) => (
                   <NavLink key={link.path} to={link.path} className={({ isActive }) => `group flex items-center gap-4 px-5 py-4 text-[14px] rounded-2xl transition-all duration-300 ${isActive ? 'bg-gradient-to-r from-blue-900 to-indigo-800 text-white shadow-md shadow-blue-900/20 font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-900'}`}>
-                    <link.icon className={`h-5 w-5 transition-colors ${({ isActive }: any) => isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-900'}`} />
-                    {link.label}
+                    {/* CRITICAL FIX: Safe Render Prop Pattern */}
+                    {({ isActive }) => (
+                      <>
+                        <link.icon className={`h-5 w-5 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-900'}`} />
+                        {link.label}
+                      </>
+                    )}
                   </NavLink>
                 ))}
               </nav>
@@ -236,8 +240,13 @@ export default function AppLayout() {
            <div className="bg-[#0f172a]/95 backdrop-blur-2xl rounded-[2rem] p-1.5 flex items-center shadow-[0_20px_40px_rgba(0,0,0,0.3)] border border-slate-800 overflow-x-auto [&::-webkit-scrollbar]:hidden gap-1">
               {visibleLinks.map((link) => (
                 <NavLink key={link.path} to={link.path} className={({ isActive }) => `flex flex-col items-center justify-center shrink-0 min-w-[64px] h-14 rounded-2xl transition-all ${isActive ? 'bg-blue-600/20 text-blue-400' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}>
-                  <link.icon className={`h-5 w-5 mb-1 transition-all ${isActive ? 'text-blue-400 drop-shadow-md' : 'text-slate-400'}`} />
-                  <span className="text-[9px] font-bold tracking-wide">{link.label}</span>
+                  {/* CRITICAL FIX: Safe Render Prop Pattern for Mobile */}
+                  {({ isActive }) => (
+                    <>
+                      <link.icon className={`h-5 w-5 mb-1 transition-all ${isActive ? 'text-blue-400 drop-shadow-md' : 'text-slate-400'}`} />
+                      <span className="text-[9px] font-bold tracking-wide">{link.label}</span>
+                    </>
+                  )}
                 </NavLink>
               ))}
            </div>
