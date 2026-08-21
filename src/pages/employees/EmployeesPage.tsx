@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, Mail, Phone, Building2, Edit3, Trash2, X, Camera, Wallet, LayoutGrid, List, ShieldAlert, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
@@ -177,20 +177,18 @@ export default function EmployeesPage() {
 
   return (
     <>
-      {/* Subtle Background Animation inside main wrapper */}
       <div className="max-w-[1200px] mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-700 pb-8 relative z-0">
         
-        <div className="absolute inset-0 pointer-events-none z-[-1] overflow-hidden rounded-3xl print:hidden">
-          <motion.div animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.5, 0.3] }} transition={{ duration: 10, repeat: Infinity }} className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full bg-blue-100/40 blur-[80px]" />
-          <motion.div animate={{ scale: [1, 1.1, 1], opacity: [0.2, 0.4, 0.2] }} transition={{ duration: 15, repeat: Infinity, delay: 2 }} className="absolute top-[40%] -right-[10%] w-[50%] h-[50%] rounded-full bg-emerald-50/40 blur-[100px]" />
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMTQ4LCAxNjMsIDE4NCwgMC4wOCkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
+        {/* Minimal Dotted Background Pattern */}
+        <div className="absolute inset-0 pointer-events-none z-[-1] overflow-hidden print:hidden">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMTQ4LCAxNjMsIDE4NCwgMC4wOCkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
         </div>
 
         {/* HEADER */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6">
           <div>
-            <p className="text-[9px] sm:text-[11px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-1.5 sm:mb-2 bg-blue-50 inline-block px-3 py-1 rounded-full">Workforce & HR</p>
-            <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-slate-900 mt-1 sm:mt-2">Personnel.</h1>
+            <p className="text-[9px] sm:text-[11px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-1.5 sm:mb-2 bg-blue-50 inline-block px-3 py-1 rounded-full">Team Management</p>
+            <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-slate-900 mt-1 sm:mt-2">Employees.</h1>
           </div>
           {(role === 'admin' || role === 'head') && (
             <div className="flex items-center gap-2 sm:gap-3">
@@ -221,7 +219,7 @@ export default function EmployeesPage() {
                 className="w-full h-10 sm:h-11 rounded-lg sm:rounded-xl bg-slate-50 border-none px-3 sm:px-4 text-[12px] sm:text-sm font-bold text-slate-700 outline-none cursor-pointer hover:bg-slate-100 transition-colors focus:ring-4 focus:ring-blue-500/10 appearance-none"
                 style={{ backgroundImage: `url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '14px' }}
               >
-                <option value="all">Global (All Personnel)</option>
+                <option value="all">All Companies</option>
                 {companies.map(c => <option key={c.id} value={c.id.toString()}>{c.name}</option>)}
               </select>
             </div>
@@ -230,7 +228,7 @@ export default function EmployeesPage() {
 
         {/* --- GRID VIEW --- */}
         {viewMode === 'grid' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {visibleEmployees.map(emp => {
               const { balanceDue } = getFinancials(emp.id);
               const isOwed = balanceDue > 0;
@@ -238,27 +236,26 @@ export default function EmployeesPage() {
               return (
                 <motion.div key={emp.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className={`bg-white rounded-2xl sm:rounded-3xl border shadow-sm hover:shadow-md transition-all flex flex-col relative overflow-hidden group ${isOwed ? 'border-amber-300 shadow-amber-100/50' : 'border-slate-100 hover:border-blue-200'}`}>
                   
-                  <div className="absolute top-3 right-3 sm:top-5 sm:right-5 z-10">
-                    {emp.access_level === 'admin' ? <span className="bg-slate-900 text-white text-[8px] sm:text-[9px] font-bold uppercase tracking-widest px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg flex items-center gap-1"><ShieldAlert className="h-2 w-2 sm:h-3 sm:w-3"/> Admin</span>
-                    : emp.access_level === 'head' ? <span className="bg-blue-50 text-blue-700 border border-blue-100 text-[8px] sm:text-[9px] font-bold uppercase tracking-widest px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg">Director</span>
-                    : <span className="bg-slate-50 text-slate-500 border border-slate-100 text-[8px] sm:text-[9px] font-bold uppercase tracking-widest px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg">Operator</span>}
+                  <div className="absolute top-4 right-4 sm:top-5 sm:right-5 z-10">
+                    {emp.access_level === 'admin' ? <span className="bg-slate-900 text-white text-[8px] sm:text-[9px] font-bold uppercase tracking-widest px-2 sm:px-2.5 py-1 rounded-lg flex items-center gap-1"><ShieldAlert className="h-2.5 w-2.5 sm:h-3 sm:w-3"/> Admin</span>
+                    : emp.access_level === 'head' ? <span className="bg-blue-50 text-blue-700 border border-blue-100 text-[8px] sm:text-[9px] font-bold uppercase tracking-widest px-2 sm:px-2.5 py-1 rounded-lg">Director</span>
+                    : <span className="bg-slate-50 text-slate-500 border border-slate-100 text-[8px] sm:text-[9px] font-bold uppercase tracking-widest px-2 sm:px-2.5 py-1 rounded-lg">Operator</span>}
                   </div>
 
-                  {/* Horizontal Layout on Mobile, Vertical on Desktop */}
-                  <div className={`p-4 sm:p-7 flex flex-row sm:flex-col items-center sm:text-center mt-0 sm:mt-4 border-b relative ${isOwed ? 'border-amber-50 bg-amber-50/10' : 'border-slate-50'}`}>
-                    <div className={`h-12 w-12 sm:h-20 sm:w-20 shrink-0 mr-3 sm:mr-0 rounded-full border-2 sm:border-4 shadow-sm flex items-center justify-center text-lg sm:text-2xl font-bold overflow-hidden mb-0 sm:mb-4 group-hover:scale-105 transition-transform ${isOwed ? 'border-amber-100 bg-amber-50 text-amber-500' : 'border-white bg-slate-50 text-slate-400'}`}>
+                  <div className={`p-5 sm:p-7 flex flex-row sm:flex-col items-center sm:text-center mt-2 sm:mt-4 border-b relative ${isOwed ? 'border-amber-50 bg-amber-50/10' : 'border-slate-50'}`}>
+                    <div className={`h-16 w-16 sm:h-20 sm:w-20 shrink-0 mr-4 sm:mr-0 rounded-[1rem] sm:rounded-full border-2 sm:border-4 shadow-sm flex items-center justify-center text-xl sm:text-2xl font-bold overflow-hidden mb-0 sm:mb-4 group-hover:scale-105 transition-transform ${isOwed ? 'border-amber-100 bg-amber-50 text-amber-500' : 'border-white bg-slate-50 text-slate-400'}`}>
                       {emp.profile_image_url && emp.profile_image_url.trim() !== "" ? <img src={emp.profile_image_url} alt="" className="h-full w-full object-cover" /> : (emp.name ? emp.name.charAt(0).toUpperCase() : 'U')}
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col items-start sm:items-center">
-                      <h3 className="text-[14px] sm:text-[16px] font-bold text-slate-900 tracking-tight leading-tight px-0 sm:px-2 truncate w-full text-left sm:text-center">{emp.name}</h3>
-                      <p className="text-[10px] sm:text-[12px] font-medium text-slate-500 mt-0.5 sm:mt-1 truncate w-full text-left sm:text-center">{emp.role || 'Unassigned Role'}</p>
+                      <h3 className="text-[14px] sm:text-[16px] font-bold text-slate-900 tracking-tight leading-tight px-0 sm:px-2 truncate w-full sm:text-center">{emp.name}</h3>
+                      <p className="text-[11px] sm:text-[12px] font-medium text-slate-500 mt-1 truncate w-full sm:text-center">{emp.role || 'Unassigned Role'}</p>
                       {role === 'admin' && !activeWorkspace && (
-                         <p className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 sm:mt-3 flex items-center justify-start sm:justify-center gap-1 sm:gap-1.5 w-full truncate"><Building2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" /> <span className="truncate">{companies.find(c => c.id === emp.company_id)?.name || 'Global'}</span></p>
+                         <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 sm:mt-3 flex items-center justify-start sm:justify-center gap-1 sm:gap-1.5 w-full truncate"><Building2 className="h-3 w-3 shrink-0" /> <span className="truncate">{companies.find(c => c.id === emp.company_id)?.name || 'Global'}</span></p>
                       )}
                     </div>
                   </div>
 
-                  <div className="p-3 sm:p-5 flex items-center justify-between bg-[#FAFCFF] mt-auto">
+                  <div className="p-4 sm:p-5 flex items-center justify-between bg-[#FAFCFF] mt-auto">
                     <div className="min-w-0 pr-2">
                       <p className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-widest mb-0.5 ${isOwed ? 'text-amber-500 flex items-center gap-1' : 'text-slate-400'}`}>
                         {isOwed && <AlertCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />} <span className="truncate">Pending Payouts</span>
@@ -267,8 +264,8 @@ export default function EmployeesPage() {
                     </div>
                     {(role === 'admin' || role === 'head') && (
                       <div className="flex gap-1.5 sm:gap-2 shrink-0">
-                        <button onClick={() => openLedger(emp)} className="h-7 w-7 sm:h-9 sm:w-9 bg-emerald-50 text-emerald-600 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-emerald-100 transition-colors shadow-sm" title="View Financial Ledger"><Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
-                        <button onClick={() => openEditEmployee(emp)} className="h-7 w-7 sm:h-9 sm:w-9 bg-white border border-slate-200 text-slate-600 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors shadow-sm" title="Edit Data"><Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                        <button onClick={() => openLedger(emp)} className="h-8 w-8 sm:h-9 sm:w-9 bg-emerald-50 text-emerald-600 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-emerald-100 transition-colors shadow-sm" title="Payment Ledger"><Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                        <button onClick={() => openEditEmployee(emp)} className="h-8 w-8 sm:h-9 sm:w-9 bg-white border border-slate-200 text-slate-600 rounded-lg sm:rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors shadow-sm" title="Edit Data"><Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                       </div>
                     )}
                   </div>
@@ -281,7 +278,7 @@ export default function EmployeesPage() {
         {/* --- LIST VIEW --- */}
         {viewMode === 'list' && (
           <div className="bg-white border border-slate-100 rounded-2xl sm:rounded-3xl shadow-sm overflow-hidden">
-            <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="overflow-x-auto [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full">
               <table className="w-full text-left text-xs sm:text-sm min-w-[600px]">
                 <thead className="bg-[#FAFCFF] border-b border-slate-100">
                   <tr>
@@ -332,7 +329,7 @@ export default function EmployeesPage() {
                         {(role === 'admin' || role === 'head') && (
                           <td className="px-4 sm:px-6 py-3 sm:py-4 text-right">
                             <div className="flex justify-end gap-1.5 sm:gap-2 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => openLedger(emp)} className="h-7 w-7 sm:h-8 sm:w-8 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center hover:bg-emerald-100 transition-colors" title="View Financial Ledger"><Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                              <button onClick={() => openLedger(emp)} className="h-7 w-7 sm:h-8 sm:w-8 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center hover:bg-emerald-100 transition-colors" title="Payment Ledger"><Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                               <button onClick={() => openEditEmployee(emp)} className="h-7 w-7 sm:h-8 sm:w-8 bg-white border border-slate-200 text-slate-600 rounded-lg flex items-center justify-center hover:bg-slate-50 transition-colors" title="Edit Data"><Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                             </div>
                           </td>
@@ -345,27 +342,25 @@ export default function EmployeesPage() {
             </div>
           </div>
         )}
-
       </div>
 
-      {/* --- ADD/EDIT MODAL --- */}
+      {/* --- ADD/EDIT MODAL (STRICT SAFE ZONE CAGE) --- */}
       <AnimatePresence>
         {isModalOpen && (
-          // CRITICAL FIX: Safe Zone Padding (pt-24 pb-28) to bracket the modal perfectly between floating top and bottom nav bars.
-          <div className="fixed inset-0 z-[100] flex items-center justify-center max-sm:px-4 max-sm:pt-24 max-sm:pb-28 sm:p-4 bg-slate-900/40 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-3xl max-h-full sm:max-h-[85svh] flex flex-col overflow-hidden border border-slate-100">
+          <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm">
+            <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-3xl max-h-full flex flex-col overflow-hidden border border-slate-100">
               
               <div className="px-5 sm:px-8 pt-5 sm:pt-7 border-b border-slate-100 bg-[#FAFCFF] shrink-0">
                 <div className="flex items-center justify-between mb-4 sm:mb-5">
                   <div>
-                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-2 sm:px-2.5 py-1 rounded-full">HR Record</span>
-                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight mt-1.5">{selectedEmployee ? 'Edit Personnel Data' : 'Register New Employee'}</h3>
+                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-2 sm:px-2.5 py-1 rounded-full">Employee Profile</span>
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight mt-1.5">{selectedEmployee ? 'Edit Data' : 'Add Employee'}</h3>
                   </div>
                   <button onClick={() => setIsModalOpen(false)} className="h-8 w-8 sm:h-9 sm:w-9 bg-white border border-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 shadow-sm transition-colors"><X className="h-3.5 w-3.5 sm:h-4 w-4" /></button>
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col md:flex-row gap-6 sm:gap-10 max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
+              <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col md:flex-row gap-6 sm:gap-10 max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-200 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
                 
                 {/* HORIZONTAL COMPACT LAYOUT FOR MOBILE AVATAR + NAME + EMAIL */}
                 <div className="flex flex-row items-center sm:items-start gap-4 sm:gap-0 sm:flex-col shrink-0 border-b sm:border-b-0 border-slate-100 pb-5 sm:pb-0 sm:w-64">
@@ -377,7 +372,6 @@ export default function EmployeesPage() {
                     {displayImage && <button onClick={(e) => { e.stopPropagation(); setImageFile(null); setImagePreview(null); setRemoveImage(true); }} className="absolute -bottom-1 -right-1 sm:bottom-2 sm:right-2 h-6 w-6 sm:h-10 sm:w-10 bg-white border border-slate-100 rounded-full flex items-center justify-center text-rose-500 hover:bg-rose-50 shadow-lg sm:opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3 w-3 sm:h-4 sm:w-4" /></button>}
                   </div>
 
-                  {/* Primary fields immediately right of avatar on mobile to save vertical space */}
                   <div className="flex-1 flex flex-col gap-2 sm:hidden">
                     <div>
                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1 px-1">Full Name *</label>
@@ -397,7 +391,6 @@ export default function EmployeesPage() {
                 <div className="flex-1 space-y-4 sm:space-y-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                     
-                    {/* Hide these on mobile since they are now next to the avatar */}
                     <div className="hidden sm:block">
                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Full Name *</label>
                        <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full h-12 rounded-xl border border-slate-200 px-4 text-sm font-bold outline-none focus:border-blue-500 shadow-sm" />
@@ -412,7 +405,7 @@ export default function EmployeesPage() {
                     
                     {role === 'admin' && !activeWorkspace && (
                       <div className="sm:col-span-2 p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100">
-                        <label className="text-[9px] sm:text-[10px] font-bold text-slate-600 uppercase tracking-widest block mb-2 sm:mb-3 px-1">Network Assignment</label>
+                        <label className="text-[9px] sm:text-[10px] font-bold text-slate-600 uppercase tracking-widest block mb-2 sm:mb-3 px-1">Company / Subsidiary</label>
                         <select value={formData.company_id} onChange={(e) => setFormData({...formData, company_id: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-[12px] sm:text-sm font-bold outline-none cursor-pointer">
                           <option value="">Global Administrator (No specific company)</option>
                           {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -441,15 +434,13 @@ export default function EmployeesPage() {
         )}
       </AnimatePresence>
 
-      {/* --- ENHANCED PERSONAL LEDGER MODAL WITH DIRECT PAYMENT FORM --- */}
+      {/* --- PAYMENT LEDGER MODAL (STRICT SAFE ZONE CAGE) --- */}
       <AnimatePresence>
         {isLedgerOpen && ledgerEmployee && (
-          // CRITICAL FIX: Safe Zone Padding (pt-24 pb-28) to bracket the modal perfectly between floating top and bottom nav bars.
-          <div className="fixed inset-0 z-[100] flex items-center justify-center max-sm:px-4 max-sm:pt-24 max-sm:pb-28 sm:p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm">
             <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-full sm:max-h-[85svh] flex flex-col overflow-hidden border border-slate-100">
               
               <div className="p-6 sm:p-8 text-center bg-gradient-to-b from-slate-50 to-white border-b border-slate-100 relative shrink-0">
-                {/* NEW TOP ACTION BAR: Plus and Close side-by-side */}
                 <div className="absolute top-4 sm:top-6 right-4 sm:right-6 flex gap-2">
                   {(role === 'admin' || role === 'head') && (
                     <button onClick={() => setShowEmpPaymentForm(true)} className="h-8 w-8 bg-emerald-50 border border-emerald-100 rounded-full flex items-center justify-center text-emerald-600 hover:bg-emerald-100 shadow-sm transition-colors" title="Issue Payout">
@@ -463,16 +454,14 @@ export default function EmployeesPage() {
                   {ledgerEmployee.profile_image_url ? <img src={ledgerEmployee.profile_image_url} className="h-full w-full object-cover"/> : (ledgerEmployee.name ? ledgerEmployee.name.charAt(0) : 'U')}
                 </div>
                 <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">{ledgerEmployee.name}'s Ledger</h3>
-                <p className="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">Financial History</p>
+                <p className="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">Payment Ledger</p>
               </div>
 
-              {/* No visible scrollbars */}
               <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 space-y-6 sm:space-y-8 bg-white max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
                 {(() => {
                   const { totalAllocated, totalPaid, balanceDue, payments } = getFinancials(ledgerEmployee.id);
                   return (
                     <>
-                      {/* --- Issue Payout Form Component (Moved to Top) --- */}
                       {(role === 'admin' || role === 'head') && showEmpPaymentForm && (
                          <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4 sm:p-6 mb-6">
                             <h4 className="text-[10px] sm:text-[11px] font-bold text-emerald-800 uppercase tracking-widest mb-3 sm:mb-4">Record New Transaction</h4>
@@ -500,14 +489,14 @@ export default function EmployeesPage() {
                             </div>
                             <div className="flex justify-end gap-2">
                                <button onClick={() => setShowEmpPaymentForm(false)} className="h-10 px-4 sm:px-5 text-[11px] sm:text-xs font-bold text-slate-500 hover:bg-white rounded-xl border border-slate-200 transition-colors flex-1 sm:flex-none">Cancel</button>
-                               <button onClick={handleRecordEmployeePayment} disabled={isSaving} className="h-10 px-4 sm:px-8 text-[11px] sm:text-xs font-bold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:shadow-lg hover:-translate-y-0.5 rounded-xl shadow-md transition-all flex-1 sm:flex-none">{isSaving ? 'Processing...' : 'Authorize Payment'}</button>
+                               <button onClick={handleRecordEmployeePayment} disabled={isSaving} className="h-10 px-4 sm:px-8 text-[11px] sm:text-xs font-bold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:shadow-lg hover:-translate-y-0.5 rounded-xl shadow-md transition-all flex-1 sm:flex-none">{isSaving ? 'Processing...' : 'Record Payment'}</button>
                             </div>
                          </div>
                       )}
 
                       <div className="grid grid-cols-3 gap-2 sm:gap-4">
                          <div className="bg-slate-50 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-center border border-slate-100">
-                            <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 sm:mb-1.5">Lifetime Earned</p>
+                            <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 sm:mb-1.5">Total Earned</p>
                             <p className="text-[13px] sm:text-xl font-black text-slate-800">₹{totalAllocated.toLocaleString()}</p>
                          </div>
                          <div className="bg-emerald-50 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-center border border-emerald-100">
@@ -520,7 +509,7 @@ export default function EmployeesPage() {
                          </div>
                       </div>
 
-                      <div className="pb-4">
+                      <div>
                         <h4 className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 sm:mb-4 border-b border-slate-100 pb-2">Recent Transactions</h4>
                         <div className="space-y-2 sm:space-y-3">
                            {payments.length === 0 ? <p className="text-[12px] sm:text-sm italic text-slate-400 text-center py-4">No payments recorded yet.</p> : 
