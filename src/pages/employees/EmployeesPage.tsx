@@ -179,11 +179,6 @@ export default function EmployeesPage() {
     <>
       <div className="max-w-[1200px] mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-700 pb-8 relative z-0">
         
-        {/* Minimal Dotted Background Pattern */}
-        <div className="absolute inset-0 pointer-events-none z-[-1] overflow-hidden print:hidden">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMTQ4LCAxNjMsIDE4NCwgMC4wOCkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
-        </div>
-
         {/* HEADER */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6">
           <div>
@@ -329,7 +324,7 @@ export default function EmployeesPage() {
                         {(role === 'admin' || role === 'head') && (
                           <td className="px-4 sm:px-6 py-3 sm:py-4 text-right">
                             <div className="flex justify-end gap-1.5 sm:gap-2 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => openLedger(emp)} className="h-7 w-7 sm:h-8 sm:w-8 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center hover:bg-emerald-100 transition-colors" title="Payment Ledger"><Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                              <button onClick={() => openLedger(emp)} className="h-7 w-7 sm:h-8 sm:w-8 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center hover:bg-emerald-100 transition-colors" title="View Financial Ledger"><Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                               <button onClick={() => openEditEmployee(emp)} className="h-7 w-7 sm:h-8 sm:w-8 bg-white border border-slate-200 text-slate-600 rounded-lg flex items-center justify-center hover:bg-slate-50 transition-colors" title="Edit Data"><Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                             </div>
                           </td>
@@ -344,16 +339,28 @@ export default function EmployeesPage() {
         )}
       </div>
 
-      {/* --- ADD/EDIT MODAL (STRICT SAFE ZONE CAGE) --- */}
+      {/* --- ADD/EDIT MODAL (STRICT FADING MOTION BACKDROP) --- */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-3xl max-h-full flex flex-col overflow-hidden border border-slate-100">
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            onClick={() => setIsModalOpen(false)}
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ opacity: 0, y: 40, scale: 0.95 }} 
+              animate={{ opacity: 1, y: 0, scale: 1 }} 
+              exit={{ opacity: 0, y: 40, scale: 0.95 }} 
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-3xl max-h-full sm:max-h-[85svh] flex flex-col overflow-hidden border border-slate-100"
+            >
               
               <div className="px-5 sm:px-8 pt-5 sm:pt-7 border-b border-slate-100 bg-[#FAFCFF] shrink-0">
                 <div className="flex items-center justify-between mb-4 sm:mb-5">
                   <div>
-                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-2 sm:px-2.5 py-1 rounded-full">Employee Profile</span>
+                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-2 sm:px-2.5 py-1 rounded-full">HR Record</span>
                     <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight mt-1.5">{selectedEmployee ? 'Edit Data' : 'Add Employee'}</h3>
                   </div>
                   <button onClick={() => setIsModalOpen(false)} className="h-8 w-8 sm:h-9 sm:w-9 bg-white border border-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 shadow-sm transition-colors"><X className="h-3.5 w-3.5 sm:h-4 w-4" /></button>
@@ -372,6 +379,7 @@ export default function EmployeesPage() {
                     {displayImage && <button onClick={(e) => { e.stopPropagation(); setImageFile(null); setImagePreview(null); setRemoveImage(true); }} className="absolute -bottom-1 -right-1 sm:bottom-2 sm:right-2 h-6 w-6 sm:h-10 sm:w-10 bg-white border border-slate-100 rounded-full flex items-center justify-center text-rose-500 hover:bg-rose-50 shadow-lg sm:opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3 w-3 sm:h-4 sm:w-4" /></button>}
                   </div>
 
+                  {/* Primary fields immediately right of avatar on mobile to save vertical space */}
                   <div className="flex-1 flex flex-col gap-2 sm:hidden">
                     <div>
                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1 px-1">Full Name *</label>
@@ -391,6 +399,7 @@ export default function EmployeesPage() {
                 <div className="flex-1 space-y-4 sm:space-y-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                     
+                    {/* Hide these on mobile since they are now next to the avatar */}
                     <div className="hidden sm:block">
                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Full Name *</label>
                        <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full h-12 rounded-xl border border-slate-200 px-4 text-sm font-bold outline-none focus:border-blue-500 shadow-sm" />
@@ -430,15 +439,27 @@ export default function EmployeesPage() {
                 <button onClick={handleSaveEmployee} disabled={isSaving} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-10 sm:h-12 px-6 sm:px-10 font-bold text-[12px] sm:text-sm shadow-md hover:shadow-lg transition-all flex-1 sm:flex-none">{isSaving ? "Saving..." : "Save Record"}</button>
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
-      {/* --- PAYMENT LEDGER MODAL (STRICT SAFE ZONE CAGE) --- */}
+      {/* --- PAYMENT LEDGER MODAL (STRICT FADING MOTION BACKDROP) --- */}
       <AnimatePresence>
         {isLedgerOpen && ledgerEmployee && (
-          <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-full sm:max-h-[85svh] flex flex-col overflow-hidden border border-slate-100">
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            onClick={() => setIsLedgerOpen(false)}
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ opacity: 0, y: 40, scale: 0.95 }} 
+              animate={{ opacity: 1, y: 0, scale: 1 }} 
+              exit={{ opacity: 0, y: 40, scale: 0.95 }} 
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-full sm:max-h-[85svh] flex flex-col overflow-hidden border border-slate-100"
+            >
               
               <div className="p-6 sm:p-8 text-center bg-gradient-to-b from-slate-50 to-white border-b border-slate-100 relative shrink-0">
                 <div className="absolute top-4 sm:top-6 right-4 sm:right-6 flex gap-2">
@@ -539,7 +560,7 @@ export default function EmployeesPage() {
                 })()}
               </div>
             </motion.div>
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
