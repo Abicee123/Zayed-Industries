@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
 import { LayoutDashboard, Users, Briefcase, FileText, Settings, LogOut, ArrowLeft, Banknote, UserSquare2, Menu, X, MessageSquare, Send, ChevronLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "../store/authStore";
@@ -10,6 +10,9 @@ export default function AppLayout() {
   const { role, user, employeeId, companyId, signOut, activeWorkspace, setActiveWorkspace } = useAuthStore();
   const { companies, employees, messages, fetchAllData } = useDataStore();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const dragConstraintRef = useRef(null);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -21,10 +24,12 @@ export default function AppLayout() {
   const prevMessageCount = useRef(messages.length);
 
   const activeCompany = activeWorkspace ? companies.find(c => c.id === activeWorkspace) : null;
-  
   const currentDisplayCompany = (role !== 'admin' || activeWorkspace) ? companies.find(c => c.id === (activeWorkspace || companyId)) : null;
   const brandName = currentDisplayCompany?.name || "Zayd Industries";
   const brandLogo = currentDisplayCompany?.logo_url || null;
+  
+  // Route check for Chat Emblem visibility
+  const isDashboard = location.pathname.includes('/dashboard');
 
   const handleExitWorkspace = async () => { setActiveWorkspace(null); await fetchAllData(); navigate("/dashboard"); };
   const handleSignOut = async () => { await signOut(); navigate("/login"); };
@@ -92,7 +97,7 @@ export default function AppLayout() {
   const displayName = currentUser?.name || displayEmail.split('@')[0];
 
   return (
-    <div className="flex h-[100dvh] w-full bg-[#F8F9FC] text-slate-800 overflow-hidden font-sans sm:p-4 lg:p-6 selection:bg-blue-900 selection:text-white relative print:p-0 print:bg-white print:block print:h-auto">
+    <div ref={dragConstraintRef} className="flex h-[100dvh] w-full bg-[#F8F9FC] text-slate-800 overflow-hidden font-sans sm:p-4 lg:p-6 selection:bg-blue-900 selection:text-white relative print:p-0 print:bg-white print:block print:h-auto">
       
       <div className="flex-1 flex overflow-hidden bg-white sm:rounded-[2.5rem] shadow-[0_8px_40px_rgb(0,0,0,0.04)] sm:border border-slate-100 sm:ring-1 ring-slate-900/5 relative print:shadow-none print:border-none print:ring-0 print:rounded-none print:block print:overflow-visible">
         
@@ -133,7 +138,6 @@ export default function AppLayout() {
               <nav className="flex-1 overflow-y-auto px-6 space-y-2 [&::-webkit-scrollbar]:hidden pt-2">
                 {visibleLinks.map((link) => (
                   <NavLink key={link.path} to={link.path} className={({ isActive }) => `group flex items-center gap-4 px-5 py-4 text-[14px] rounded-2xl transition-all duration-300 ${isActive ? 'bg-gradient-to-r from-blue-900 to-indigo-800 text-white shadow-md shadow-blue-900/20 font-semibold' : 'text-slate-500 hover:bg-slate-50 hover:text-blue-900'}`}>
-                    {/* CRITICAL FIX: Safe Render Prop Pattern */}
                     {({ isActive }) => (
                       <>
                         <link.icon className={`h-5 w-5 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-900'}`} />
@@ -174,13 +178,28 @@ export default function AppLayout() {
         </AnimatePresence>
 
         {/* --- MAIN CONTENT AREA --- */}
-        <div className="flex-1 flex flex-col min-w-0 relative bg-[#FAFCFF]/50 print:bg-white print:block">
+        <div className="flex-1 flex flex-col min-w-0 relative bg-[#FAFCFF] print:bg-white print:block overflow-hidden">
           
+          {/* --- SUBTLE ANIMATED BACKGROUND --- */}
+          <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden print:hidden">
+            <motion.div 
+              animate={{ scale: [1, 1.1, 1], x: [0, 30, 0], y: [0, 20, 0] }} 
+              transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }} 
+              className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] rounded-full bg-gradient-to-br from-blue-100/50 to-indigo-50/50 blur-[100px]" 
+            />
+            <motion.div 
+              animate={{ scale: [1, 1.2, 1], x: [0, -40, 0], y: [0, -30, 0] }} 
+              transition={{ duration: 22, repeat: Infinity, ease: "easeInOut", delay: 2 }} 
+              className="absolute top-[40%] -right-[10%] w-[60%] h-[60%] rounded-full bg-gradient-to-bl from-indigo-50/50 to-blue-100/50 blur-[120px]" 
+            />
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMTQ4LCAxNjMsIDE4NCwgMC4wOCkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
+          </div>
+
           {/* --- DESKTOP HEADER (Hidden on Mobile) --- */}
-          <header className="absolute top-6 left-0 right-0 hidden sm:flex items-start justify-between px-6 lg:px-10 z-10 pointer-events-none print:hidden">
+          <header className="absolute top-6 left-0 right-0 hidden sm:flex items-start justify-between px-6 lg:px-10 z-20 pointer-events-none print:hidden">
             <div className="pointer-events-auto">
               {!isSidebarOpen && (
-                <button onClick={() => setIsSidebarOpen(true)} className="h-12 w-12 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-500 hover:text-blue-900 hover:border-blue-200 shadow-sm transition-all">
+                <button onClick={() => setIsSidebarOpen(true)} className="h-12 w-12 bg-white/80 backdrop-blur-md border border-slate-200/50 rounded-full flex items-center justify-center text-slate-500 hover:text-blue-900 hover:border-blue-200 shadow-sm transition-all">
                   <Menu className="h-5 w-5" />
                 </button>
               )}
@@ -188,7 +207,7 @@ export default function AppLayout() {
             
             <div className="pointer-events-auto">
               {activeWorkspace && role === 'admin' && (
-                <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="flex items-center gap-3 bg-white/90 backdrop-blur-md px-5 py-3 rounded-2xl border border-slate-200/50 shadow-sm">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Viewing:</span>
                   <span className="text-[12px] font-bold text-blue-900">{activeCompany?.name}</span>
                   <span className="h-5 w-[1px] bg-slate-200 mx-2"></span>
@@ -198,34 +217,34 @@ export default function AppLayout() {
             </div>
           </header>
 
-          {/* --- MOBILE TOP BAR (Hidden on Desktop) --- */}
-          <div className="sm:hidden flex items-center justify-between px-5 py-4 bg-white/90 backdrop-blur-xl border-b border-slate-100 z-30 sticky top-0 print:hidden shadow-sm">
+          {/* --- MOBILE TOP BAR (Floating Pill Style - Hidden on Desktop) --- */}
+          <div className="sm:hidden flex items-center justify-between px-4 py-2.5 mx-4 mt-4 bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-[0_8px_30px_-10px_rgba(0,0,0,0.08)] rounded-full z-20 sticky top-4 print:hidden">
              <div className="flex items-center gap-3 min-w-0">
                {brandLogo ? (
-                 <img src={brandLogo} alt="Logo" className="h-9 w-9 rounded-xl object-cover shadow-sm border border-slate-100 shrink-0" />
+                 <img src={brandLogo} alt="Logo" className="h-8 w-8 rounded-full object-cover shadow-sm border border-slate-100 shrink-0" />
                ) : (
-                 <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-slate-900 via-blue-900 to-blue-800 flex items-center justify-center text-white text-[14px] font-black tracking-tighter shadow-md shrink-0">
+                 <div className="h-8 w-8 rounded-full bg-gradient-to-br from-slate-900 via-blue-900 to-blue-800 flex items-center justify-center text-white text-[13px] font-black tracking-tighter shadow-md shrink-0">
                    {brandName.charAt(0).toUpperCase()}
                  </div>
                )}
                <div className="flex flex-col min-w-0 pr-2">
-                 <span className="font-bold text-slate-900 text-[14px] leading-tight truncate">{brandName}</span>
+                 <span className="font-bold text-slate-900 text-[13px] leading-tight truncate">{brandName}</span>
                  {activeWorkspace && role === 'admin' ? (
-                   <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest leading-none mt-1 truncate">Admin View</span>
+                   <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest leading-none mt-0.5 truncate">Admin View</span>
                  ) : (
-                   <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none mt-1 truncate">{role}</span>
+                   <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none mt-0.5 truncate">{role}</span>
                  )}
                </div>
              </div>
              <div className="flex items-center gap-2 shrink-0">
                {activeWorkspace && role === 'admin' && (
-                  <button onClick={handleExitWorkspace} className="h-9 w-9 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center shadow-sm"><ArrowLeft className="h-4 w-4"/></button>
+                  <button onClick={handleExitWorkspace} className="h-8 w-8 bg-rose-50/80 text-rose-600 rounded-full flex items-center justify-center shadow-sm backdrop-blur-sm"><ArrowLeft className="h-4 w-4"/></button>
                )}
-               <button onClick={handleSignOut} className="h-9 w-9 bg-slate-50 text-slate-500 rounded-full flex items-center justify-center shadow-sm hover:text-rose-600 transition-colors"><LogOut className="h-4 w-4"/></button>
+               <button onClick={handleSignOut} className="h-8 w-8 bg-slate-50/80 text-slate-500 rounded-full flex items-center justify-center shadow-sm hover:text-rose-600 transition-colors backdrop-blur-sm"><LogOut className="h-4 w-4"/></button>
              </div>
           </div>
 
-          <main className={`flex-1 overflow-y-auto transition-all duration-300 relative z-0 print:p-0 print:pt-0 print:overflow-visible
+          <main className={`flex-1 overflow-y-auto transition-all duration-300 relative z-10 print:p-0 print:pt-0 print:overflow-visible
              max-sm:px-4 max-sm:pt-6 max-sm:pb-36
              sm:pt-10 sm:pb-10
              ${!isSidebarOpen ? 'sm:pl-20 lg:pl-28' : 'sm:pl-6 lg:pl-10'} 
@@ -240,7 +259,6 @@ export default function AppLayout() {
            <div className="bg-[#0f172a]/95 backdrop-blur-2xl rounded-[2rem] p-1.5 flex items-center shadow-[0_20px_40px_rgba(0,0,0,0.3)] border border-slate-800 overflow-x-auto [&::-webkit-scrollbar]:hidden gap-1">
               {visibleLinks.map((link) => (
                 <NavLink key={link.path} to={link.path} className={({ isActive }) => `flex flex-col items-center justify-center shrink-0 min-w-[64px] h-14 rounded-2xl transition-all ${isActive ? 'bg-blue-600/20 text-blue-400' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}>
-                  {/* CRITICAL FIX: Safe Render Prop Pattern for Mobile */}
                   {({ isActive }) => (
                     <>
                       <link.icon className={`h-5 w-5 mb-1 transition-all ${isActive ? 'text-blue-400 drop-shadow-md' : 'text-slate-400'}`} />
@@ -257,9 +275,15 @@ export default function AppLayout() {
           {isChatOpen && (
             <>
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsChatOpen(false)} className="fixed inset-0 sm:absolute sm:inset-auto bg-slate-900/40 sm:bg-slate-900/10 backdrop-blur-sm z-[75] sm:z-40 sm:rounded-[2.5rem] print:hidden" />
-              <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 30, stiffness: 300 }} className="fixed inset-0 sm:absolute sm:inset-auto sm:top-0 sm:right-0 sm:h-full sm:w-[400px] bg-white shadow-2xl z-[80] sm:z-50 flex flex-col sm:border-l border-slate-100 print:hidden">
+              <motion.div 
+                initial={{ x: typeof window !== "undefined" && window.innerWidth >= 640 ? "100%" : 0, y: typeof window !== "undefined" && window.innerWidth < 640 ? "100%" : 0 }} 
+                animate={{ x: 0, y: 0 }} 
+                exit={{ x: typeof window !== "undefined" && window.innerWidth >= 640 ? "100%" : 0, y: typeof window !== "undefined" && window.innerWidth < 640 ? "100%" : 0 }} 
+                transition={{ type: "spring", damping: 30, stiffness: 300 }} 
+                className="fixed inset-0 sm:absolute sm:inset-auto sm:top-0 sm:right-0 sm:h-full sm:w-[400px] bg-white shadow-2xl z-[80] sm:z-50 flex flex-col sm:border-l border-slate-100 print:hidden"
+              >
                 
-                <div className="h-24 border-b border-slate-100 flex items-center justify-between px-6 shrink-0 bg-white">
+                <div className="h-16 sm:h-24 border-b border-slate-100 flex items-center justify-between px-6 shrink-0 bg-white">
                   {activeContact ? (
                     <div className="flex items-center gap-3">
                       <button onClick={() => setActiveContact(null)} className="h-10 w-10 bg-slate-50 flex items-center justify-center rounded-full text-slate-500 hover:text-blue-900 hover:bg-blue-50 transition-colors"><ChevronLeft className="h-5 w-5" /></button>
@@ -335,7 +359,7 @@ export default function AppLayout() {
                 </div>
 
                 {activeContact && (
-                  <div className="p-5 bg-white border-t border-slate-100 shrink-0">
+                  <div className="p-5 bg-white border-t border-slate-100 shrink-0 mb-[env(safe-area-inset-bottom)]">
                     <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl p-1.5 focus-within:ring-2 focus-within:ring-blue-900/20 focus-within:border-blue-900 transition-all shadow-sm">
                       <input type="text" placeholder="Type your message..." value={messageText} onChange={(e) => setMessageText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} className="flex-1 bg-transparent border-none text-[14px] outline-none placeholder:text-slate-400 px-4 py-2.5 font-medium" />
                       <button onClick={handleSendMessage} className="h-12 w-12 bg-gradient-to-r from-blue-900 to-indigo-800 rounded-xl flex items-center justify-center text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 shrink-0 transition-all"><Send className="h-5 w-5 ml-0.5" /></button>
@@ -362,11 +386,17 @@ export default function AppLayout() {
         )}
       </AnimatePresence>
 
+      {/* --- FLOATING CHAT BUTTON (Restricted to Dashboard) --- */}
       <AnimatePresence>
-        {!isChatOpen && (
+        {(!isChatOpen && isDashboard) && (
           <motion.button 
+            drag 
+            dragConstraints={dragConstraintRef} 
+            dragMomentum={false} 
+            whileDrag={{ scale: 1.1, cursor: "grabbing" }}
             initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} onClick={() => setIsChatOpen(true)} 
-            className="fixed bottom-28 right-5 sm:bottom-10 sm:right-10 z-[50] sm:z-[70] h-14 w-14 sm:h-16 sm:w-16 bg-gradient-to-br from-blue-900 to-indigo-800 rounded-full flex items-center justify-center text-white shadow-xl shadow-blue-900/30 hover:shadow-2xl hover:-translate-y-1 transition-all border-[3px] border-[#F8F9FC] print:hidden"
+            // Bumped z-index up to 65 so it floats above the z-60 dock if dragged over it
+            className="fixed bottom-28 right-5 sm:bottom-10 sm:right-10 z-[65] sm:z-[70] h-14 w-14 sm:h-16 sm:w-16 bg-gradient-to-br from-blue-900 to-indigo-800 rounded-full flex items-center justify-center text-white shadow-xl shadow-blue-900/30 hover:shadow-2xl hover:-translate-y-1 transition-all border-[3px] border-[#FAFCFF] print:hidden cursor-grab active:cursor-grabbing"
           >
             <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6" />
             {totalUnread > 0 && <span className="absolute top-0 right-0 h-3.5 w-3.5 sm:h-4 sm:w-4 border-2 border-white bg-rose-500 rounded-full"></span>}

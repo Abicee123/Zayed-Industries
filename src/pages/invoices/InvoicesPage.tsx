@@ -40,10 +40,8 @@ export default function InvoicesPage() {
     return matchesSearch && inv.company_id === currentCompanyId;
   });
 
-  // SMART CASCADE: Show all customers for the selected company
   const availableCustomers = customers.filter(c => c.company_id === parseInt(formData.company_id));
   
-  // SMART CASCADE: Unrestricted project list so users can select a project first to auto-fill the rest
   const availableProjects = projects.filter(p => {
     if (role === 'admin' && !activeWorkspace) return true;
     return p.company_id === currentCompanyId;
@@ -89,7 +87,6 @@ export default function InvoicesPage() {
     setIsModalOpen(true);
   };
 
-  // SMART CASCADE: If a project is selected, pull its exact company and customer automatically
   const handleProjectSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const pid = e.target.value;
     if (!pid) {
@@ -109,7 +106,6 @@ export default function InvoicesPage() {
 
   const handleSaveInvoice = async () => {
     if (!formData.company_id) return alert("Select a company.");
-    // We allow customer_id to be empty ONLY if it's linked to an internal in-house project
     if (!formData.customer_id && !linkedProject?.internal_company_id) return alert("Select a customer or an internal project.");
     if (!formData.due_date) return alert("Select a due date.");
     if (lineItems.some(i => !i.description.trim())) return alert("All line items must have a description.");
@@ -241,310 +237,325 @@ export default function InvoicesPage() {
   };
 
   return (
-    <div className="max-w-[1200px] mx-auto space-y-8 animate-in fade-in duration-700 pb-8 print:p-0 print:m-0">
-      
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 print:hidden">
-        <div>
-          <p className="text-[11px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-2 bg-blue-50 inline-block px-3 py-1 rounded-full">Billing & Ledger</p>
-          <h1 className="text-4xl font-bold tracking-tight text-slate-900 mt-2">Invoices.</h1>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={exportCSV} className="bg-white border border-slate-200 text-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 px-5 py-3.5 rounded-2xl text-[13px] font-bold transition-all flex items-center shrink-0">
-            <Download className="h-4 w-4 mr-2" /> Export CSV
-          </button>
-          <button onClick={openNewInvoice} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white shadow-lg shadow-blue-900/20 hover:shadow-xl hover:-translate-y-0.5 px-6 py-3.5 rounded-2xl text-[13px] font-bold transition-all flex items-center shrink-0">
-            <Plus className="h-4 w-4 mr-2" /> Create Invoice
-          </button>
-        </div>
-      </div>
-
-      <div className="bg-white p-2 rounded-2xl border border-slate-100 shadow-sm print:hidden flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input type="text" placeholder="Search invoices by number..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full h-11 pl-11 pr-4 rounded-xl border-none text-sm font-medium outline-none bg-transparent focus:ring-0 placeholder:text-slate-400" />
-        </div>
+    <>
+      <div className="max-w-[1200px] mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-700 pb-8 relative z-0 print:p-0 print:m-0">
         
-        {role === 'admin' && !activeWorkspace && (
-          <div className="sm:w-64 shrink-0 border-t sm:border-t-0 sm:border-l border-slate-100 pt-2 sm:pt-0 sm:pl-2">
-            <select 
-              value={filterCompanyId} 
-              onChange={(e) => setFilterCompanyId(e.target.value)} 
-              className="w-full h-11 rounded-xl bg-slate-50 border-none px-4 text-sm font-bold text-slate-700 outline-none cursor-pointer hover:bg-slate-100 transition-colors focus:ring-4 focus:ring-blue-500/10 appearance-none"
-              style={{ backgroundImage: `url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px' }}
-            >
-              <option value="all">Global (All Subsidiaries)</option>
-              {companies.map(c => <option key={c.id} value={c.id.toString()}>{c.name}</option>)}
-            </select>
+        {/* Minimal Dotted Background Pattern */}
+        <div className="absolute inset-0 pointer-events-none z-[-1] overflow-hidden print:hidden">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMTQ4LCAxNjMsIDE4NCwgMC4wOCkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
+        </div>
+
+        {/* HEADER */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6 print:hidden">
+          <div>
+            <p className="text-[9px] sm:text-[11px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-1.5 sm:mb-2 bg-blue-50 inline-block px-2.5 sm:px-3 py-1 rounded-full">Billing & Ledger</p>
+            <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-slate-900 mt-1 sm:mt-2">Invoices.</h1>
           </div>
-        )}
-      </div>
+          <div className="flex gap-2 sm:gap-3">
+            <button onClick={exportCSV} className="flex-1 sm:flex-none bg-white border border-slate-200 text-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 px-3 sm:px-5 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-[13px] font-bold transition-all flex items-center justify-center shrink-0">
+              <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" /> Export
+            </button>
+            <button onClick={openNewInvoice} className="flex-1 sm:flex-none bg-gradient-to-r from-blue-900 to-indigo-800 text-white shadow-lg shadow-blue-900/20 hover:shadow-xl hover:-translate-y-0.5 px-3 sm:px-6 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-[13px] font-bold transition-all flex items-center justify-center shrink-0">
+              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" /> Create <span className="hidden sm:inline ml-1">Invoice</span>
+            </button>
+          </div>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 print:hidden">
-        {visibleInvoices.length === 0 && <div className="col-span-full h-48 border border-slate-200 border-dashed rounded-3xl flex items-center justify-center text-slate-400 bg-slate-50/50"><p className="text-[11px] font-bold uppercase tracking-widest">No invoices found</p></div>}
-        {visibleInvoices.map(inv => {
-          const status = getDynamicStatus(inv);
+        {/* FILTER BAR */}
+        <div className="bg-white p-2 rounded-xl sm:rounded-2xl border border-slate-100 shadow-sm print:hidden flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-slate-400" />
+            <input type="text" placeholder="Search invoices..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full h-10 sm:h-11 pl-9 sm:pl-11 pr-4 rounded-lg sm:rounded-xl border-none text-[13px] sm:text-sm font-medium outline-none bg-transparent focus:ring-0 placeholder:text-slate-400" />
+          </div>
           
-          // Identify client mapping visually on the grid
-          const gridClientName = inv.customer_id 
-             ? customers.find(c => c.id === inv.customer_id)?.name 
-             : projects.find(p => p.id === inv.project_id)?.internal_company_id 
-                ? `${companies.find(c => c.id === projects.find(p => p.id === inv.project_id)?.internal_company_id)?.name} (Internal)` 
-                : 'Unknown Client';
+          {role === 'admin' && !activeWorkspace && (
+            <div className="sm:w-64 shrink-0 border-t sm:border-t-0 sm:border-l border-slate-100 pt-2 sm:pt-0 sm:pl-2">
+              <select 
+                value={filterCompanyId} 
+                onChange={(e) => setFilterCompanyId(e.target.value)} 
+                className="w-full h-10 sm:h-11 rounded-lg sm:rounded-xl bg-slate-50 border-none px-3 sm:px-4 text-[12px] sm:text-sm font-bold text-slate-700 outline-none cursor-pointer hover:bg-slate-100 transition-colors focus:ring-4 focus:ring-blue-500/10 appearance-none"
+                style={{ backgroundImage: `url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '14px' }}
+              >
+                <option value="all">All Companies</option>
+                {companies.map(c => <option key={c.id} value={c.id.toString()}>{c.name}</option>)}
+              </select>
+            </div>
+          )}
+        </div>
 
-          return (
-            <motion.div key={inv.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={() => openViewInvoice(inv)} className="bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all flex flex-col relative overflow-hidden group cursor-pointer p-6">
-              <div className="flex justify-between items-start mb-4">
-                <span className="text-[14px] font-black text-slate-900">{inv.invoice_number}</span>
-                <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest ${getStatusStyle(status)}`}>{status}</span>
-              </div>
-              <div className="space-y-1.5 mb-6">
-                <p className="text-[12px] font-medium text-slate-600 flex items-center gap-2"><UserSquare2 className="h-3.5 w-3.5 text-slate-400" /> {gridClientName}</p>
-                {inv.project_id && <p className="text-[12px] font-medium text-slate-600 flex items-center gap-2"><Building2 className="h-3.5 w-3.5 text-slate-400" /> {projects.find(p => p.id === inv.project_id)?.name}</p>}
-              </div>
-              <div className="mt-auto pt-4 border-t border-slate-50 flex justify-between items-end">
-                <div>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Due Date</p>
-                  <p className={`text-[12px] font-bold ${status === 'Overdue' ? 'text-rose-500' : 'text-slate-800'}`}>{new Date(inv.due_date).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Total</p>
-                  <p className="text-xl font-bold text-slate-900 tracking-tight">₹{inv.total_amount.toLocaleString()}</p>
-                </div>
-              </div>
-            </motion.div>
-          )
-        })}
-      </div>
+        {/* INVOICES GRID */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 print:hidden">
+          {visibleInvoices.length === 0 && <div className="col-span-full h-32 sm:h-48 border border-slate-200 border-dashed rounded-2xl sm:rounded-3xl flex items-center justify-center text-slate-400 bg-slate-50/50"><p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest">No invoices found</p></div>}
+          {visibleInvoices.map(inv => {
+            const status = getDynamicStatus(inv);
+            
+            const gridClientName = inv.customer_id 
+                ? customers.find(c => c.id === inv.customer_id)?.name 
+                : projects.find(p => p.id === inv.project_id)?.internal_company_id 
+                  ? `${companies.find(c => c.id === projects.find(p => p.id === inv.project_id)?.internal_company_id)?.name} (Internal)` 
+                  : 'Unknown Client';
 
-      <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/20 backdrop-blur-sm print:relative print:inset-auto print:p-0 print:bg-transparent">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden border border-slate-100 print:shadow-none print:border-none print:rounded-none print:max-h-none print:h-auto print:overflow-visible">
-              
-              <div className="px-8 pt-7 border-b border-slate-100 bg-[#FAFCFF] shrink-0 print:hidden">
-                <div className="flex items-center justify-between mb-5">
+            return (
+              <motion.div key={inv.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={() => openViewInvoice(inv)} className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all flex flex-col relative overflow-hidden group cursor-pointer p-4 sm:p-6">
+                <div className="flex justify-between items-start mb-3 sm:mb-4">
+                  <span className="text-[13px] sm:text-[14px] font-black text-slate-900 truncate pr-2">{inv.invoice_number}</span>
+                  <span className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg text-[8px] sm:text-[9px] font-bold uppercase tracking-widest shrink-0 ${getStatusStyle(status)}`}>{status}</span>
+                </div>
+                <div className="space-y-1 sm:space-y-1.5 mb-4 sm:mb-6">
+                  <p className="text-[11px] sm:text-[12px] font-medium text-slate-600 flex items-center gap-1.5 sm:gap-2 truncate"><UserSquare2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400 shrink-0" /> <span className="truncate">{gridClientName}</span></p>
+                  {inv.project_id && <p className="text-[11px] sm:text-[12px] font-medium text-slate-600 flex items-center gap-1.5 sm:gap-2 truncate"><Building2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400 shrink-0" /> <span className="truncate">{projects.find(p => p.id === inv.project_id)?.name}</span></p>}
+                </div>
+                <div className="mt-auto pt-3 sm:pt-4 border-t border-slate-50 flex justify-between items-end">
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">Ledger Document</span>
-                    <h3 className="text-xl font-bold text-slate-900 tracking-tight mt-1.5">{selectedInvoice ? `Invoice ${formData.invoice_number}` : 'Generate Invoice'}</h3>
-                  </div>
-                  <div className="flex gap-3">
-                    {selectedInvoice && <button onClick={handlePrint} className="h-10 w-10 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-500 hover:text-blue-600 shadow-sm transition-colors"><Printer className="h-4 w-4" /></button>}
-                    <button onClick={() => setIsModalOpen(false)} className="h-10 w-10 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-rose-600 shadow-sm transition-colors"><X className="h-5 w-5" /></button>
-                  </div>
-                </div>
-              </div>
-
-              {/* PDF Print Canvas */}
-              <div className="flex-1 overflow-y-auto p-8 lg:p-12 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full bg-white print:p-6 print:overflow-visible print:h-auto">
-                
-                <div className="flex justify-between items-start mb-12 print:mb-6">
-                  <div>
-                    {issuingCompany?.logo_url ? (
-                       <img src={issuingCompany.logo_url} alt="Logo" className="h-16 w-auto object-contain mb-5 print:mb-2 print:h-12" />
-                    ) : (
-                      <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-slate-900 via-blue-900 to-blue-800 flex items-center justify-center text-white text-[20px] font-black tracking-tighter mb-4 shadow-sm print:h-10 print:w-10 print:text-sm print:rounded-lg print:mb-2">
-                        {issuingCompany?.name ? issuingCompany.name.charAt(0) : 'Z'}
-                      </div>
-                    )}
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight print:text-lg">{issuingCompany?.name || 'Zayd Industries'}</h2>
+                    <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Due Date</p>
+                    <p className={`text-[11px] sm:text-[12px] font-bold ${status === 'Overdue' ? 'text-rose-500' : 'text-slate-800'}`}>{new Date(inv.due_date).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}</p>
                   </div>
                   <div className="text-right">
-                    <h1 className="text-4xl font-light tracking-tight text-slate-300 uppercase print:text-2xl">Invoice</h1>
-                    <div className="mt-5 space-y-1.5 print:mt-2 print:space-y-0.5">
-                      <p className="text-sm text-slate-800 font-bold print:text-xs"><span className="text-slate-400 font-medium mr-2">No:</span> {formData.invoice_number}</p>
-                      <p className="text-sm text-slate-800 font-bold flex items-center justify-end print:text-xs">
-                        <span className="text-slate-400 font-medium mr-2">Date:</span> 
-                        <input type="date" value={formData.issue_date} onChange={e=>setFormData({...formData, issue_date: e.target.value})} className="border-none bg-transparent outline-none cursor-pointer text-right w-32 print:hidden" />
-                        <span className="hidden print:inline">{formData.issue_date ? new Date(formData.issue_date).toLocaleDateString() : ''}</span>
-                      </p>
-                      <p className="text-sm text-slate-800 font-bold flex items-center justify-end print:text-xs">
-                        <span className="text-slate-400 font-medium mr-2">Due:</span> 
-                        <input type="date" value={formData.due_date} onChange={e=>setFormData({...formData, due_date: e.target.value})} className="border-none bg-transparent outline-none cursor-pointer text-rose-500 text-right w-32 print:hidden" />
-                        <span className="hidden print:inline text-rose-500">{formData.due_date ? new Date(formData.due_date).toLocaleDateString() : 'N/A'}</span>
-                      </p>
+                    <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Total</p>
+                    <p className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">₹{inv.total_amount.toLocaleString()}</p>
+                  </div>
+                </div>
+              </motion.div>
+            )
+          })}
+        </div>
+
+        {/* --- INVOICE MODAL (SAFE ZONE BRACKETED) --- */}
+        <AnimatePresence>
+          {isModalOpen && (
+            <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm print:relative print:inset-auto print:p-0 print:bg-transparent">
+              <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-4xl max-h-full sm:max-h-[85svh] flex flex-col overflow-hidden border border-slate-100 mt-auto sm:mt-0 print:shadow-none print:border-none print:rounded-none print:max-h-none print:h-auto print:overflow-visible">
+                
+                <div className="px-5 sm:px-8 pt-5 sm:pt-7 border-b border-slate-100 bg-[#FAFCFF] shrink-0 print:hidden">
+                  <div className="flex items-center justify-between mb-4 sm:mb-5">
+                    <div>
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-2 sm:px-2.5 py-1 rounded-full">Ledger Document</span>
+                      <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight mt-1.5">{selectedInvoice ? `Invoice ${formData.invoice_number}` : 'Generate Invoice'}</h3>
+                    </div>
+                    <div className="flex gap-2 sm:gap-3">
+                      {selectedInvoice && <button onClick={handlePrint} className="h-8 w-8 sm:h-10 sm:w-10 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-500 hover:text-blue-600 shadow-sm transition-colors"><Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>}
+                      <button onClick={() => setIsModalOpen(false)} className="h-8 w-8 sm:h-10 sm:w-10 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-rose-600 shadow-sm transition-colors"><X className="h-4 w-4 sm:h-5 sm:w-5" /></button>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10 p-6 bg-slate-50 rounded-3xl border border-slate-100 print:bg-transparent print:border-none print:p-0 print:mb-6 print:gap-4">
-                  {role === 'admin' && !activeWorkspace && (
-                    <div className="print:hidden">
-                      <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-2">Issuing Subsidiary</p>
-                      <select value={formData.company_id} onChange={(e) => setFormData({...formData, company_id: e.target.value, customer_id: "", project_id: ""})} className="w-full bg-transparent text-lg font-bold text-slate-900 outline-none cursor-pointer border-b border-slate-200 pb-1">
-                        <option value="" disabled>-- Select Company --</option>
-                        {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                    </div>
-                  )}
-
-                  {/* SMART CASCADE: BILLED TO RENDERING */}
-                  <div className={`${role === 'admin' && !activeWorkspace ? '' : 'md:col-span-1'} print:col-span-2`}>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 print:text-[8px] print:mb-1">Billed To <span className="text-rose-500 print:hidden">*</span></p>
-                    
-                    {linkedProject?.internal_company_id ? (
-                      <>
-                        <div className="w-full bg-blue-50/50 text-lg font-bold text-blue-900 border-b border-slate-200 pb-1 print:hidden px-2 rounded-t-lg">
-                          {internalBilledCompany?.name || 'Internal Company'} (In-House)
-                        </div>
-                        <div className="hidden print:block text-slate-800">
-                           <h3 className="text-sm font-bold">{internalBilledCompany?.name || "Internal Company"}</h3>
-                           <p className="text-xs mt-1 text-slate-500 leading-relaxed max-w-xs">Internal Sub-Contract / Operations Transfer</p>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <select value={formData.customer_id} onChange={(e) => setFormData({...formData, customer_id: e.target.value})} disabled={!formData.company_id && (role === 'admin' && !activeWorkspace)} className="w-full bg-transparent text-lg font-bold text-slate-900 outline-none cursor-pointer border-b border-slate-200 pb-1 disabled:opacity-50 print:hidden">
-                           <option value="">-- Select Client --</option>
-                           {availableCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                        <div className="hidden print:block text-slate-800">
-                           <h3 className="text-sm font-bold">{selectedCustomer?.name || "Client Name"}</h3>
-                           {selectedCustomer?.phone && <p className="text-xs mt-0.5 font-medium">{selectedCustomer.phone}</p>}
-                           <p className="text-xs mt-1 text-slate-500 leading-relaxed max-w-xs">{selectedCustomer?.address || "Address details pending update..."}</p>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* SMART CASCADE: LINKED PROJECT DROPDOWN */}
-                  <div className={`${role === 'admin' && !activeWorkspace ? '' : 'md:col-span-2'} print:col-span-1 print:text-right`}>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 print:text-[8px] print:mb-1">Linked Project <span className="print:hidden">(Optional)</span></p>
-                    <select value={formData.project_id} onChange={handleProjectSelect} className="w-full bg-transparent text-lg font-bold text-blue-800 outline-none cursor-pointer border-b border-slate-200 pb-1 disabled:opacity-50 print:hidden">
-                       <option value="">-- Standalone Invoice --</option>
-                       {availableProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                    <div className="hidden print:block text-slate-800">
-                       <h3 className="text-sm font-bold text-blue-800">{linkedProject?.name || "Standalone Services"}</h3>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mb-10 print:mb-4">
-                  <div className="grid grid-cols-12 gap-4 pb-3 border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 print:pb-1 print:text-[8px] print:gap-2">
-                    <div className="col-span-6">Description</div>
-                    <div className="col-span-2 text-center">Qty</div>
-                    <div className="col-span-2 text-right">Rate</div>
-                    <div className="col-span-2 text-right">Amount</div>
-                  </div>
-                  <div className="space-y-2 mt-3 print:mt-2 print:space-y-0 text-slate-800">
-                    {lineItems.map((item, index) => (
-                      <div key={index} className="grid grid-cols-12 gap-4 items-center group print:break-inside-avoid print:py-1 print:gap-2">
-                        <div className="col-span-6 relative">
-                          <input type="text" placeholder="Item description..." value={item.description} onChange={e => {const newItems=[...lineItems]; newItems[index].description = e.target.value; setLineItems(newItems)}} className="w-full h-11 bg-transparent border-b border-transparent hover:border-slate-200 focus:border-blue-500 outline-none text-[14px] font-medium transition-all px-2 print:hidden" />
-                          <span className="hidden print:block text-xs font-bold pl-2">{item.description || "-"}</span>
-                          {index > 0 && <button onClick={() => setLineItems(lineItems.filter((_, i) => i !== index))} className="absolute -left-6 top-3 text-rose-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity print:hidden"><Trash2 className="h-4 w-4" /></button>}
-                        </div>
-                        <div className="col-span-2">
-                           <input type="number" value={item.quantity} onChange={e => {const newItems=[...lineItems]; newItems[index].quantity = parseFloat(e.target.value)||0; setLineItems(newItems)}} className="w-full h-11 bg-transparent text-center border-b border-transparent hover:border-slate-200 focus:border-blue-500 outline-none text-[14px] font-bold transition-all print:hidden" />
-                           <span className="hidden print:block text-xs font-medium text-center">{item.quantity}</span>
-                        </div>
-                        <div className="col-span-2">
-                           <input type="number" value={item.rate} onChange={e => {const newItems=[...lineItems]; newItems[index].rate = parseFloat(e.target.value)||0; setLineItems(newItems)}} className="w-full h-11 bg-transparent text-right border-b border-transparent hover:border-slate-200 focus:border-blue-500 outline-none text-[14px] font-bold transition-all print:hidden" />
-                           <span className="hidden print:block text-xs font-medium text-right">₹{item.rate.toLocaleString()}</span>
-                        </div>
-                        <div className="col-span-2 text-right px-2 font-bold text-[14px] print:text-xs">₹{(item.quantity * item.rate).toLocaleString()}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <button onClick={() => setLineItems([...lineItems, {description: "", quantity: 1, rate: 0}])} className="mt-4 text-[11px] font-bold text-blue-600 uppercase tracking-widest hover:bg-blue-50 px-4 py-2 rounded-lg transition-colors print:hidden flex items-center"><Plus className="h-3.5 w-3.5 mr-1" /> Add Item</button>
-                </div>
-
-                <div className="flex justify-end border-t border-slate-100 pt-6 print:pt-4 print:break-inside-avoid">
-                  <div className="w-full max-w-sm space-y-4 print:space-y-1.5">
-                    <div className="flex justify-between items-center text-sm font-bold text-slate-600 px-4 print:px-2 print:text-xs"><span className="uppercase tracking-widest text-[10px] print:text-[8px]">Subtotal</span><span>₹{subtotal.toLocaleString()}</span></div>
-                    <div className="flex justify-between items-center text-sm font-bold text-slate-600 px-4 print:px-2 print:text-xs">
-                       <span className="uppercase tracking-widest text-[10px] print:text-[8px] flex items-center gap-2">
-                         Tax Rate (%) 
-                         <input type="number" value={formData.tax_rate} onChange={e => setFormData({...formData, tax_rate: parseFloat(e.target.value)||0})} className="w-16 bg-slate-50 border border-slate-200 rounded p-1 text-center outline-none print:hidden" />
-                         <span className="hidden print:inline text-slate-800">{formData.tax_rate}%</span>
-                       </span>
-                       <span>₹{taxAmount.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm font-bold text-slate-600 px-4 print:px-2 print:text-xs">
-                       <span className="uppercase tracking-widest text-[10px] print:text-[8px] flex items-center gap-2">
-                         Discount (₹) 
-                         <input type="number" value={formData.discount_amount} onChange={e => setFormData({...formData, discount_amount: parseFloat(e.target.value)||0})} className="w-24 bg-slate-50 border border-slate-200 rounded p-1 text-center outline-none text-rose-500 print:hidden" />
-                         <span className="hidden print:inline text-rose-500">₹{formData.discount_amount.toLocaleString()}</span>
-                       </span>
-                       <span className="text-rose-500">- ₹{formData.discount_amount.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm font-bold text-slate-600 px-4 pt-4 border-t border-slate-100 print:px-2 print:pt-2 print:text-xs">
-                       <span className="uppercase tracking-widest text-[10px] print:text-[8px] text-slate-800">Grand Total</span>
-                       <span className="text-slate-900">₹{grandTotal.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {selectedInvoice && (
-                  <div className="mt-12 border-t border-slate-100 pt-8 print:mt-6 print:pt-4 print:break-inside-avoid">
-                    <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4 print:text-[8px] print:mb-2">Transaction Ledger</h3>
-                    
-                    <div className="space-y-3 print:space-y-1">
-                      {currentInvoicePayments.length === 0 ? (
-                        <p className="text-sm text-slate-400 italic print:text-xs">No payments recorded.</p>
+                {/* PDF Print Canvas / Scrollable Body */}
+                <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 lg:p-12 max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-200 sm:[&::-webkit-scrollbar-thumb]:rounded-full bg-white print:p-6 print:overflow-visible print:h-auto">
+                  
+                  <div className="flex flex-col sm:flex-row justify-between items-start mb-8 sm:mb-12 print:mb-6 gap-6 sm:gap-0">
+                    <div>
+                      {issuingCompany?.logo_url ? (
+                         <img src={issuingCompany.logo_url} alt="Logo" className="h-12 sm:h-16 w-auto object-contain mb-3 sm:mb-5 print:mb-2 print:h-12" />
                       ) : (
-                        currentInvoicePayments.map(payment => (
-                          <div key={payment.id} className="flex justify-between items-center bg-slate-50 p-4 rounded-xl border border-slate-100 print:bg-transparent print:border-none print:p-0 print:border-b print:border-slate-50 print:pb-1">
-                            <div className="flex items-center gap-3 print:gap-2">
-                               <div className="h-8 w-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center print:hidden"><CheckCircle2 className="h-4 w-4" /></div>
-                               <div>
-                                 <p className="text-sm font-bold text-slate-900 print:text-xs">{payment.payment_method}</p>
-                                 <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-0.5 print:text-[8px]">{new Date(payment.payment_date).toLocaleDateString()} {payment.reference_note && `• Ref: ${payment.reference_note}`}</p>
-                               </div>
-                            </div>
-                            <div className="flex items-center gap-4">
-                              <p className="text-base font-bold text-emerald-600 print:text-xs">₹{parseFloat(payment.amount).toLocaleString()}</p>
-                              <button onClick={() => handleDeletePayment(payment.id)} className="text-rose-400 hover:text-rose-600 print:hidden"><Trash2 className="h-4 w-4" /></button>
-                            </div>
+                        <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-900 via-blue-900 to-blue-800 flex items-center justify-center text-white text-[16px] sm:text-[20px] font-black tracking-tighter mb-3 sm:mb-4 shadow-sm print:h-10 print:w-10 print:text-sm print:rounded-lg print:mb-2">
+                          {issuingCompany?.name ? issuingCompany.name.charAt(0) : 'Z'}
+                        </div>
+                      )}
+                      <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight print:text-lg">{issuingCompany?.name || 'Zayd Industries'}</h2>
+                    </div>
+                    <div className="text-left sm:text-right">
+                      <h1 className="text-2xl sm:text-4xl font-light tracking-tight text-slate-300 uppercase print:text-2xl">Invoice</h1>
+                      <div className="mt-3 sm:mt-5 space-y-1 sm:space-y-1.5 print:mt-2 print:space-y-0.5">
+                        <p className="text-[12px] sm:text-sm text-slate-800 font-bold print:text-xs"><span className="text-slate-400 font-medium mr-2">No:</span> {formData.invoice_number}</p>
+                        <p className="text-[12px] sm:text-sm text-slate-800 font-bold flex flex-row sm:items-center sm:justify-end print:text-xs">
+                          <span className="text-slate-400 font-medium mr-2 w-10 sm:w-auto">Date:</span> 
+                          <input type="date" value={formData.issue_date} onChange={e=>setFormData({...formData, issue_date: e.target.value})} className="border-none bg-transparent outline-none cursor-pointer sm:text-right w-32 print:hidden" />
+                          <span className="hidden print:inline">{formData.issue_date ? new Date(formData.issue_date).toLocaleDateString() : ''}</span>
+                        </p>
+                        <p className="text-[12px] sm:text-sm text-slate-800 font-bold flex flex-row sm:items-center sm:justify-end print:text-xs">
+                          <span className="text-slate-400 font-medium mr-2 w-10 sm:w-auto">Due:</span> 
+                          <input type="date" value={formData.due_date} onChange={e=>setFormData({...formData, due_date: e.target.value})} className="border-none bg-transparent outline-none cursor-pointer text-rose-500 sm:text-right w-32 print:hidden" />
+                          <span className="hidden print:inline text-rose-500">{formData.due_date ? new Date(formData.due_date).toLocaleDateString() : 'N/A'}</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8 mb-6 sm:mb-10 p-4 sm:p-6 bg-slate-50 rounded-2xl sm:rounded-3xl border border-slate-100 print:bg-transparent print:border-none print:p-0 print:mb-6 print:gap-4">
+                    {role === 'admin' && !activeWorkspace && (
+                      <div className="print:hidden">
+                        <p className="text-[9px] sm:text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1.5 sm:mb-2">Issuing Subsidiary</p>
+                        <select value={formData.company_id} onChange={(e) => setFormData({...formData, company_id: e.target.value, customer_id: "", project_id: ""})} className="w-full bg-transparent text-[14px] sm:text-lg font-bold text-slate-900 outline-none cursor-pointer border-b border-slate-200 pb-1">
+                          <option value="" disabled>-- Select Company --</option>
+                          {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
+                    )}
+
+                    <div className={`${role === 'admin' && !activeWorkspace ? '' : 'sm:col-span-1 md:col-span-1'} print:col-span-2`}>
+                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 print:text-[8px] print:mb-1">Billed To <span className="text-rose-500 print:hidden">*</span></p>
+                      
+                      {linkedProject?.internal_company_id ? (
+                        <>
+                          <div className="w-full bg-blue-50/50 text-[14px] sm:text-lg font-bold text-blue-900 border-b border-slate-200 pb-1 print:hidden px-2 rounded-t-lg truncate">
+                            {internalBilledCompany?.name || 'Internal Company'} (In-House)
                           </div>
-                        ))
+                          <div className="hidden print:block text-slate-800">
+                             <h3 className="text-sm font-bold">{internalBilledCompany?.name || "Internal Company"}</h3>
+                             <p className="text-xs mt-1 text-slate-500 leading-relaxed max-w-xs">Internal Sub-Contract / Operations Transfer</p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <select value={formData.customer_id} onChange={(e) => setFormData({...formData, customer_id: e.target.value})} disabled={!formData.company_id && (role === 'admin' && !activeWorkspace)} className="w-full bg-transparent text-[14px] sm:text-lg font-bold text-slate-900 outline-none cursor-pointer border-b border-slate-200 pb-1 disabled:opacity-50 print:hidden truncate">
+                             <option value="">-- Select Client --</option>
+                             {availableCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </select>
+                          <div className="hidden print:block text-slate-800">
+                             <h3 className="text-sm font-bold">{selectedCustomer?.name || "Client Name"}</h3>
+                             {selectedCustomer?.phone && <p className="text-xs mt-0.5 font-medium">{selectedCustomer.phone}</p>}
+                             <p className="text-xs mt-1 text-slate-500 leading-relaxed max-w-xs">{selectedCustomer?.address || "Address details pending update..."}</p>
+                          </div>
+                        </>
                       )}
                     </div>
 
-                    <div className={`flex justify-between items-center text-2xl font-black text-slate-900 bg-slate-50 p-6 rounded-3xl mt-6 border border-slate-100 print:bg-transparent print:border-none print:px-2 print:py-2 print:mt-4 print:text-lg ${balanceDue <= 0 ? 'print:hidden' : ''}`}>
-                       <span className="uppercase tracking-widest text-[12px] print:text-[10px] text-slate-400">Balance Due</span>
-                       <span>₹{balanceDue.toLocaleString()}</span>
+                    <div className={`${role === 'admin' && !activeWorkspace ? '' : 'sm:col-span-1 md:col-span-2'} print:col-span-1 print:text-right`}>
+                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 print:text-[8px] print:mb-1">Linked Project <span className="print:hidden">(Optional)</span></p>
+                      <select value={formData.project_id} onChange={handleProjectSelect} className="w-full bg-transparent text-[14px] sm:text-lg font-bold text-blue-800 outline-none cursor-pointer border-b border-slate-200 pb-1 disabled:opacity-50 print:hidden truncate">
+                         <option value="">-- Standalone Invoice --</option>
+                         {availableProjects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                      <div className="hidden print:block text-slate-800">
+                         <h3 className="text-sm font-bold text-blue-800">{linkedProject?.name || "Standalone Services"}</h3>
+                      </div>
                     </div>
+                  </div>
 
-                    {!showPaymentForm ? (
-                      <button onClick={() => setShowPaymentForm(true)} className="mt-5 text-[11px] font-bold text-emerald-600 uppercase tracking-widest hover:bg-emerald-50 px-4 py-2 rounded-lg transition-colors print:hidden flex items-center"><Plus className="h-3.5 w-3.5 mr-1" /> Record New Payment</button>
-                    ) : (
-                      <div className="mt-5 p-5 bg-white border border-emerald-100 rounded-2xl shadow-sm print:hidden">
-                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
-                           <div><label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Amount (₹)</label><input type="number" value={newPayment.amount} onChange={e => setNewPayment({...newPayment, amount: parseFloat(e.target.value) || 0})} className="w-full h-10 border border-slate-200 rounded-lg px-3 outline-none focus:border-emerald-500 font-bold" /></div>
-                           <div><label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Date</label><input type="date" value={newPayment.payment_date} onChange={e => setNewPayment({...newPayment, payment_date: e.target.value})} className="w-full h-10 border border-slate-200 rounded-lg px-3 outline-none focus:border-emerald-500 font-medium text-sm" /></div>
-                           <div><label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Method</label><select value={newPayment.payment_method} onChange={e => setNewPayment({...newPayment, payment_method: e.target.value})} className="w-full h-10 border border-slate-200 rounded-lg px-3 outline-none focus:border-emerald-500 font-medium text-sm"><option>Bank Transfer</option><option>Cash</option><option>Credit Card</option><option>UPI / Online</option></select></div>
-                           <div><label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Reference (Opt)</label><input type="text" value={newPayment.reference_note} onChange={e => setNewPayment({...newPayment, reference_note: e.target.value})} placeholder="Txn ID..." className="w-full h-10 border border-slate-200 rounded-lg px-3 outline-none focus:border-emerald-500 font-medium text-sm" /></div>
+                  <div className="mb-8 sm:mb-10 print:mb-4">
+                    {/* Mobile Scrollable Line Items Table */}
+                    <div className="overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                      <div className="min-w-[500px]">
+                        <div className="grid grid-cols-12 gap-2 sm:gap-4 pb-2 sm:pb-3 border-b border-slate-200 text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 print:pb-1 print:text-[8px]">
+                          <div className="col-span-6">Description</div>
+                          <div className="col-span-2 text-center">Qty</div>
+                          <div className="col-span-2 text-right">Rate</div>
+                          <div className="col-span-2 text-right">Amount</div>
                         </div>
-                        <div className="flex gap-2">
-                           <button onClick={() => setShowPaymentForm(false)} className="h-9 px-4 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-lg border border-slate-200">Cancel</button>
-                           <button onClick={handleRecordPayment} disabled={isSaving} className="h-9 px-6 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm">Submit Payment</button>
+                        <div className="space-y-2 mt-2 sm:mt-3 print:mt-2 print:space-y-0 text-slate-800">
+                          {lineItems.map((item, index) => (
+                            <div key={index} className="grid grid-cols-12 gap-2 sm:gap-4 items-center group print:break-inside-avoid print:py-1">
+                              <div className="col-span-6 relative">
+                                <input type="text" placeholder="Item description..." value={item.description} onChange={e => {const newItems=[...lineItems]; newItems[index].description = e.target.value; setLineItems(newItems)}} className="w-full h-10 sm:h-11 bg-transparent border-b border-transparent hover:border-slate-200 focus:border-blue-500 outline-none text-[12px] sm:text-[14px] font-medium transition-all px-2 print:hidden" />
+                                <span className="hidden print:block text-xs font-bold pl-2">{item.description || "-"}</span>
+                                {index > 0 && <button onClick={() => setLineItems(lineItems.filter((_, i) => i !== index))} className="absolute -left-6 top-2 sm:top-3 text-rose-300 hover:text-rose-500 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity print:hidden"><Trash2 className="h-3.5 w-3.5 sm:h-4 w-4" /></button>}
+                              </div>
+                              <div className="col-span-2">
+                                 <input type="number" value={item.quantity} onChange={e => {const newItems=[...lineItems]; newItems[index].quantity = parseFloat(e.target.value)||0; setLineItems(newItems)}} className="w-full h-10 sm:h-11 bg-transparent text-center border-b border-transparent hover:border-slate-200 focus:border-blue-500 outline-none text-[12px] sm:text-[14px] font-bold transition-all print:hidden" />
+                                 <span className="hidden print:block text-xs font-medium text-center">{item.quantity}</span>
+                              </div>
+                              <div className="col-span-2">
+                                 <input type="number" value={item.rate} onChange={e => {const newItems=[...lineItems]; newItems[index].rate = parseFloat(e.target.value)||0; setLineItems(newItems)}} className="w-full h-10 sm:h-11 bg-transparent text-right border-b border-transparent hover:border-slate-200 focus:border-blue-500 outline-none text-[12px] sm:text-[14px] font-bold transition-all print:hidden" />
+                                 <span className="hidden print:block text-xs font-medium text-right">₹{item.rate.toLocaleString()}</span>
+                              </div>
+                              <div className="col-span-2 text-right px-2 font-bold text-[12px] sm:text-[14px] print:text-xs">₹{(item.quantity * item.rate).toLocaleString()}</div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    )}
+                    </div>
+                    <button onClick={() => setLineItems([...lineItems, {description: "", quantity: 1, rate: 0}])} className="mt-3 sm:mt-4 text-[10px] sm:text-[11px] font-bold text-blue-600 uppercase tracking-widest hover:bg-blue-50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors print:hidden flex items-center"><Plus className="h-3 sm:h-3.5 w-3 sm:w-3.5 mr-1" /> Add Item</button>
                   </div>
-                )}
 
-              </div>
-
-              <div className="p-6 border-t border-slate-100 bg-[#FAFCFF] flex justify-between items-center shrink-0 print:hidden">
-                {selectedInvoice ? (
-                  <div className="flex gap-3">
-                    <button onClick={handleDeleteInvoice} className="border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 rounded-xl h-12 px-5 flex items-center justify-center shadow-sm transition-colors"><Trash2 className="h-4 w-4" /></button>
+                  <div className="flex justify-end border-t border-slate-100 pt-5 sm:pt-6 print:pt-4 print:break-inside-avoid">
+                    <div className="w-full max-w-sm space-y-3 sm:space-y-4 print:space-y-1.5">
+                      <div className="flex justify-between items-center text-[12px] sm:text-sm font-bold text-slate-600 px-2 sm:px-4 print:px-2 print:text-xs"><span className="uppercase tracking-widest text-[9px] sm:text-[10px] print:text-[8px]">Subtotal</span><span>₹{subtotal.toLocaleString()}</span></div>
+                      <div className="flex justify-between items-center text-[12px] sm:text-sm font-bold text-slate-600 px-2 sm:px-4 print:px-2 print:text-xs">
+                         <span className="uppercase tracking-widest text-[9px] sm:text-[10px] print:text-[8px] flex items-center gap-2">
+                           Tax (%) 
+                           <input type="number" value={formData.tax_rate} onChange={e => setFormData({...formData, tax_rate: parseFloat(e.target.value)||0})} className="w-12 sm:w-16 bg-slate-50 border border-slate-200 rounded p-1 text-center outline-none print:hidden" />
+                           <span className="hidden print:inline text-slate-800">{formData.tax_rate}%</span>
+                         </span>
+                         <span>₹{taxAmount.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-[12px] sm:text-sm font-bold text-slate-600 px-2 sm:px-4 print:px-2 print:text-xs">
+                         <span className="uppercase tracking-widest text-[9px] sm:text-[10px] print:text-[8px] flex items-center gap-2">
+                           Discount (₹) 
+                           <input type="number" value={formData.discount_amount} onChange={e => setFormData({...formData, discount_amount: parseFloat(e.target.value)||0})} className="w-16 sm:w-24 bg-slate-50 border border-slate-200 rounded p-1 text-center outline-none text-rose-500 print:hidden" />
+                           <span className="hidden print:inline text-rose-500">₹{formData.discount_amount.toLocaleString()}</span>
+                         </span>
+                         <span className="text-rose-500">- ₹{formData.discount_amount.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-[14px] sm:text-sm font-bold text-slate-600 px-2 sm:px-4 pt-3 sm:pt-4 border-t border-slate-100 print:px-2 print:pt-2 print:text-xs">
+                         <span className="uppercase tracking-widest text-[10px] print:text-[8px] text-slate-800">Grand Total</span>
+                         <span className="text-slate-900 text-[16px] sm:text-base">₹{grandTotal.toLocaleString()}</span>
+                      </div>
+                    </div>
                   </div>
-                ) : <div></div>}
-                
-                <div className="flex gap-3">
-                  <button onClick={() => setIsModalOpen(false)} className="rounded-xl border border-slate-200 bg-white h-12 px-8 font-bold text-sm text-slate-600 hover:bg-slate-50 shadow-sm transition-colors">Cancel</button>
-                  <button onClick={handleSaveInvoice} disabled={isSaving} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-12 px-10 font-bold text-sm shadow-md shadow-blue-900/20 hover:shadow-lg hover:-translate-y-0.5 transition-all">
-                    {isSaving ? "Saving..." : "Save Invoice"}
-                  </button>
+
+                  {selectedInvoice && (
+                    <div className="mt-8 sm:mt-12 border-t border-slate-100 pt-6 sm:pt-8 print:mt-6 print:pt-4 print:break-inside-avoid">
+                      
+                      {/* Form for recording payments on mobile is moved above the ledger table so it doesn't get hidden */}
+                      {!showPaymentForm ? (
+                        <button onClick={() => setShowPaymentForm(true)} className="mb-4 sm:mb-5 text-[10px] sm:text-[11px] font-bold text-emerald-600 uppercase tracking-widest hover:bg-emerald-50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors print:hidden flex items-center"><Plus className="h-3 sm:h-3.5 w-3 sm:w-3.5 mr-1" /> Record New Payment</button>
+                      ) : (
+                        <div className="mb-4 sm:mb-5 p-4 sm:p-5 bg-white border border-emerald-100 rounded-xl sm:rounded-2xl shadow-sm print:hidden">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
+                             <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase block mb-1">Amount (₹)</label><input type="number" value={newPayment.amount} onChange={e => setNewPayment({...newPayment, amount: parseFloat(e.target.value) || 0})} className="w-full h-10 border border-slate-200 rounded-lg px-3 outline-none focus:border-emerald-500 font-bold text-[12px] sm:text-sm" /></div>
+                             <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase block mb-1">Date</label><input type="date" value={newPayment.payment_date} onChange={e => setNewPayment({...newPayment, payment_date: e.target.value})} className="w-full h-10 border border-slate-200 rounded-lg px-3 outline-none focus:border-emerald-500 font-medium text-[12px] sm:text-sm" /></div>
+                             <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase block mb-1">Method</label><select value={newPayment.payment_method} onChange={e => setNewPayment({...newPayment, payment_method: e.target.value})} className="w-full h-10 border border-slate-200 rounded-lg px-3 outline-none focus:border-emerald-500 font-medium text-[12px] sm:text-sm cursor-pointer"><option>Bank Transfer</option><option>Cash</option><option>Credit Card</option><option>UPI / Online</option></select></div>
+                             <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase block mb-1">Reference (Opt)</label><input type="text" value={newPayment.reference_note} onChange={e => setNewPayment({...newPayment, reference_note: e.target.value})} placeholder="Txn ID..." className="w-full h-10 border border-slate-200 rounded-lg px-3 outline-none focus:border-emerald-500 font-medium text-[12px] sm:text-sm" /></div>
+                          </div>
+                          <div className="flex justify-end gap-2">
+                             <button onClick={() => setShowPaymentForm(false)} className="h-9 px-4 text-[11px] sm:text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-lg border border-slate-200">Cancel</button>
+                             <button onClick={handleRecordPayment} disabled={isSaving} className="h-9 px-6 text-[11px] sm:text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm">Submit Payment</button>
+                          </div>
+                        </div>
+                      )}
+
+                      <h3 className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 sm:mb-4 print:text-[8px] print:mb-2">Transaction Ledger</h3>
+                      
+                      <div className="space-y-2 sm:space-y-3 print:space-y-1">
+                        {currentInvoicePayments.length === 0 ? (
+                          <p className="text-[12px] sm:text-sm text-slate-400 italic print:text-xs">No payments recorded.</p>
+                        ) : (
+                          currentInvoicePayments.map(payment => (
+                            <div key={payment.id} className="flex justify-between items-center bg-slate-50 p-3 sm:p-4 rounded-lg sm:rounded-xl border border-slate-100 print:bg-transparent print:border-none print:p-0 print:border-b print:border-slate-50 print:pb-1">
+                              <div className="flex items-center gap-2 sm:gap-3 print:gap-2 min-w-0 pr-2">
+                                 <div className="h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 print:hidden"><CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4" /></div>
+                                 <div className="min-w-0">
+                                   <p className="text-[12px] sm:text-sm font-bold text-slate-900 print:text-xs truncate">{payment.payment_method}</p>
+                                   <p className="text-[9px] sm:text-[10px] text-slate-500 uppercase tracking-widest mt-0.5 print:text-[8px] truncate">{new Date(payment.payment_date).toLocaleDateString()} {payment.reference_note && `• Ref: ${payment.reference_note}`}</p>
+                                 </div>
+                              </div>
+                              <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+                                <p className="text-[13px] sm:text-base font-bold text-emerald-600 print:text-xs">₹{parseFloat(payment.amount).toLocaleString()}</p>
+                                <button onClick={() => handleDeletePayment(payment.id)} className="text-rose-400 hover:text-rose-600 print:hidden bg-rose-50 p-1.5 rounded-lg"><Trash2 className="h-3.5 w-3.5 sm:h-4 w-4" /></button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      <div className={`flex justify-between items-center text-xl sm:text-2xl font-black text-slate-900 bg-slate-50 p-4 sm:p-6 rounded-2xl sm:rounded-3xl mt-5 sm:mt-6 border border-slate-100 print:bg-transparent print:border-none print:px-2 print:py-2 print:mt-4 print:text-lg ${balanceDue <= 0 ? 'print:hidden' : ''}`}>
+                         <span className="uppercase tracking-widest text-[10px] sm:text-[12px] print:text-[10px] text-slate-400">Balance Due</span>
+                         <span>₹{balanceDue.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    </div>
+
+                <div className="p-4 sm:p-6 border-t border-slate-100 bg-[#FAFCFF] flex justify-between items-center shrink-0 print:hidden pb-[max(1rem,env(safe-area-inset-bottom))]">
+                  {selectedInvoice ? (
+                    <div className="flex gap-2 sm:gap-3">
+                      <button onClick={handleDeleteInvoice} className="border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 rounded-xl h-10 sm:h-12 px-4 sm:px-5 flex items-center justify-center shadow-sm transition-colors"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                  ) : <div></div>}
+                  
+                  <div className="flex gap-2 sm:gap-3">
+                    <button onClick={() => setIsModalOpen(false)} className="rounded-xl border border-slate-200 bg-white h-10 sm:h-12 px-4 sm:px-8 font-bold text-[12px] sm:text-sm text-slate-600 hover:bg-slate-50 shadow-sm transition-colors">Cancel</button>
+                    <button onClick={handleSaveInvoice} disabled={isSaving} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-10 sm:h-12 px-6 sm:px-10 font-bold text-[12px] sm:text-sm shadow-md shadow-blue-900/20 hover:shadow-lg hover:-translate-y-0.5 transition-all">
+                      {isSaving ? "Saving..." : "Save Invoice"}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
+    </>
   );
 }
