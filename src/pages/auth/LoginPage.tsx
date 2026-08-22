@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock, Mail, ArrowRight, Building2, UserCircle, Briefcase, ArrowLeft, Shield, Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { Lock, Mail, Building2, UserCircle, Briefcase, ArrowLeft, Shield, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { useAuthStore } from "../../store/authStore";
 import { supabase } from "../../supabase";
@@ -420,6 +420,14 @@ export default function LoginPage() {
               )}
             </AnimatePresence>
           </div>
+
+          {/* NEW FOOTER: Idea 1 - Minimalist */}
+          <div className="mt-auto shrink-0 pt-4 pb-1 text-center border-t border-transparent">
+            <p className="text-[11px] font-medium text-slate-400">
+              © 2026 Zayd Industries Pvt. Limited
+            </p>
+          </div>
+
         </div>
       </div>
     </div>
