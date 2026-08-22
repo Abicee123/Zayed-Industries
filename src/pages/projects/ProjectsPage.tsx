@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Search, FolderKanban, CheckCircle2, AlertCircle, X, Check, User, Trash2, Wallet, Star, ChevronDown, Clock, Download, Loader2 } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
@@ -528,7 +529,10 @@ export default function ProjectsPage() {
           </div>
         )}
 
-        {/* --- MAIN PROJECT MODAL (NATIVE OS WINDOW ARCHITECTURE) --- */}
+      </div>
+
+      {/* --- MAIN PROJECT MODAL (NATIVE OS WINDOW ARCHITECTURE - PORTALED) --- */}
+      {typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           {isModalOpen && !isPrintingPayslip && (
             <motion.div 
@@ -536,7 +540,7 @@ export default function ProjectsPage() {
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }} 
               onClick={() => setIsModalOpen(false)}
-              className="fixed inset-0 z-[100] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm print:hidden"
+              className="fixed inset-0 z-[9999] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm print:hidden"
             >
               <motion.div 
                 initial={{ opacity: 0, y: 40, scale: 0.95 }} 
@@ -894,8 +898,9 @@ export default function ProjectsPage() {
               </motion.div>
             </motion.div>
           )}
-        </AnimatePresence>
-      </div>
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   );
 }
