@@ -23,10 +23,15 @@ export default function AppLayout() {
   
   const prevMessageCount = useRef(messages.length);
 
+  // --- THE MAGIC: Find the Master Admin to use their profile as the Global Logo ---
+  const masterAdmin = employees.find(e => e.access_level === 'admin');
+
   const activeCompany = activeWorkspace ? companies.find(c => c.id === activeWorkspace) : null;
   const currentDisplayCompany = (role !== 'admin' || activeWorkspace) ? companies.find(c => c.id === (activeWorkspace || companyId)) : null;
   const brandName = currentDisplayCompany?.name || "Zayd Industries";
-  const brandLogo = currentDisplayCompany?.logo_url || null;
+  
+  // --- THE LOGO LOGIC: Use the company logo, OR fallback to the Master Admin's profile image! ---
+  const brandLogo = currentDisplayCompany?.logo_url || masterAdmin?.profile_image_url || null;
   
   // Route check for Chat Emblem visibility
   const isDashboard = location.pathname.includes('/dashboard');
@@ -254,7 +259,7 @@ export default function AppLayout() {
           </main>
         </div>
 
-        {/* --- CRITICAL FIX: MOBILE BOTTOM DOCK (Dynamic iOS-Style Centered Pill) --- */}
+        {/* --- MOBILE BOTTOM DOCK (Dynamic iOS-Style Centered Pill) --- */}
         <div className="sm:hidden fixed bottom-6 left-0 right-0 z-[60] flex justify-center pointer-events-none px-4 print:hidden">
            {/* The pointer-events-auto puts the click ability ONLY on the dock, allowing you to scroll the page outside of it */}
            <div className="pointer-events-auto max-w-full bg-[#0f172a]/95 backdrop-blur-2xl rounded-[2rem] p-1.5 flex items-center justify-start shadow-[0_20px_40px_rgba(0,0,0,0.3)] border border-slate-800 overflow-x-auto [&::-webkit-scrollbar]:hidden gap-1">

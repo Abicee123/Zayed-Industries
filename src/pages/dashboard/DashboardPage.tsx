@@ -469,23 +469,23 @@ export default function DashboardPage() {
                   <button onClick={() => setIsAnnouncementModalOpen(false)} className="h-7 w-7 sm:h-8 sm:w-8 bg-white border border-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 shadow-sm transition-colors"><X className="h-3.5 w-3.5 sm:h-4 sm:w-4"/></button>
                 </div>
                 
-                <div className="p-4 sm:p-8 flex-1 overflow-y-auto flex flex-col max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  <div className="flex-1 flex flex-col justify-center space-y-5 sm:space-y-8 mb-5 sm:mb-8">
+                <div className="p-4 sm:p-6 flex-1 overflow-y-auto flex flex-col max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  <div className="flex-1 flex flex-col space-y-5 sm:space-y-6 mb-5 sm:mb-6">
                     <div className="space-y-4">
                       <div>
                         <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1 sm:mb-2 px-1">Target Audience</label>
-                        <select value={announcementForm.company_id} onChange={e => setAnnouncementForm({...announcementForm, company_id: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-[12px] sm:text-[14px] font-medium outline-none focus:border-blue-500 shadow-sm">
+                        <select value={announcementForm.company_id} onChange={e => setAnnouncementForm({...announcementForm, company_id: e.target.value})} className="w-full h-10 sm:h-11 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-[12px] sm:text-[13px] font-medium outline-none focus:border-blue-500 shadow-sm">
                           <option value="all">General (All Companies)</option>
                           {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                       </div>
                       <div>
                         <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1 sm:mb-2 px-1">Headline</label>
-                        <input type="text" value={announcementForm.title} onChange={e => setAnnouncementForm({...announcementForm, title: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-[12px] sm:text-[14px] font-medium outline-none focus:border-blue-500 shadow-sm" placeholder="Important update..." />
+                        <input type="text" value={announcementForm.title} onChange={e => setAnnouncementForm({...announcementForm, title: e.target.value})} className="w-full h-10 sm:h-11 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-[12px] sm:text-[13px] font-medium outline-none focus:border-blue-500 shadow-sm" placeholder="Important update..." />
                       </div>
                       <div>
                         <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1 sm:mb-2 px-1">Message Content</label>
-                        <textarea value={announcementForm.content} onChange={e => setAnnouncementForm({...announcementForm, content: e.target.value})} className="w-full h-20 sm:h-28 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 text-[12px] sm:text-[14px] font-medium outline-none focus:border-blue-500 shadow-sm resize-none" placeholder="Provide the details..." />
+                        <textarea value={announcementForm.content} onChange={e => setAnnouncementForm({...announcementForm, content: e.target.value})} className="w-full h-20 sm:h-24 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 text-[12px] sm:text-[13px] font-medium outline-none focus:border-blue-500 shadow-sm resize-none" placeholder="Provide the details..." />
                       </div>
                     </div>
                   </div>
@@ -553,46 +553,46 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 
-                <div className="p-4 sm:p-8 flex-1 overflow-y-auto flex flex-col max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div className="p-4 sm:p-6 flex-1 overflow-y-auto flex flex-col max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   {companyModalMode === 'view' && selectedCompany ? (
-                    <div className="flex-1 flex flex-col justify-center space-y-6 sm:space-y-8 pb-2 sm:pb-4">
+                    <div className="flex-1 flex flex-col space-y-5 sm:space-y-6 pb-2 sm:pb-4">
                       <div className="flex items-center gap-3 sm:gap-5">
-                        <div className="h-16 w-16 sm:h-24 sm:w-24 rounded-2xl sm:rounded-[1.5rem] bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden p-2 sm:p-3 shadow-sm shrink-0">
-                          {selectedCompany.logo_url ? <img src={selectedCompany.logo_url} alt="Logo" className="h-full w-full object-contain" /> : <Building2 className="h-6 w-6 sm:h-10 sm:w-10 text-slate-300"/>}
+                        <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl sm:rounded-[1.25rem] bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden p-2 sm:p-3 shadow-sm shrink-0">
+                          {selectedCompany.logo_url ? <img src={selectedCompany.logo_url} alt="Logo" className="h-full w-full object-contain" /> : <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-slate-300"/>}
                         </div>
                         <div>
-                          <h2 className="text-xl sm:text-3xl font-bold text-slate-900 tracking-tight">{selectedCompany.name}</h2>
-                          <p className="text-[12px] sm:text-[14px] font-medium text-slate-500 mt-1 sm:mt-1.5">{selectedCompany.area}</p>
+                          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">{selectedCompany.name}</h2>
+                          <p className="text-[12px] sm:text-[13px] font-medium text-slate-500 mt-1">{selectedCompany.area}</p>
                         </div>
                       </div>
                       
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                        <div className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-3 sm:p-5"><p className="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2">Personnel</p><p className="text-xl sm:text-3xl font-bold text-slate-800 tracking-tight">{employees.filter(e => e.company_id === selectedCompany.id).length}</p></div>
-                        <div className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-3 sm:p-5"><p className="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2">Operations</p><p className="text-xl sm:text-3xl font-bold text-slate-800 tracking-tight">{projects.filter(p => p.company_id === selectedCompany.id).length}</p></div>
-                        <div className="col-span-2 sm:col-span-1 bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-3 sm:p-5"><p className="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2">Payroll</p><p className="text-xl sm:text-3xl font-bold text-slate-800 tracking-tight">₹{selectedCompanyPayroll.toLocaleString()}</p></div>
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-xl p-3 sm:p-4"><p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Personnel</p><p className="text-lg sm:text-2xl font-bold text-slate-800 tracking-tight">{employees.filter(e => e.company_id === selectedCompany.id).length}</p></div>
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-xl p-3 sm:p-4"><p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Operations</p><p className="text-lg sm:text-2xl font-bold text-slate-800 tracking-tight">{projects.filter(p => p.company_id === selectedCompany.id).length}</p></div>
+                        <div className="col-span-2 sm:col-span-1 bg-slate-50 border border-slate-100 rounded-xl sm:rounded-xl p-3 sm:p-4"><p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Payroll</p><p className="text-lg sm:text-2xl font-bold text-slate-800 tracking-tight">₹{selectedCompanyPayroll.toLocaleString()}</p></div>
                       </div>
 
-                      <div className="space-y-3 sm:space-y-5 text-[12px] sm:text-[14px] bg-white border border-slate-100 shadow-sm rounded-xl sm:rounded-2xl p-4 sm:p-6">
-                        <div className="flex justify-between items-center"><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] sm:text-[11px]">Director</span><span className="font-bold text-slate-800">{selectedCompany.head_name || "Unassigned"}</span></div>
-                        <div className="flex justify-between items-center pt-3 sm:pt-5 border-t border-slate-50"><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] sm:text-[11px]">Phone</span><span className="font-bold text-slate-800">{selectedCompany.phone || "--"}</span></div>
+                      <div className="space-y-3 sm:space-y-4 text-[12px] sm:text-[13px] bg-white border border-slate-100 shadow-sm rounded-xl sm:rounded-xl p-4 sm:p-5">
+                        <div className="flex justify-between items-center"><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] sm:text-[10px]">Director</span><span className="font-bold text-slate-800">{selectedCompany.head_name || "Unassigned"}</span></div>
+                        <div className="flex justify-between items-center pt-3 sm:pt-4 border-t border-slate-50"><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] sm:text-[10px]">Phone</span><span className="font-bold text-slate-800">{selectedCompany.phone || "--"}</span></div>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex-1 flex flex-col justify-center space-y-6 sm:space-y-8 pb-2 sm:pb-4">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 sm:gap-6 pb-4 sm:pb-6 border-b border-slate-100 w-full">
+                    <div className="flex-1 flex flex-col space-y-5 sm:space-y-6 pb-2 sm:pb-4">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 sm:gap-5 pb-4 sm:pb-5 border-b border-slate-100 w-full">
                         
                         <div className="relative shrink-0 mx-auto sm:mx-0">
                           <input type="file" accept="image/*" ref={fileInputRef} onChange={handleLogoSelect} className="hidden" />
-                          <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl sm:rounded-[1.5rem] border-[3px] border-white shadow-md bg-slate-50 flex flex-col items-center justify-center text-slate-300 overflow-hidden relative ring-4 ring-slate-50">
-                            {displayLogo ? <img src={displayLogo} alt="Logo" className="h-full w-full object-contain p-2 sm:p-3" /> : <Building2 className="h-8 w-8 sm:h-10 sm:w-10 opacity-50"/>}
+                          <div className="h-20 w-20 sm:h-20 sm:w-20 rounded-2xl sm:rounded-[1.25rem] border-[3px] border-white shadow-md bg-slate-50 flex flex-col items-center justify-center text-slate-300 overflow-hidden relative ring-4 ring-slate-50">
+                            {displayLogo ? <img src={displayLogo} alt="Logo" className="h-full w-full object-contain p-2 sm:p-3" /> : <Building2 className="h-8 w-8 sm:h-8 sm:w-8 opacity-50"/>}
                           </div>
                           
                           <button 
                             type="button"
                             onClick={() => setShowLogoMenu(!showLogoMenu)} 
-                            className="absolute -bottom-2 -right-2 h-8 w-8 sm:h-9 sm:w-9 bg-blue-600 border-2 border-white rounded-full flex items-center justify-center text-white hover:bg-blue-700 shadow-md transition-all active:scale-95 z-10"
+                            className="absolute -bottom-2 -right-2 h-8 w-8 sm:h-8 sm:w-8 bg-blue-600 border-2 border-white rounded-full flex items-center justify-center text-white hover:bg-blue-700 shadow-md transition-all active:scale-95 z-10"
                           >
-                            <Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4"/>
+                            <Edit3 className="h-3.5 w-3.5 sm:h-3.5 sm:w-3.5"/>
                           </button>
 
                           <AnimatePresence>
@@ -604,13 +604,13 @@ export default function DashboardPage() {
                                   animate={{ opacity: 1, y: 0, scale: 1 }} 
                                   exit={{ opacity: 0, y: 5, scale: 0.95 }} 
                                   transition={{ duration: 0.15 }}
-                                  className="absolute top-full mt-3 left-1/2 -translate-x-1/2 w-44 sm:w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-[20] py-1"
+                                  className="absolute top-full mt-3 left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 w-44 sm:w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-[50] py-1"
                                 >
-                                  <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full flex items-center gap-2 px-4 py-2.5 sm:py-3 text-[12px] sm:text-sm font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                                  <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full flex items-center gap-2 px-4 py-2.5 sm:py-3 text-[12px] sm:text-[13px] font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
                                     <ImagePlus className="h-3.5 w-3.5 sm:h-4 sm:w-4"/> Upload Logo
                                   </button>
                                   {displayLogo && (
-                                    <button type="button" onClick={handleRemoveLogo} className="w-full flex items-center gap-2 px-4 py-2.5 sm:py-3 text-[12px] sm:text-sm font-bold text-rose-600 hover:bg-rose-50 transition-colors border-t border-slate-50">
+                                    <button type="button" onClick={handleRemoveLogo} className="w-full flex items-center gap-2 px-4 py-2.5 sm:py-3 text-[12px] sm:text-[13px] font-bold text-rose-600 hover:bg-rose-50 transition-colors border-t border-slate-50">
                                       <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4"/> Remove Logo
                                     </button>
                                   )}
@@ -621,16 +621,16 @@ export default function DashboardPage() {
                         </div>
 
                         <div className="flex-1 w-full">
-                          <label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-2 sm:mb-3 px-1">Company Name</label>
-                          <input type="text" value={companyFormData.name} onChange={(e) => setCompanyFormData({...companyFormData, name: e.target.value})} className="w-full h-12 sm:h-14 rounded-xl border border-slate-200 bg-white px-4 sm:px-5 text-[14px] sm:text-[16px] font-bold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" />
+                          <label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Company Name</label>
+                          <input type="text" value={companyFormData.name} onChange={(e) => setCompanyFormData({...companyFormData, name: e.target.value})} className="w-full h-12 sm:h-12 rounded-xl border border-slate-200 bg-white px-4 sm:px-4 text-[13px] sm:text-[14px] font-bold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 sm:gap-6">
-                        <div><label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Industry</label><input type="text" value={companyFormData.area} onChange={(e) => setCompanyFormData({...companyFormData, area: e.target.value})} className="w-full h-12 sm:h-14 rounded-xl border border-slate-200 bg-white px-4 sm:px-5 text-[13px] sm:text-[15px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
-                        <div><label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Director</label><input type="text" value={companyFormData.head_name} onChange={(e) => setCompanyFormData({...companyFormData, head_name: e.target.value})} className="w-full h-12 sm:h-14 rounded-xl border border-slate-200 bg-white px-4 sm:px-5 text-[13px] sm:text-[15px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
-                        <div><label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Phone</label><input type="text" value={companyFormData.phone} onChange={(e) => setCompanyFormData({...companyFormData, phone: e.target.value})} className="w-full h-12 sm:h-14 rounded-xl border border-slate-200 bg-white px-4 sm:px-5 text-[13px] sm:text-[15px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
-                        <div><label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Website URL</label><input type="url" value={companyFormData.website_url} onChange={(e) => setCompanyFormData({...companyFormData, website_url: e.target.value})} className="w-full h-12 sm:h-14 rounded-xl border border-slate-200 bg-white px-4 sm:px-5 text-[13px] sm:text-[15px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
+                      <div className="grid grid-cols-2 gap-4 sm:gap-5">
+                        <div><label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Industry</label><input type="text" value={companyFormData.area} onChange={(e) => setCompanyFormData({...companyFormData, area: e.target.value})} className="w-full h-12 sm:h-12 rounded-xl border border-slate-200 bg-white px-4 sm:px-4 text-[13px] sm:text-[13px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
+                        <div><label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Director</label><input type="text" value={companyFormData.head_name} onChange={(e) => setCompanyFormData({...companyFormData, head_name: e.target.value})} className="w-full h-12 sm:h-12 rounded-xl border border-slate-200 bg-white px-4 sm:px-4 text-[13px] sm:text-[13px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
+                        <div><label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Phone</label><input type="text" value={companyFormData.phone} onChange={(e) => setCompanyFormData({...companyFormData, phone: e.target.value})} className="w-full h-12 sm:h-12 rounded-xl border border-slate-200 bg-white px-4 sm:px-4 text-[13px] sm:text-[13px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
+                        <div><label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Website URL</label><input type="url" value={companyFormData.website_url} onChange={(e) => setCompanyFormData({...companyFormData, website_url: e.target.value})} className="w-full h-12 sm:h-12 rounded-xl border border-slate-200 bg-white px-4 sm:px-4 text-[13px] sm:text-[13px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
                       </div>
                     </div>
                   )}
@@ -640,10 +640,10 @@ export default function DashboardPage() {
                   {companyModalMode === 'view' && selectedCompany ? (
                     <div className="space-y-3">
                       <div className="hidden sm:flex flex-col sm:flex-row gap-2 sm:gap-3">
-                        {selectedCompany.website_url && <a href={selectedCompany.website_url.startsWith('http') ? selectedCompany.website_url : `https://${selectedCompany.website_url}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center h-11 sm:h-12 rounded-xl bg-white text-slate-700 border border-slate-200 font-bold text-[12px] sm:text-[13px] hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all"><Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2 text-slate-400"/> Website</a>}
-                        <button onClick={openEditCompany} className="flex-1 h-11 sm:h-12 flex items-center justify-center bg-white border border-slate-200 text-slate-700 font-bold text-[12px] sm:text-[13px] rounded-xl hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all"><Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2 text-slate-400"/> Edit Data</button>
+                        {selectedCompany.website_url && <a href={selectedCompany.website_url.startsWith('http') ? selectedCompany.website_url : `https://${selectedCompany.website_url}`} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center h-11 sm:h-11 rounded-xl bg-white text-slate-700 border border-slate-200 font-bold text-[12px] sm:text-[13px] hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all"><Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2 text-slate-400"/> Website</a>}
+                        <button onClick={openEditCompany} className="flex-1 h-11 sm:h-11 flex items-center justify-center bg-white border border-slate-200 text-slate-700 font-bold text-[12px] sm:text-[13px] rounded-xl hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all"><Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2 text-slate-400"/> Edit Data</button>
                       </div>
-                      <button onClick={handleEnterWorkspace} className="w-full bg-gradient-to-r from-blue-900 to-indigo-800 text-white hover:shadow-lg hover:-translate-y-0.5 rounded-xl h-10 sm:h-14 font-bold text-[12px] sm:text-[14px] transition-all flex items-center justify-center group shadow-md shadow-blue-900/20">
+                      <button onClick={handleEnterWorkspace} className="w-full bg-gradient-to-r from-blue-900 to-indigo-800 text-white hover:shadow-lg hover:-translate-y-0.5 rounded-xl h-10 sm:h-12 font-bold text-[12px] sm:text-[13px] transition-all flex items-center justify-center group shadow-md shadow-blue-900/20">
                         Enter Workspace <LogIn className="h-3.5 w-3.5 sm:h-4 sm:w-4 ml-2 group-hover:translate-x-1 transition-transform"/>
                       </button>
                     </div>

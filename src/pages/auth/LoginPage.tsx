@@ -8,14 +8,14 @@ import { supabase } from "../../supabase";
 
 // --- DYNAMIC WARDROBE ENGINE ---
 const COLOR_PALETTES = [
-  { body: "#0ea5e9", arm: "#38bdf8", legFront: "#64748b", legBack: "#475569" }, // Corporate Blue
-  { body: "#10b981", arm: "#34d399", legFront: "#4b5563", legBack: "#374151" }, // Emerald Green
-  { body: "#f43f5e", arm: "#fb7185", legFront: "#334155", legBack: "#1e293b" }, // Rose Red
-  { body: "#8b5cf6", arm: "#a78bfa", legFront: "#1e293b", legBack: "#0f172a" }, // Deep Violet
-  { body: "#f59e0b", arm: "#fbbf24", legFront: "#3f3f46", legBack: "#27272a" }, // Amber Yellow
-  { body: "#14b8a6", arm: "#5eead4", legFront: "#1e3a8a", legBack: "#172554" }, // Teal & Navy
-  { body: "#6366f1", arm: "#818cf8", legFront: "#4b5563", legBack: "#374151" }, // Indigo
-  { body: "#ec4899", arm: "#f472b6", legFront: "#1e293b", legBack: "#0f172a" }, // Vibrant Pink
+  { body: "#0ea5e9", arm: "#38bdf8", legFront: "#64748b", legBack: "#475569" }, 
+  { body: "#10b981", arm: "#34d399", legFront: "#4b5563", legBack: "#374151" }, 
+  { body: "#f43f5e", arm: "#fb7185", legFront: "#334155", legBack: "#1e293b" }, 
+  { body: "#8b5cf6", arm: "#a78bfa", legFront: "#1e293b", legBack: "#0f172a" }, 
+  { body: "#f59e0b", arm: "#fbbf24", legFront: "#3f3f46", legBack: "#27272a" }, 
+  { body: "#14b8a6", arm: "#5eead4", legFront: "#1e3a8a", legBack: "#172554" }, 
+  { body: "#6366f1", arm: "#818cf8", legFront: "#4b5563", legBack: "#374151" }, 
+  { body: "#ec4899", arm: "#f472b6", legFront: "#1e293b", legBack: "#0f172a" }, 
 ];
 
 const SKIN_TONES = ["#fdba74", "#fca5a5", "#fcd34d", "#d6d3d1", "#e7e5e4", "#fbcfe8"];
@@ -24,7 +24,6 @@ const HAIR_COLORS = ["#1e293b", "#451a03", "#713f12", "#171717", "#fcd34d", "#94
 // --- MATHEMATICAL BACKGROUND GEOMETRY ---
 const BackgroundGeometry = () => (
   <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 flex items-center justify-center">
-    {/* Architectural Blueprint Grid */}
     <div 
       className="absolute inset-0 opacity-[0.3]" 
       style={{ 
@@ -32,8 +31,6 @@ const BackgroundGeometry = () => (
         backgroundSize: '40px 40px' 
       }} 
     />
-    
-    {/* Intersecting Vectors and Concentric Rings (Hidden on mobile for minimalism) */}
     <svg className="absolute w-full h-full opacity-40 hidden md:block" xmlns="http://www.w3.org/2000/svg">
       <line x1="0" y1="100%" x2="100%" y2="0" stroke="#94a3b8" strokeWidth="0.5" />
       <line x1="0" y1="0" x2="100%" y2="100%" stroke="#94a3b8" strokeWidth="0.5" />
@@ -132,6 +129,9 @@ export default function LoginPage() {
   const [selectedCompany, setSelectedCompany] = useState("");
   const [companiesDb, setCompaniesDb] = useState<{id: number, name: string, logo_url: string | null}[]>([]);
   const [headUsers, setHeadUsers] = useState<{name: string, email: string}[]>([]);
+  
+  // NEW: State to store the Master Admin's logo
+  const [adminLogo, setAdminLogo] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -141,12 +141,26 @@ export default function LoginPage() {
   
   const signIn = useAuthStore((state) => state.signIn);
 
+  // Fetch Companies & Admin Profile Image
   useEffect(() => {
-    const fetchCompanies = async () => {
-      const { data } = await supabase.from('companies').select('id, name, logo_url');
-      if (data) setCompaniesDb(data);
+    const fetchInitialData = async () => {
+      // 1. Fetch Companies
+      const { data: compData } = await supabase.from('companies').select('id, name, logo_url');
+      if (compData) setCompaniesDb(compData);
+
+      // 2. Fetch Master Admin Logo
+      const { data: adminData } = await supabase
+        .from('employees')
+        .select('profile_image_url')
+        .eq('access_level', 'admin')
+        .limit(1)
+        .single();
+      
+      if (adminData && adminData.profile_image_url) {
+        setAdminLogo(adminData.profile_image_url);
+      }
     };
-    fetchCompanies();
+    fetchInitialData();
   }, []);
 
   const activeCompanyObj = useMemo(() => companiesDb.find(c => c.name === selectedCompany), [selectedCompany, companiesDb]);
@@ -217,9 +231,15 @@ export default function LoginPage() {
   return (
     <div className="min-h-[100dvh] w-full bg-[#f4f7f9] flex flex-col relative overflow-hidden font-sans">
       
-      {/* Top Header Logo - Supreme Z-Index */}
+      {/* Top Header Logo - Now rendering the Admin Logo dynamically */}
       <header className="absolute top-6 left-6 lg:top-10 lg:left-12 z-[110] flex items-center gap-3">
-        <div className="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md shadow-blue-600/20">Z</div>
+        <div className="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md shadow-blue-600/20 overflow-hidden shrink-0">
+          {adminLogo ? (
+            <img src={adminLogo} alt="Admin Logo" className="h-full w-full object-cover" />
+          ) : (
+            "Z"
+          )}
+        </div>
         <span className="font-bold text-xl text-slate-800 tracking-tight">Zayd Industries</span>
       </header>
 
