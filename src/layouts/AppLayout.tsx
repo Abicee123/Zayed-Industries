@@ -80,6 +80,25 @@ export default function AppLayout() {
     prevMessageCount.current = messages.length;
   }, [messages, employeeId, activeContact, employees]);
 
+  // --- DYNAMIC FAVICON ENGINE ---
+  useEffect(() => {
+    // A dynamic SVG fallback: A sleek blue rounded square with a bold white "Z"
+    const fallbackFavicon = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="%231e3a8a"/><text x="50" y="73" font-size="72" font-family="system-ui, sans-serif" font-weight="900" fill="%23ffffff" text-anchor="middle">Z</text></svg>';
+    
+    // Choose the admin profile picture, or the dynamic fallback
+    const faviconUrl = masterAdmin?.profile_image_url || fallbackFavicon;
+
+    // Find existing favicon or create one
+    let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = faviconUrl;
+  }, [masterAdmin?.profile_image_url]);
+  // ------------------------------
+
   const handleSelectContact = async (contact: any) => {
     setActiveContact(contact);
     const hasUnread = messages.some(m => m.sender_id == contact.id && m.receiver_id == employeeId && !m.is_read);
