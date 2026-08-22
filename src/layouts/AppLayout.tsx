@@ -82,8 +82,8 @@ export default function AppLayout() {
 
   // --- DYNAMIC FAVICON ENGINE ---
   useEffect(() => {
-    // A dynamic SVG fallback: A sleek blue rounded square with a bold white "Z"
-    const fallbackFavicon = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="%231e3a8a"/><text x="50" y="73" font-size="72" font-family="system-ui, sans-serif" font-weight="900" fill="%23ffffff" text-anchor="middle">Z</text></svg>';
+    // NEW: Corporate Business/Growth Chart Symbol SVG Fallback
+    const fallbackFavicon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%231e3a8a'/%3E%3Crect x='25' y='50' width='12' height='30' rx='2' fill='%2360a5fa'/%3E%3Crect x='44' y='35' width='12' height='45' rx='2' fill='%233b82f6'/%3E%3Crect x='63' y='20' width='12' height='60' rx='2' fill='%23bfdbfe'/%3E%3C/svg%3E";
     
     // Choose the admin profile picture, or the dynamic fallback
     const faviconUrl = masterAdmin?.profile_image_url || fallbackFavicon;

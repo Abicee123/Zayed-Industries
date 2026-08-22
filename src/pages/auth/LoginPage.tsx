@@ -130,7 +130,7 @@ export default function LoginPage() {
   const [companiesDb, setCompaniesDb] = useState<{id: number, name: string, logo_url: string | null}[]>([]);
   const [headUsers, setHeadUsers] = useState<{name: string, email: string}[]>([]);
   
-  // NEW: State to store the Master Admin's logo
+  // State to store the Master Admin's logo
   const [adminLogo, setAdminLogo] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
@@ -141,7 +141,7 @@ export default function LoginPage() {
   
   const signIn = useAuthStore((state) => state.signIn);
 
-  // Fetch Companies & Admin Profile Image
+  // Fetch Companies & Admin Profile Image (and update favicon!)
   useEffect(() => {
     const fetchInitialData = async () => {
       // 1. Fetch Companies
@@ -156,9 +156,22 @@ export default function LoginPage() {
         .limit(1)
         .single();
       
+      const fallbackFavicon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%231e3a8a'/%3E%3Crect x='25' y='50' width='12' height='30' rx='2' fill='%2360a5fa'/%3E%3Crect x='44' y='35' width='12' height='45' rx='2' fill='%233b82f6'/%3E%3Crect x='63' y='20' width='12' height='60' rx='2' fill='%23bfdbfe'/%3E%3C/svg%3E";
+      let currentFavicon = fallbackFavicon;
+
       if (adminData && adminData.profile_image_url) {
         setAdminLogo(adminData.profile_image_url);
+        currentFavicon = adminData.profile_image_url;
       }
+
+      // 3. Update the Tab Favicon Dynamically
+      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = currentFavicon;
     };
     fetchInitialData();
   }, []);
@@ -231,13 +244,17 @@ export default function LoginPage() {
   return (
     <div className="min-h-[100dvh] w-full bg-[#f4f7f9] flex flex-col relative overflow-hidden font-sans">
       
-      {/* Top Header Logo - Now rendering the Admin Logo dynamically */}
+      {/* Top Header Logo */}
       <header className="absolute top-6 left-6 lg:top-10 lg:left-12 z-[110] flex items-center gap-3">
-        <div className="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md shadow-blue-600/20 overflow-hidden shrink-0">
+        <div className="h-10 w-10 bg-blue-900 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md shadow-blue-900/20 overflow-hidden shrink-0">
           {adminLogo ? (
             <img src={adminLogo} alt="Admin Logo" className="h-full w-full object-cover" />
           ) : (
-            "Z"
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="h-6 w-6">
+              <rect x="15" y="50" width="16" height="35" rx="4" fill="#60a5fa" />
+              <rect x="42" y="30" width="16" height="55" rx="4" fill="#3b82f6" />
+              <rect x="69" y="10" width="16" height="75" rx="4" fill="#bfdbfe" />
+            </svg>
           )}
         </div>
         <span className="font-bold text-xl text-slate-800 tracking-tight">Zayd Industries</span>
@@ -251,10 +268,10 @@ export default function LoginPage() {
       {/* Dynamic Background Walkers */}
       <BackgroundWalkers companies={companiesDb} />
 
-      {/* Main Content Area - Z-[100] forces this completely above the walkers */}
+      {/* Main Content Area */}
       <div className="flex-1 flex items-center justify-center p-4 relative z-[100]">
         
-        {/* The Card - Locked Size */}
+        {/* The Card */}
         <div className="w-full max-w-[460px] h-[520px] sm:h-[600px] bg-white/95 backdrop-blur-md rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] border border-white p-6 sm:p-10 flex flex-col relative">
           
           <div className="relative text-center mb-8 mt-2 shrink-0">
@@ -421,7 +438,7 @@ export default function LoginPage() {
             </AnimatePresence>
           </div>
 
-          {/* NEW FOOTER: Idea 1 - Minimalist */}
+          {/* FOOTER */}
           <div className="mt-auto shrink-0 pt-4 pb-1 text-center border-t border-transparent">
             <p className="text-[11px] font-medium text-slate-400">
               © 2026 Zayd Industries Pvt. Limited
