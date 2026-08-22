@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, TrendingUp, Wallet, Building2, Plus, X, Receipt, CheckCircle2, UserSquare2, FileText, ArrowDownLeft, ArrowUpRight, Users } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
@@ -235,10 +236,13 @@ export default function FinancePage() {
           </div>
         )}
 
-        {/* --- PROJECT FINANCIAL DETAILS MODAL --- */}
+      </div>
+
+      {/* --- PROJECT FINANCIAL DETAILS MODAL (PORTALED) --- */}
+      {typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           {selectedProjectDetails && (
-            <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm print:hidden">
+            <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm print:hidden">
               <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl max-h-full sm:max-h-[92vh] flex flex-col overflow-hidden border border-slate-100 mt-auto sm:mt-0">
                 
                 <div className="px-5 sm:px-8 py-5 sm:py-6 border-b border-slate-100 bg-[#FAFCFF] shrink-0">
@@ -400,13 +404,15 @@ export default function FinancePage() {
               </motion.div>
             </div>
           )}
-        </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
 
-        {/* --- ADD EXPENSE MODAL --- */}
+      {/* --- ADD EXPENSE MODAL (PORTALED) --- */}
+      {typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           {isExpenseModalOpen && (
-            <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm print:hidden">
-              {/* CRITICAL FIX: Locked modal to standard h-full sm:h-[700px] sm:max-h-[85svh] */}
+            <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm print:hidden">
               <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-lg h-full sm:h-[700px] sm:max-h-[85svh] flex flex-col overflow-hidden border border-slate-100 mt-auto sm:mt-0">
                 <div className="px-5 sm:px-8 pt-5 sm:pt-7 border-b border-slate-100 bg-[#FAFCFF] shrink-0">
                   <div className="flex items-center justify-between mb-4 sm:mb-5">
@@ -418,7 +424,6 @@ export default function FinancePage() {
                   </div>
                 </div>
                 
-                {/* CRITICAL FIX: Added flex-col to scroll wrapper, wrapped inputs in justify-center */}
                 <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                    <div className="flex-1 flex flex-col justify-center space-y-4 sm:space-y-5 pb-2">
                      {role === 'admin' && !activeWorkspace && (
@@ -445,9 +450,10 @@ export default function FinancePage() {
               </motion.div>
             </div>
           )}
-        </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
 
-      </div>
     </>
   );
 }
