@@ -254,11 +254,12 @@ export default function AppLayout() {
           </main>
         </div>
 
-        {/* --- MOBILE BOTTOM DOCK (Hidden on Desktop) --- */}
-        <div className="sm:hidden fixed bottom-6 left-4 right-4 z-[60] print:hidden">
-           <div className="bg-[#0f172a]/95 backdrop-blur-2xl rounded-[2rem] p-1.5 flex items-center shadow-[0_20px_40px_rgba(0,0,0,0.3)] border border-slate-800 overflow-x-auto [&::-webkit-scrollbar]:hidden gap-1">
+        {/* --- CRITICAL FIX: MOBILE BOTTOM DOCK (Dynamic iOS-Style Centered Pill) --- */}
+        <div className="sm:hidden fixed bottom-6 left-0 right-0 z-[60] flex justify-center pointer-events-none px-4 print:hidden">
+           {/* The pointer-events-auto puts the click ability ONLY on the dock, allowing you to scroll the page outside of it */}
+           <div className="pointer-events-auto max-w-full bg-[#0f172a]/95 backdrop-blur-2xl rounded-[2rem] p-1.5 flex items-center justify-start shadow-[0_20px_40px_rgba(0,0,0,0.3)] border border-slate-800 overflow-x-auto [&::-webkit-scrollbar]:hidden gap-1">
               {visibleLinks.map((link) => (
-                <NavLink key={link.path} to={link.path} className={({ isActive }) => `flex flex-col items-center justify-center shrink-0 min-w-[64px] h-14 rounded-2xl transition-all ${isActive ? 'bg-blue-600/20 text-blue-400' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}>
+                <NavLink key={link.path} to={link.path} className={({ isActive }) => `flex flex-col items-center justify-center shrink-0 min-w-[72px] h-14 rounded-2xl transition-all ${isActive ? 'bg-blue-600/20 text-blue-400' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}>
                   {({ isActive }) => (
                     <>
                       <link.icon className={`h-5 w-5 mb-1 transition-all ${isActive ? 'text-blue-400 drop-shadow-md' : 'text-slate-400'}`} />
@@ -395,7 +396,6 @@ export default function AppLayout() {
             dragMomentum={false} 
             whileDrag={{ scale: 1.1, cursor: "grabbing" }}
             initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} onClick={() => setIsChatOpen(true)} 
-            // Bumped z-index up to 65 so it floats above the z-60 dock if dragged over it
             className="fixed bottom-28 right-5 sm:bottom-10 sm:right-10 z-[65] sm:z-[70] h-14 w-14 sm:h-16 sm:w-16 bg-gradient-to-br from-blue-900 to-indigo-800 rounded-full flex items-center justify-center text-white shadow-xl shadow-blue-900/30 hover:shadow-2xl hover:-translate-y-1 transition-all border-[3px] border-[#FAFCFF] print:hidden cursor-grab active:cursor-grabbing"
           >
             <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6" />
