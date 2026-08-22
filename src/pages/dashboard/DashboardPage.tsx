@@ -1,15 +1,53 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Building2, Plus, ArrowRight, X, Camera, Globe, Trash2, Edit3, LogIn, Clock, CheckCircle2, Megaphone, Bell } from "lucide-react";
+import { Building2, Plus, ArrowRight, X, Globe, Trash2, Edit3, LogIn, Clock, CheckCircle2, Megaphone, Bell, Loader2, ImagePlus } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { useDataStore } from "../../store/dataStore";
 import { supabase } from "../../supabase";
 
+// --- NATIVE IMAGE COMPRESSION ENGINE ---
+const compressImage = async (file: File, maxWidth = 400, quality = 0.8): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+        }
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: 'image/jpeg', lastModified: Date.now() }));
+          } else {
+            reject(new Error('Compression failed'));
+          }
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
+
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { role, user, activeWorkspace, setActiveWorkspace, employeeId, companyId } = useAuthStore();
-  const { companies, employees, projects, tasks, invoices, salaryPayments, announcements, fetchAllData } = useDataStore();
+  const { role, activeWorkspace, setActiveWorkspace, employeeId, companyId } = useAuthStore();
+  const { companies, employees, projects, invoices, salaryPayments, announcements, fetchAllData } = useDataStore();
 
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
   const [companyModalMode, setCompanyModalMode] = useState<"view" | "edit" | "add">("view");
@@ -22,7 +60,11 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [removeLogo, setRemoveLogo] = useState(false);
+  const [showLogoMenu, setShowLogoMenu] = useState(false);
+  
+  const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "compressing" | "uploading" | "saving">("idle");
   const [companyFormData, setCompanyFormData] = useState({ name: "", area: "", head_name: "", phone: "", website_url: "", logo_url: "" });
 
   const activeCompanyId = activeWorkspace || companyId;
@@ -38,41 +80,124 @@ export default function DashboardPage() {
     }
   }, [announcements, activeCompanyId]);
 
-  const openAddCompany = () => { setCompanyModalMode("add"); setSelectedCompany(null); setLogoFile(null); setLogoPreview(null); setCompanyFormData({ name: "", area: "", head_name: "", phone: "", website_url: "", logo_url: "" }); setIsCompanyModalOpen(true); };
-  const openViewCompany = (company: any) => { setCompanyModalMode("view"); setSelectedCompany(company); setIsCompanyModalOpen(true); };
-  const openEditCompany = () => { setCompanyModalMode("edit"); setLogoFile(null); setLogoPreview(null); setCompanyFormData({ name: selectedCompany.name || "", area: selectedCompany.area || "", head_name: selectedCompany.head_name || "", phone: selectedCompany.phone || "", website_url: selectedCompany.website_url || "", logo_url: selectedCompany.logo_url || "" }); };
+  const openAddCompany = () => { 
+    setCompanyModalMode("add"); setSelectedCompany(null); 
+    setLogoFile(null); setLogoPreview(null); setRemoveLogo(false); setShowLogoMenu(false);
+    setCompanyFormData({ name: "", area: "", head_name: "", phone: "", website_url: "", logo_url: "" }); 
+    setIsCompanyModalOpen(true); 
+  };
+  
+  const openViewCompany = (company: any) => { 
+    setCompanyModalMode("view"); setSelectedCompany(company); 
+    setIsCompanyModalOpen(true); 
+  };
+  
+  const openEditCompany = () => { 
+    setCompanyModalMode("edit"); 
+    setLogoFile(null); setLogoPreview(null); setRemoveLogo(false); setShowLogoMenu(false);
+    setCompanyFormData({ name: selectedCompany.name || "", area: selectedCompany.area || "", head_name: selectedCompany.head_name || "", phone: selectedCompany.phone || "", website_url: selectedCompany.website_url || "", logo_url: selectedCompany.logo_url || "" }); 
+  };
 
-  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => { if (e.target.files && e.target.files[0]) { setLogoFile(e.target.files[0]); setLogoPreview(URL.createObjectURL(e.target.files[0])); } };
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => { 
+    if (e.target.files && e.target.files[0]) { 
+      setLogoFile(e.target.files[0]); 
+      setLogoPreview(URL.createObjectURL(e.target.files[0])); 
+      setRemoveLogo(false);
+      setShowLogoMenu(false);
+    } 
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoFile(null);
+    setLogoPreview(null);
+    setRemoveLogo(true);
+    setShowLogoMenu(false);
+  };
+
+  // --- GARBAGE COLLECTION UTILITY ---
+  const deleteOldLogo = async (url: string | null) => {
+    if (!url) return;
+    try {
+      const urlParts = url.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      if (fileName) await supabase.storage.from('logos').remove([fileName]);
+    } catch (e) {
+      console.warn("Could not delete old logo.");
+    }
+  };
 
   const handleSaveCompany = async () => {
     if (!companyFormData.name) return alert("Company Name is required.");
-    setIsSaving(true);
+    setSaveStatus("saving");
     let finalLogoUrl = selectedCompany?.logo_url || null;
+    
     try {
-      if (logoFile) {
-        const fileExt = logoFile.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage.from('logos').upload(fileName, logoFile);
-        if (!uploadError) { const { data } = supabase.storage.from('logos').getPublicUrl(fileName); finalLogoUrl = data.publicUrl; } else { alert(`Logo Upload Error: ${uploadError.message}`); setIsSaving(false); return; }
+      if (logoFile || removeLogo) {
+        if (selectedCompany?.logo_url) {
+          await deleteOldLogo(selectedCompany.logo_url);
+        }
       }
+
+      if (logoFile) {
+        setSaveStatus("compressing");
+        const compressedFile = await compressImage(logoFile, 400, 0.8);
+        
+        setSaveStatus("uploading");
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.jpg`;
+        const { error: uploadError } = await supabase.storage.from('logos').upload(fileName, compressedFile);
+        
+        if (!uploadError) { 
+          const { data } = supabase.storage.from('logos').getPublicUrl(fileName); 
+          finalLogoUrl = data.publicUrl; 
+        } else { 
+          alert(`Logo Upload Error: ${uploadError.message}`); 
+          setSaveStatus("idle"); 
+          return; 
+        }
+      } else if (removeLogo) {
+        finalLogoUrl = null;
+      }
+      
+      setSaveStatus("saving");
       const payload = { name: companyFormData.name, area: companyFormData.area, head_name: companyFormData.head_name, phone: companyFormData.phone, website_url: companyFormData.website_url, logo_url: finalLogoUrl };
-      if (companyModalMode === 'add') { const { error } = await supabase.from('companies').insert([payload]); if (error) throw error; } else { const { error } = await supabase.from('companies').update(payload).eq('id', selectedCompany.id); if (error) throw error; }
-      await fetchAllData(); setIsCompanyModalOpen(false);
-    } catch (error: any) { alert(`Database Error: ${error.message}`); } finally { setIsSaving(false); }
+      
+      if (companyModalMode === 'add') { 
+        const { error } = await supabase.from('companies').insert([payload]); 
+        if (error) throw error; 
+      } else { 
+        const { error } = await supabase.from('companies').update(payload).eq('id', selectedCompany.id); 
+        if (error) throw error; 
+      }
+      
+      await fetchAllData(); 
+      setIsCompanyModalOpen(false);
+    } catch (error: any) { 
+      alert(`Database Error: ${error.message}`); 
+    } finally { 
+      setSaveStatus("idle"); 
+    }
   };
 
   const handleDeleteCompany = async () => { 
     if (!window.confirm(`Delete ${selectedCompany.name}?`)) return; 
-    setIsSaving(true); 
-    await supabase.from('companies').delete().eq('id', selectedCompany.id); 
-    await fetchAllData(); 
-    setIsCompanyModalOpen(false); 
-    setIsSaving(false); 
+    setSaveStatus("saving"); 
+    try {
+      if (selectedCompany.logo_url) {
+        await deleteOldLogo(selectedCompany.logo_url);
+      }
+      await supabase.from('companies').delete().eq('id', selectedCompany.id); 
+      await fetchAllData(); 
+      setIsCompanyModalOpen(false); 
+    } catch (error: any) {
+      alert(`Error: ${error.message}`);
+    } finally {
+      setSaveStatus("idle"); 
+    }
   };
 
   const handlePostAnnouncement = async () => {
     if (!announcementForm.title.trim() || !announcementForm.content.trim()) return alert("Both title and content are required.");
-    setIsSaving(true);
+    setIsSavingAnnouncement(true);
     const payload = {
       title: announcementForm.title,
       content: announcementForm.content,
@@ -82,7 +207,7 @@ export default function DashboardPage() {
     await fetchAllData();
     setAnnouncementForm({ title: "", content: "", company_id: "all" });
     setIsAnnouncementModalOpen(false);
-    setIsSaving(false);
+    setIsSavingAnnouncement(false);
   };
 
   const handleDeleteAnnouncement = async (id: number) => {
@@ -112,10 +237,13 @@ export default function DashboardPage() {
   const mySalaries = salaryPayments.filter(s => s.employee_id === employeeId).sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime());
   const lastSalary = mySalaries[0];
 
+  const displayLogo = logoPreview || (!removeLogo && selectedCompany?.logo_url ? selectedCompany.logo_url : null);
+
   if (role === 'admin' && !isImpersonating) {
     return (
       <>
-        <div className="max-w-[1200px] mx-auto space-y-8 sm:space-y-10 animate-in fade-in duration-700">
+        <div className="max-w-[1200px] mx-auto space-y-8 sm:space-y-10 animate-in fade-in duration-700 relative z-0">
+          
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6">
             <div>
               <p className="text-[9px] sm:text-[11px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-2 bg-blue-50 inline-block px-3 py-1 rounded-full">Admin Dashboard</p>
@@ -175,36 +303,46 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* MODAL: Announcements (Fixed overlay) */}
+        {/* MODAL: Announcements (Native OS Fixed Size) */}
         <AnimatePresence>
           {isAnnouncementModalOpen && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-              <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} className="bg-white max-sm:rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col max-h-[85svh]">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setIsAnnouncementModalOpen(false)}
+              className="fixed inset-0 z-[100] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm"
+            >
+              <motion.div 
+                initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} 
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-lg flex flex-col overflow-hidden border border-slate-100 h-full sm:h-[700px] sm:max-h-[85svh] mt-auto sm:mt-0"
+              >
                 <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-50 bg-[#FAFCFF] shrink-0">
                   <h3 className="text-[10px] sm:text-[13px] font-bold text-slate-800 uppercase tracking-wider">Manage Announcements</h3>
-                  <button onClick={() => setIsAnnouncementModalOpen(false)} className="h-7 w-7 sm:h-8 sm:w-8 bg-white border border-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 shadow-sm"><X className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                  <button onClick={() => setIsAnnouncementModalOpen(false)} className="h-7 w-7 sm:h-8 sm:w-8 bg-white border border-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 shadow-sm transition-colors"><X className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                 </div>
                 
-                <div className="p-4 sm:p-8 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  <div className="space-y-3 sm:space-y-4 mb-5 sm:mb-8">
-                    <div>
-                      <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1 sm:mb-2 px-1">Target Audience</label>
-                      <select value={announcementForm.company_id} onChange={e => setAnnouncementForm({...announcementForm, company_id: e.target.value})} className="w-full h-9 sm:h-11 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-[12px] sm:text-[14px] font-medium outline-none focus:border-blue-500 shadow-sm">
-                        <option value="all">General (All Companies)</option>
-                        {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1 sm:mb-2 px-1">Headline</label>
-                      <input type="text" value={announcementForm.title} onChange={e => setAnnouncementForm({...announcementForm, title: e.target.value})} className="w-full h-9 sm:h-11 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-[12px] sm:text-[14px] font-medium outline-none focus:border-blue-500 shadow-sm" placeholder="Important update..." />
-                    </div>
-                    <div>
-                      <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1 sm:mb-2 px-1">Message Content</label>
-                      <textarea value={announcementForm.content} onChange={e => setAnnouncementForm({...announcementForm, content: e.target.value})} className="w-full h-16 sm:h-24 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 text-[12px] sm:text-[14px] font-medium outline-none focus:border-blue-500 shadow-sm resize-none" placeholder="Provide the details..." />
+                <div className="p-4 sm:p-8 flex-1 overflow-y-auto flex flex-col max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  <div className="flex-1 flex flex-col justify-center space-y-5 sm:space-y-8 mb-5 sm:mb-8">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1 sm:mb-2 px-1">Target Audience</label>
+                        <select value={announcementForm.company_id} onChange={e => setAnnouncementForm({...announcementForm, company_id: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-[12px] sm:text-[14px] font-medium outline-none focus:border-blue-500 shadow-sm">
+                          <option value="all">General (All Companies)</option>
+                          {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1 sm:mb-2 px-1">Headline</label>
+                        <input type="text" value={announcementForm.title} onChange={e => setAnnouncementForm({...announcementForm, title: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-[12px] sm:text-[14px] font-medium outline-none focus:border-blue-500 shadow-sm" placeholder="Important update..." />
+                      </div>
+                      <div>
+                        <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1 sm:mb-2 px-1">Message Content</label>
+                        <textarea value={announcementForm.content} onChange={e => setAnnouncementForm({...announcementForm, content: e.target.value})} className="w-full h-20 sm:h-28 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 text-[12px] sm:text-[14px] font-medium outline-none focus:border-blue-500 shadow-sm resize-none" placeholder="Provide the details..." />
+                      </div>
                     </div>
                   </div>
 
-                  <div>
+                  <div className="mt-auto">
                     <h4 className="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 sm:mb-4 px-1 border-b border-slate-100 pb-2">Active Broadcasts</h4>
                     <div className="space-y-2 sm:space-y-3">
                       {announcements.length === 0 && <p className="text-[11px] sm:text-sm text-slate-400 italic">No active announcements.</p>}
@@ -225,19 +363,29 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="p-4 sm:p-6 bg-white border-t border-slate-50 shrink-0">
-                    <button onClick={handlePostAnnouncement} disabled={isSaving} className="w-full bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-10 sm:h-11 font-bold text-[11px] sm:text-[13px] shadow-md shadow-blue-900/20 hover:shadow-lg transition-all">{isSaving ? "Posting..." : "Broadcast Announcement"}</button>
+                <div className="p-4 sm:p-6 bg-white border-t border-slate-50 shrink-0 mt-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
+                    <button onClick={handlePostAnnouncement} disabled={isSavingAnnouncement} className="w-full bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-10 sm:h-12 font-bold text-[12px] sm:text-[13px] shadow-md shadow-blue-900/20 hover:shadow-lg transition-all flex items-center justify-center">
+                      {isSavingAnnouncement ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Broadcasting...</> : "Broadcast Announcement"}
+                    </button>
                 </div>
               </motion.div>
-            </div>
+            </motion.div>
           )}
         </AnimatePresence>
 
-        {/* MODAL: Edit/View Company (Fixed overlay) */}
+        {/* MODAL: Edit/View Company (Native OS Fixed Size with Centered Content & Pen Editor) */}
         <AnimatePresence>
           {isCompanyModalOpen && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-              <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} className="bg-white max-sm:rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 flex flex-col max-h-[85svh]">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setIsCompanyModalOpen(false)}
+              className="fixed inset-0 z-[100] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm"
+            >
+              <motion.div 
+                initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} 
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-lg flex flex-col overflow-hidden border border-slate-100 h-full sm:h-[700px] sm:max-h-[85svh] mt-auto sm:mt-0"
+              >
                 <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-50 bg-[#FAFCFF] shrink-0">
                   <h3 className="text-[10px] sm:text-[13px] font-bold text-slate-800 uppercase tracking-wider">{companyModalMode === 'add' ? 'Add Company' : companyModalMode === 'edit' ? 'Edit Details' : 'Company Profile'}</h3>
                   <div className="flex items-center gap-1.5 sm:gap-2">
@@ -253,63 +401,94 @@ export default function DashboardPage() {
                         </button>
                       </div>
                     )}
-                    <button onClick={() => setIsCompanyModalOpen(false)} className="h-7 w-7 sm:h-8 sm:w-8 bg-white border border-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 shadow-sm"><X className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                    <button onClick={() => setIsCompanyModalOpen(false)} className="h-7 w-7 sm:h-8 sm:w-8 bg-white border border-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 shadow-sm transition-colors"><X className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                   </div>
                 </div>
                 
-                <div className="p-4 sm:p-8 flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  {companyModalMode === 'view' && selectedCompany && (
-                    <div className="space-y-4 sm:space-y-8 pb-2 sm:pb-4">
+                <div className="p-4 sm:p-8 flex-1 overflow-y-auto flex flex-col max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {companyModalMode === 'view' && selectedCompany ? (
+                    <div className="flex-1 flex flex-col justify-center space-y-6 sm:space-y-8 pb-2 sm:pb-4">
                       <div className="flex items-center gap-3 sm:gap-5">
-                        <div className="h-12 w-12 sm:h-20 sm:w-20 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden p-2 sm:p-3 shadow-sm shrink-0">
-                          {selectedCompany.logo_url ? <img src={selectedCompany.logo_url} alt="Logo" className="h-full w-full object-contain" /> : <Building2 className="h-5 w-5 sm:h-8 sm:w-8 text-slate-300" />}
+                        <div className="h-16 w-16 sm:h-24 sm:w-24 rounded-2xl sm:rounded-[1.5rem] bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden p-2 sm:p-3 shadow-sm shrink-0">
+                          {selectedCompany.logo_url ? <img src={selectedCompany.logo_url} alt="Logo" className="h-full w-full object-contain" /> : <Building2 className="h-6 w-6 sm:h-10 sm:w-10 text-slate-300" />}
                         </div>
                         <div>
-                          <h2 className="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight">{selectedCompany.name}</h2>
-                          <p className="text-[11px] sm:text-[13px] font-medium text-slate-500 mt-0.5 sm:mt-1">{selectedCompany.area}</p>
+                          <h2 className="text-xl sm:text-3xl font-bold text-slate-900 tracking-tight">{selectedCompany.name}</h2>
+                          <p className="text-[12px] sm:text-[14px] font-medium text-slate-500 mt-1 sm:mt-1.5">{selectedCompany.area}</p>
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
-                        <div className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-2.5 sm:p-4"><p className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 sm:mb-1.5">Personnel</p><p className="text-lg sm:text-2xl font-bold text-slate-800 tracking-tight">{employees.filter(e => e.company_id === selectedCompany.id).length}</p></div>
-                        <div className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-2.5 sm:p-4"><p className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 sm:mb-1.5">Operations</p><p className="text-lg sm:text-2xl font-bold text-slate-800 tracking-tight">{projects.filter(p => p.company_id === selectedCompany.id).length}</p></div>
-                        <div className="col-span-2 sm:col-span-1 bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-2.5 sm:p-4"><p className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 sm:mb-1.5">Payroll</p><p className="text-lg sm:text-2xl font-bold text-slate-800 tracking-tight">₹{selectedCompanyPayroll.toLocaleString()}</p></div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-3 sm:p-5"><p className="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2">Personnel</p><p className="text-xl sm:text-3xl font-bold text-slate-800 tracking-tight">{employees.filter(e => e.company_id === selectedCompany.id).length}</p></div>
+                        <div className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-3 sm:p-5"><p className="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2">Operations</p><p className="text-xl sm:text-3xl font-bold text-slate-800 tracking-tight">{projects.filter(p => p.company_id === selectedCompany.id).length}</p></div>
+                        <div className="col-span-2 sm:col-span-1 bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-3 sm:p-5"><p className="text-[9px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2">Payroll</p><p className="text-xl sm:text-3xl font-bold text-slate-800 tracking-tight">₹{selectedCompanyPayroll.toLocaleString()}</p></div>
                       </div>
 
-                      <div className="space-y-2 sm:space-y-4 text-[11px] sm:text-[13px] bg-white border border-slate-100 shadow-sm rounded-xl sm:rounded-2xl p-3 sm:p-5">
-                        <div className="flex justify-between items-center"><span className="font-bold text-slate-400 uppercase tracking-wider text-[8px] sm:text-[10px]">Director</span><span className="font-bold text-slate-800">{selectedCompany.head_name || "Unassigned"}</span></div>
-                        <div className="flex justify-between items-center pt-2 sm:pt-4 border-t border-slate-50"><span className="font-bold text-slate-400 uppercase tracking-wider text-[8px] sm:text-[10px]">Phone</span><span className="font-bold text-slate-800">{selectedCompany.phone || "--"}</span></div>
+                      <div className="space-y-3 sm:space-y-5 text-[12px] sm:text-[14px] bg-white border border-slate-100 shadow-sm rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                        <div className="flex justify-between items-center"><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] sm:text-[11px]">Director</span><span className="font-bold text-slate-800">{selectedCompany.head_name || "Unassigned"}</span></div>
+                        <div className="flex justify-between items-center pt-3 sm:pt-5 border-t border-slate-50"><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] sm:text-[11px]">Phone</span><span className="font-bold text-slate-800">{selectedCompany.phone || "--"}</span></div>
                       </div>
                     </div>
-                  )}
-
-                  {(companyModalMode === 'edit' || companyModalMode === 'add') && (
-                    <div className="space-y-4 sm:space-y-6 pb-2 sm:pb-4">
-                      
-                      <div className="flex items-end gap-3 sm:gap-5 pb-3 sm:pb-5 border-b border-slate-100">
-                        <div className="flex flex-col items-center shrink-0">
+                  ) : (
+                    <div className="flex-1 flex flex-col justify-center space-y-6 sm:space-y-8 pb-2 sm:pb-4">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 sm:gap-6 pb-4 sm:pb-6 border-b border-slate-100 w-full">
+                        
+                        <div className="relative shrink-0 mx-auto sm:mx-0">
                           <input type="file" accept="image/*" ref={fileInputRef} onChange={handleLogoSelect} className="hidden" />
-                          <div onClick={() => fileInputRef.current?.click()} className="h-14 w-14 sm:h-20 sm:w-20 rounded-[1rem] sm:rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-slate-400 cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-all overflow-hidden relative">
-                            {logoPreview || (selectedCompany?.logo_url) ? <img src={logoPreview || selectedCompany.logo_url} alt="Logo" className="h-full w-full object-contain p-1.5 sm:p-2" /> : <Camera className="h-4 w-4 sm:h-6 sm:w-6 opacity-50" />}
+                          <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl sm:rounded-[1.5rem] border-[3px] border-white shadow-md bg-slate-50 flex flex-col items-center justify-center text-slate-300 overflow-hidden relative ring-4 ring-slate-50">
+                            {displayLogo ? <img src={displayLogo} alt="Logo" className="h-full w-full object-contain p-2 sm:p-3" /> : <Building2 className="h-8 w-8 sm:h-10 sm:w-10 opacity-50" />}
                           </div>
+                          
+                          <button 
+                            type="button"
+                            onClick={() => setShowLogoMenu(!showLogoMenu)} 
+                            className="absolute -bottom-2 -right-2 h-8 w-8 sm:h-9 sm:w-9 bg-blue-600 border-2 border-white rounded-full flex items-center justify-center text-white hover:bg-blue-700 shadow-md transition-all active:scale-95 z-10"
+                          >
+                            <Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          </button>
+
+                          <AnimatePresence>
+                            {showLogoMenu && (
+                              <>
+                                <div className="fixed inset-0 z-[10]" onClick={() => setShowLogoMenu(false)}></div>
+                                <motion.div 
+                                  initial={{ opacity: 0, y: 5, scale: 0.95 }} 
+                                  animate={{ opacity: 1, y: 0, scale: 1 }} 
+                                  exit={{ opacity: 0, y: 5, scale: 0.95 }} 
+                                  transition={{ duration: 0.15 }}
+                                  className="absolute top-full mt-3 left-1/2 -translate-x-1/2 w-44 sm:w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-[20] py-1"
+                                >
+                                  <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full flex items-center gap-2 px-4 py-2.5 sm:py-3 text-[12px] sm:text-sm font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                                    <ImagePlus className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Upload Logo
+                                  </button>
+                                  {displayLogo && (
+                                    <button type="button" onClick={handleRemoveLogo} className="w-full flex items-center gap-2 px-4 py-2.5 sm:py-3 text-[12px] sm:text-sm font-bold text-rose-600 hover:bg-rose-50 transition-colors border-t border-slate-50">
+                                      <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Remove Logo
+                                    </button>
+                                  )}
+                                </motion.div>
+                              </>
+                            )}
+                          </AnimatePresence>
                         </div>
-                        <div className="flex-1">
-                          <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1 sm:mb-2 px-1">Company Name</label>
-                          <input type="text" value={companyFormData.name} onChange={(e) => setCompanyFormData({...companyFormData, name: e.target.value})} className="w-full h-10 sm:h-11 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-[12px] sm:text-[14px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" />
+
+                        <div className="flex-1 w-full">
+                          <label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-2 sm:mb-3 px-1">Company Name</label>
+                          <input type="text" value={companyFormData.name} onChange={(e) => setCompanyFormData({...companyFormData, name: e.target.value})} className="w-full h-12 sm:h-14 rounded-xl border border-slate-200 bg-white px-4 sm:px-5 text-[14px] sm:text-[16px] font-bold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3 sm:gap-5">
-                        <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1 sm:mb-2 px-1">Industry</label><input type="text" value={companyFormData.area} onChange={(e) => setCompanyFormData({...companyFormData, area: e.target.value})} className="w-full h-10 sm:h-11 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-[11px] sm:text-[14px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
-                        <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1 sm:mb-2 px-1">Director</label><input type="text" value={companyFormData.head_name} onChange={(e) => setCompanyFormData({...companyFormData, head_name: e.target.value})} className="w-full h-10 sm:h-11 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-[11px] sm:text-[14px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
-                        <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1 sm:mb-2 px-1">Phone</label><input type="text" value={companyFormData.phone} onChange={(e) => setCompanyFormData({...companyFormData, phone: e.target.value})} className="w-full h-10 sm:h-11 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-[11px] sm:text-[14px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
-                        <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1 sm:mb-2 px-1">Website URL</label><input type="url" value={companyFormData.website_url} onChange={(e) => setCompanyFormData({...companyFormData, website_url: e.target.value})} className="w-full h-10 sm:h-11 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-[11px] sm:text-[14px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
+                      <div className="grid grid-cols-2 gap-4 sm:gap-6">
+                        <div><label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Industry</label><input type="text" value={companyFormData.area} onChange={(e) => setCompanyFormData({...companyFormData, area: e.target.value})} className="w-full h-12 sm:h-14 rounded-xl border border-slate-200 bg-white px-4 sm:px-5 text-[13px] sm:text-[15px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
+                        <div><label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Director</label><input type="text" value={companyFormData.head_name} onChange={(e) => setCompanyFormData({...companyFormData, head_name: e.target.value})} className="w-full h-12 sm:h-14 rounded-xl border border-slate-200 bg-white px-4 sm:px-5 text-[13px] sm:text-[15px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
+                        <div><label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Phone</label><input type="text" value={companyFormData.phone} onChange={(e) => setCompanyFormData({...companyFormData, phone: e.target.value})} className="w-full h-12 sm:h-14 rounded-xl border border-slate-200 bg-white px-4 sm:px-5 text-[13px] sm:text-[15px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
+                        <div><label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Website URL</label><input type="url" value={companyFormData.website_url} onChange={(e) => setCompanyFormData({...companyFormData, website_url: e.target.value})} className="w-full h-12 sm:h-14 rounded-xl border border-slate-200 bg-white px-4 sm:px-5 text-[13px] sm:text-[15px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
                       </div>
                     </div>
                   )}
                 </div>
 
-                <div className="p-3 sm:p-6 bg-white border-t border-slate-50 shrink-0">
+                <div className="p-3 sm:p-6 bg-white border-t border-slate-50 shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
                   {companyModalMode === 'view' && selectedCompany ? (
                     <div className="space-y-3">
                       <div className="hidden sm:flex flex-col sm:flex-row gap-2 sm:gap-3">
@@ -322,14 +501,19 @@ export default function DashboardPage() {
                     </div>
                   ) : (
                     <div className="flex gap-2 sm:gap-3">
-                      {companyModalMode === 'edit' && <button onClick={handleDeleteCompany} disabled={isSaving} className="border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 rounded-xl h-9 sm:h-12 px-3 sm:px-4 flex items-center justify-center shadow-sm transition-colors shrink-0"><Trash2 className="h-3.5 w-3.5 sm:h-5 sm:w-5" /></button>}
-                      <button onClick={() => companyModalMode === 'add' ? setIsCompanyModalOpen(false) : setCompanyModalMode("view")} className="flex-1 rounded-xl border border-slate-200 bg-white h-9 sm:h-12 font-bold text-[11px] sm:text-[13px] text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-sm transition-colors">Cancel</button>
-                      <button onClick={handleSaveCompany} disabled={isSaving} className="flex-1 bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-9 sm:h-12 font-bold text-[11px] sm:text-[13px] shadow-md shadow-blue-900/20 hover:shadow-lg transition-all">{isSaving ? "Saving..." : "Save Record"}</button>
+                      {companyModalMode === 'edit' && <button onClick={handleDeleteCompany} disabled={saveStatus !== 'idle'} className="border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 rounded-xl h-10 sm:h-12 px-3 sm:px-4 flex items-center justify-center shadow-sm transition-colors shrink-0"><Trash2 className="h-3.5 w-3.5 sm:h-5 sm:w-5" /></button>}
+                      <button type="button" onClick={() => companyModalMode === 'add' ? setIsCompanyModalOpen(false) : setCompanyModalMode("view")} className="flex-1 rounded-xl border border-slate-200 bg-white h-10 sm:h-12 font-bold text-[11px] sm:text-[13px] text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-sm transition-colors">Cancel</button>
+                      <button type="button" onClick={handleSaveCompany} disabled={saveStatus !== 'idle'} className="flex-1 bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-10 sm:h-12 font-bold text-[11px] sm:text-[13px] shadow-md shadow-blue-900/20 hover:shadow-lg transition-all flex items-center justify-center">
+                        {saveStatus === 'compressing' && <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Compressing...</>}
+                        {saveStatus === 'uploading' && <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Uploading...</>}
+                        {saveStatus === 'saving' && <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Saving...</>}
+                        {saveStatus === 'idle' && "Save Record"}
+                      </button>
                     </div>
                   )}
                 </div>
               </motion.div>
-            </div>
+            </motion.div>
           )}
         </AnimatePresence>
       </>

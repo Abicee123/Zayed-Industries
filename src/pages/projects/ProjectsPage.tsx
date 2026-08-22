@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, FolderKanban, CheckCircle2, AlertCircle, X, Check, User, Trash2, Wallet, Star, ChevronDown, Clock, Printer, Download } from "lucide-react";
+import { Plus, Search, FolderKanban, CheckCircle2, AlertCircle, X, Check, User, Trash2, Wallet, Star, ChevronDown, Clock, Download, Loader2 } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { useDataStore } from "../../store/dataStore";
 import { supabase } from "../../supabase";
@@ -196,7 +196,6 @@ export default function ProjectsPage() {
       
       if (error) throw new Error(`Database Error: ${error.message}`);
 
-      alert("Payment recorded securely.");
       setPaymentForm({ employee_id: "", amount: 0, payment_type: "Advance", notes: "" });
       await fetchAllData();
     } catch (error: any) { 
@@ -226,7 +225,6 @@ export default function ProjectsPage() {
 
     await supabase.from('project_reports').upsert({ project_id: selectedProject.id, employee_id: employeeId, report_text: appendedText }, { onConflict: 'project_id, employee_id' });
     setMyReportText("");
-    alert("Report added to timeline.");
     await fetchAllData();
   };
 
@@ -314,10 +312,9 @@ export default function ProjectsPage() {
     <>
       <div className="max-w-[1200px] mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-700 pb-8 relative z-0 print:p-0 print:m-0">
         
-        {/* Subtle Background Animation */}
-        <div className="absolute inset-0 pointer-events-none z-[-1] overflow-hidden rounded-3xl print:hidden">
-          <motion.div animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.5, 0.3] }} transition={{ duration: 10, repeat: Infinity }} className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full bg-blue-100/40 blur-[80px]" />
-          <motion.div animate={{ scale: [1, 1.1, 1], opacity: [0.2, 0.4, 0.2] }} transition={{ duration: 15, repeat: Infinity, delay: 2 }} className="absolute top-[40%] -right-[10%] w-[50%] h-[50%] rounded-full bg-emerald-50/40 blur-[100px]" />
+        {/* Minimal Dotted Background Pattern */}
+        <div className="absolute inset-0 pointer-events-none z-[-1] overflow-hidden print:hidden">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMTQ4LCAxNjMsIDE4NCwgMC4wOCkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
         </div>
 
         {/* HEADER */}
@@ -531,12 +528,23 @@ export default function ProjectsPage() {
           </div>
         )}
 
-        {/* --- MAIN PROJECT MODAL --- */}
+        {/* --- MAIN PROJECT MODAL (NATIVE OS WINDOW ARCHITECTURE) --- */}
         <AnimatePresence>
           {isModalOpen && !isPrintingPayslip && (
-            // CRITICAL FIX: Safe Zone Padding and precise flex containment to prevent dock overlap
-            <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm print:hidden">
-              <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl max-h-full sm:max-h-[92vh] flex flex-col overflow-hidden border border-slate-100">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setIsModalOpen(false)}
+              className="fixed inset-0 z-[100] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm print:hidden"
+            >
+              <motion.div 
+                initial={{ opacity: 0, y: 40, scale: 0.95 }} 
+                animate={{ opacity: 1, y: 0, scale: 1 }} 
+                exit={{ opacity: 0, y: 40, scale: 0.95 }} 
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl h-full sm:h-[760px] sm:max-h-[90vh] flex flex-col overflow-hidden border border-slate-100 mt-auto sm:mt-0"
+              >
                 
                 <div className="px-5 sm:px-8 pt-5 sm:pt-7 border-b border-slate-100 bg-[#FAFCFF] shrink-0">
                   <div className="flex items-center justify-between mb-4 sm:mb-5">
@@ -872,19 +880,19 @@ export default function ProjectsPage() {
                   </div>
                 )}
 
-                <div className="p-4 sm:p-6 border-t border-slate-100 bg-[#FAFCFF] flex justify-end items-center gap-2 sm:gap-4 shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                <div className="p-4 sm:p-6 border-t border-slate-100 bg-[#FAFCFF] flex justify-end items-center gap-2 sm:gap-4 shrink-0 mt-auto">
                   {selectedProject && (role === 'admin' || role === 'head') && modalTab === 'details' && (
                     <button onClick={handleDeleteProject} disabled={isSaving} className="border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 rounded-xl h-10 sm:h-12 px-3 sm:px-5 flex items-center justify-center shadow-sm mr-auto transition-colors shrink-0"><Trash2 className="h-4 w-4" /></button>
                   )}
                   <button onClick={() => setIsModalOpen(false)} className="rounded-xl border border-slate-200 bg-white h-10 sm:h-12 px-4 sm:px-8 font-bold text-[12px] sm:text-sm text-slate-600 hover:bg-slate-50 shadow-sm transition-colors flex-1 sm:flex-none">Close</button>
                   {(role === 'admin' || role === 'head') && modalTab === 'details' && (
-                    <button onClick={handleSaveProject} disabled={isSaving} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-10 sm:h-12 px-6 sm:px-10 font-bold text-[12px] sm:text-sm shadow-md shadow-blue-900/20 hover:shadow-lg hover:-translate-y-0.5 transition-all flex-1 sm:flex-none">
-                      {isSaving ? "Saving..." : "Save Details"}
+                    <button onClick={handleSaveProject} disabled={isSaving} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-10 sm:h-12 px-6 sm:px-10 font-bold text-[12px] sm:text-sm shadow-md shadow-blue-900/20 hover:shadow-lg hover:-translate-y-0.5 transition-all flex-1 sm:flex-none flex items-center justify-center">
+                      {isSaving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : "Save Details"}
                     </button>
                   )}
                 </div>
               </motion.div>
-            </div>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>

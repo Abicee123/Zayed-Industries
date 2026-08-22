@@ -1,9 +1,47 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, Mail, Phone, Building2, Edit3, Trash2, X, Camera, Wallet, LayoutGrid, List, ShieldAlert, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Plus, Search, Mail, Phone, Building2, Edit3, Trash2, X, Camera, Wallet, LayoutGrid, List, ShieldAlert, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { useDataStore } from "../../store/dataStore";
 import { supabase } from "../../supabase";
+
+// --- NATIVE IMAGE COMPRESSION ENGINE ---
+const compressImage = async (file: File, maxWidth = 300, quality = 0.8): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+        }
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: 'image/jpeg', lastModified: Date.now() }));
+          } else {
+            reject(new Error('Compression failed'));
+          }
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
 
 export default function EmployeesPage() {
   const { role, activeWorkspace, companyId } = useAuthStore();
@@ -15,7 +53,8 @@ export default function EmployeesPage() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "compressing" | "uploading" | "saving">("idle");
+  const [isSavingLedger, setIsSavingLedger] = useState(false);
   
   const [isLedgerOpen, setIsLedgerOpen] = useState(false);
   const [ledgerEmployee, setLedgerEmployee] = useState<any>(null);
@@ -86,25 +125,51 @@ export default function EmployeesPage() {
     if (file) { setImageFile(file); setImagePreview(URL.createObjectURL(file)); setRemoveImage(false); }
   };
 
+  // --- GARBAGE COLLECTION UTILITY ---
+  // Deletes old avatar file from the storage bucket to free up space
+  const deleteOldAvatar = async (url: string | null) => {
+    if (!url) return;
+    try {
+      const urlParts = url.split('/');
+      const fileName = urlParts[urlParts.length - 1];
+      if (fileName) await supabase.storage.from('avatars').remove([fileName]);
+    } catch (e) {
+      console.warn("Could not delete old avatar, might already be removed.");
+    }
+  };
+
   const handleSaveEmployee = async () => {
     if (!formData.name.trim() || !formData.email.trim()) return alert("Name and Email are required.");
     if (!selectedEmployee && !formData.password.trim()) return alert("Initial password is required for new employees.");
     if (role === 'admin' && !activeWorkspace && !formData.company_id && formData.access_level !== 'admin') return alert("Please select a company.");
 
-    setIsSaving(true);
+    setSaveStatus("saving");
     let finalImageUrl = selectedEmployee?.profile_image_url || null;
-    if (removeImage) finalImageUrl = null;
 
     try {
+      // 1. Handle Image Deletion or Replacement (Garbage Collection)
+      if (removeImage || imageFile) {
+        if (selectedEmployee?.profile_image_url) {
+          await deleteOldAvatar(selectedEmployee.profile_image_url);
+        }
+        if (removeImage) finalImageUrl = null;
+      }
+
+      // 2. Handle New Image Upload & Compression
       if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, imageFile);
+        setSaveStatus("compressing");
+        const compressedFile = await compressImage(imageFile, 300, 0.8);
+        
+        setSaveStatus("uploading");
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.jpg`;
+        const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, compressedFile);
         if (uploadError) throw new Error(`Image upload failed! ${uploadError.message}`);
+        
         const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
         finalImageUrl = data.publicUrl;
       }
 
+      setSaveStatus("saving");
       const payload: any = {
         name: formData.name, email: formData.email, phone: formData.phone, role: formData.role,
         access_level: formData.access_level, company_id: formData.company_id ? parseInt(formData.company_id) : null,
@@ -123,22 +188,31 @@ export default function EmployeesPage() {
       
       await fetchAllData();
       setIsModalOpen(false);
-    } catch (error: any) { alert(error.message); } finally { setIsSaving(false); }
+    } catch (error: any) { 
+      alert(error.message); 
+    } finally { 
+      setSaveStatus("idle"); 
+    }
   };
 
   const handleDeleteEmployee = async () => {
     if (!selectedEmployee) return;
-    if (!window.confirm(`Are you sure you want to remove ${selectedEmployee.name}?`)) return;
-    setIsSaving(true);
+    if (!window.confirm(`Are you sure you want to completely remove ${selectedEmployee.name}?`)) return;
+    
+    setSaveStatus("saving");
     try {
+      // Delete their photo from storage to free up space!
+      if (selectedEmployee.profile_image_url) {
+        await deleteOldAvatar(selectedEmployee.profile_image_url);
+      }
       await supabase.from('employees').delete().eq('id', selectedEmployee.id);
       await fetchAllData(); setIsModalOpen(false);
-    } catch (error: any) { alert(error.message); } finally { setIsSaving(false); }
+    } catch (error: any) { alert(error.message); } finally { setSaveStatus("idle"); }
   };
 
   const handleRecordEmployeePayment = async () => {
     if (empPaymentForm.amount <= 0) return alert("Enter a valid amount.");
-    setIsSaving(true);
+    setIsSavingLedger(true);
     try {
       const { error } = await supabase.from('salary_payments').insert([{
         employee_id: ledgerEmployee.id,
@@ -153,14 +227,13 @@ export default function EmployeesPage() {
       
       if (error) throw new Error(`Database Error: ${error.message}`);
       
-      alert("Payment recorded successfully.");
       setEmpPaymentForm({ amount: 0, payment_type: "Advance", payment_date: today, notes: "", project_id: "" });
       setShowEmpPaymentForm(false);
       await fetchAllData();
     } catch (error: any) {
       alert(error.message);
     } finally {
-      setIsSaving(false);
+      setIsSavingLedger(false);
     }
   };
 
@@ -179,11 +252,16 @@ export default function EmployeesPage() {
     <>
       <div className="max-w-[1200px] mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-700 pb-8 relative z-0">
         
+        {/* Minimal Dotted Background Pattern */}
+        <div className="absolute inset-0 pointer-events-none z-[-1] overflow-hidden print:hidden">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMTQ4LCAxNjMsIDE4NCwgMC4wOCkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
+        </div>
+
         {/* HEADER */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6">
           <div>
             <p className="text-[9px] sm:text-[11px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-1.5 sm:mb-2 bg-blue-50 inline-block px-3 py-1 rounded-full">Team Management</p>
-            <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-slate-900 mt-1 sm:mt-2">Employees.</h1>
+            <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-slate-900 mt-1 sm:mt-2">Personnel.</h1>
           </div>
           {(role === 'admin' || role === 'head') && (
             <div className="flex items-center gap-2 sm:gap-3">
@@ -324,7 +402,7 @@ export default function EmployeesPage() {
                         {(role === 'admin' || role === 'head') && (
                           <td className="px-4 sm:px-6 py-3 sm:py-4 text-right">
                             <div className="flex justify-end gap-1.5 sm:gap-2 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => openLedger(emp)} className="h-7 w-7 sm:h-8 sm:w-8 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center hover:bg-emerald-100 transition-colors" title="View Financial Ledger"><Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                              <button onClick={() => openLedger(emp)} className="h-7 w-7 sm:h-8 sm:w-8 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center hover:bg-emerald-100 transition-colors" title="Payment Ledger"><Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                               <button onClick={() => openEditEmployee(emp)} className="h-7 w-7 sm:h-8 sm:w-8 bg-white border border-slate-200 text-slate-600 rounded-lg flex items-center justify-center hover:bg-slate-50 transition-colors" title="Edit Data"><Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                             </div>
                           </td>
@@ -354,7 +432,7 @@ export default function EmployeesPage() {
               animate={{ opacity: 1, y: 0, scale: 1 }} 
               exit={{ opacity: 0, y: 40, scale: 0.95 }} 
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-3xl max-h-full sm:max-h-[85svh] flex flex-col overflow-hidden border border-slate-100"
+              className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-3xl max-h-full flex flex-col overflow-hidden border border-slate-100"
             >
               
               <div className="px-5 sm:px-8 pt-5 sm:pt-7 border-b border-slate-100 bg-[#FAFCFF] shrink-0">
@@ -379,7 +457,6 @@ export default function EmployeesPage() {
                     {displayImage && <button onClick={(e) => { e.stopPropagation(); setImageFile(null); setImagePreview(null); setRemoveImage(true); }} className="absolute -bottom-1 -right-1 sm:bottom-2 sm:right-2 h-6 w-6 sm:h-10 sm:w-10 bg-white border border-slate-100 rounded-full flex items-center justify-center text-rose-500 hover:bg-rose-50 shadow-lg sm:opacity-0 group-hover:opacity-100 transition-all"><Trash2 className="h-3 w-3 sm:h-4 sm:w-4" /></button>}
                   </div>
 
-                  {/* Primary fields immediately right of avatar on mobile to save vertical space */}
                   <div className="flex-1 flex flex-col gap-2 sm:hidden">
                     <div>
                        <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1 px-1">Full Name *</label>
@@ -399,7 +476,6 @@ export default function EmployeesPage() {
                 <div className="flex-1 space-y-4 sm:space-y-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
                     
-                    {/* Hide these on mobile since they are now next to the avatar */}
                     <div className="hidden sm:block">
                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Full Name *</label>
                        <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full h-12 rounded-xl border border-slate-200 px-4 text-sm font-bold outline-none focus:border-blue-500 shadow-sm" />
@@ -434,9 +510,14 @@ export default function EmployeesPage() {
               </div>
 
               <div className="p-4 sm:p-6 border-t border-slate-100 bg-[#FAFCFF] flex justify-end items-center gap-2 sm:gap-4 shrink-0">
-                {selectedEmployee && <button onClick={handleDeleteEmployee} disabled={isSaving} className="border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 rounded-xl h-10 sm:h-12 px-3 sm:px-5 shadow-sm mr-auto"><Trash2 className="h-4 w-4" /></button>}
+                {selectedEmployee && <button onClick={handleDeleteEmployee} disabled={saveStatus !== 'idle'} className="border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 rounded-xl h-10 sm:h-12 px-3 sm:px-5 shadow-sm mr-auto"><Trash2 className="h-4 w-4" /></button>}
                 <button onClick={() => setIsModalOpen(false)} className="rounded-xl border border-slate-200 bg-white h-10 sm:h-12 px-4 sm:px-8 font-bold text-[12px] sm:text-sm text-slate-600 hover:bg-slate-50 shadow-sm flex-1 sm:flex-none">Cancel</button>
-                <button onClick={handleSaveEmployee} disabled={isSaving} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-10 sm:h-12 px-6 sm:px-10 font-bold text-[12px] sm:text-sm shadow-md hover:shadow-lg transition-all flex-1 sm:flex-none">{isSaving ? "Saving..." : "Save Record"}</button>
+                <button onClick={handleSaveEmployee} disabled={saveStatus !== 'idle'} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-10 sm:h-12 px-6 sm:px-10 font-bold text-[12px] sm:text-sm shadow-md hover:shadow-lg transition-all flex-1 sm:flex-none flex items-center justify-center">
+                   {saveStatus === 'compressing' && <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Compressing...</>}
+                   {saveStatus === 'uploading' && <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Uploading...</>}
+                   {saveStatus === 'saving' && <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Saving...</>}
+                   {saveStatus === 'idle' && "Save Record"}
+                </button>
               </div>
             </motion.div>
           </motion.div>
@@ -510,7 +591,9 @@ export default function EmployeesPage() {
                             </div>
                             <div className="flex justify-end gap-2">
                                <button onClick={() => setShowEmpPaymentForm(false)} className="h-10 px-4 sm:px-5 text-[11px] sm:text-xs font-bold text-slate-500 hover:bg-white rounded-xl border border-slate-200 transition-colors flex-1 sm:flex-none">Cancel</button>
-                               <button onClick={handleRecordEmployeePayment} disabled={isSaving} className="h-10 px-4 sm:px-8 text-[11px] sm:text-xs font-bold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:shadow-lg hover:-translate-y-0.5 rounded-xl shadow-md transition-all flex-1 sm:flex-none">{isSaving ? 'Processing...' : 'Record Payment'}</button>
+                               <button onClick={handleRecordEmployeePayment} disabled={isSavingLedger} className="h-10 px-4 sm:px-8 text-[11px] sm:text-xs font-bold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:shadow-lg hover:-translate-y-0.5 rounded-xl shadow-md transition-all flex-1 sm:flex-none flex items-center justify-center">
+                                 {isSavingLedger ? <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Processing...</> : 'Record Payment'}
+                               </button>
                             </div>
                          </div>
                       )}

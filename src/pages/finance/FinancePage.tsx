@@ -406,7 +406,8 @@ export default function FinancePage() {
         <AnimatePresence>
           {isExpenseModalOpen && (
             <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm print:hidden">
-              <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-lg max-h-full sm:max-h-[85svh] flex flex-col overflow-hidden border border-slate-100 mt-auto sm:mt-0">
+              {/* CRITICAL FIX: Locked modal to standard h-full sm:h-[700px] sm:max-h-[85svh] */}
+              <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-lg h-full sm:h-[700px] sm:max-h-[85svh] flex flex-col overflow-hidden border border-slate-100 mt-auto sm:mt-0">
                 <div className="px-5 sm:px-8 pt-5 sm:pt-7 border-b border-slate-100 bg-[#FAFCFF] shrink-0">
                   <div className="flex items-center justify-between mb-4 sm:mb-5">
                     <div>
@@ -417,20 +418,23 @@ export default function FinancePage() {
                   </div>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 space-y-4 sm:space-y-5 max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                   {role === 'admin' && !activeWorkspace && (
-                     <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Company</label><select value={expenseForm.company_id} onChange={e=>setExpenseForm({...expenseForm, company_id: e.target.value, project_id: ""})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-bold outline-none cursor-pointer"><option value="">-- Select --</option>{companies.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-                   )}
-                   <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Description *</label><input type="text" value={expenseForm.description} onChange={e=>setExpenseForm({...expenseForm, description: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none focus:border-emerald-500 shadow-sm" placeholder="E.g., Server Hosting, Travel..." /></div>
-                   
-                   <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                     <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Amount (₹) *</label><input type="number" value={expenseForm.amount} onChange={e=>setExpenseForm({...expenseForm, amount: parseFloat(e.target.value)||0})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-black text-slate-800 outline-none focus:border-emerald-500 shadow-sm" /></div>
-                     <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Date</label><input type="date" value={expenseForm.expense_date} onChange={e=>setExpenseForm({...expenseForm, expense_date: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none shadow-sm" /></div>
-                   </div>
+                {/* CRITICAL FIX: Added flex-col to scroll wrapper, wrapped inputs in justify-center */}
+                <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                   <div className="flex-1 flex flex-col justify-center space-y-4 sm:space-y-5 pb-2">
+                     {role === 'admin' && !activeWorkspace && (
+                       <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Company</label><select value={expenseForm.company_id} onChange={e=>setExpenseForm({...expenseForm, company_id: e.target.value, project_id: ""})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-bold outline-none cursor-pointer"><option value="">-- Select --</option>{companies.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+                     )}
+                     <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Description *</label><input type="text" value={expenseForm.description} onChange={e=>setExpenseForm({...expenseForm, description: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none focus:border-emerald-500 shadow-sm" placeholder="E.g., Server Hosting, Travel..." /></div>
+                     
+                     <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                       <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Amount (₹) *</label><input type="number" value={expenseForm.amount} onChange={e=>setExpenseForm({...expenseForm, amount: parseFloat(e.target.value)||0})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-black text-slate-800 outline-none focus:border-emerald-500 shadow-sm" /></div>
+                       <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Date</label><input type="date" value={expenseForm.expense_date} onChange={e=>setExpenseForm({...expenseForm, expense_date: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none shadow-sm" /></div>
+                     </div>
 
-                   <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                     <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Category</label><select value={expenseForm.category} onChange={e=>setExpenseForm({...expenseForm, category: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none cursor-pointer shadow-sm"><option>Software</option><option>Office/Rent</option><option>Marketing</option><option>Travel</option><option>Materials</option><option>Other</option></select></div>
-                     <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1 truncate">Link Project (Optional)</label><select value={expenseForm.project_id} onChange={e=>setExpenseForm({...expenseForm, project_id: e.target.value})} disabled={!expenseForm.company_id} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none cursor-pointer shadow-sm disabled:opacity-50"><option value="">-- General --</option>{globalProjects.filter(p=>p.company_id.toString()===expenseForm.company_id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+                     <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                       <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Category</label><select value={expenseForm.category} onChange={e=>setExpenseForm({...expenseForm, category: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none cursor-pointer shadow-sm"><option>Software</option><option>Office/Rent</option><option>Marketing</option><option>Travel</option><option>Materials</option><option>Other</option></select></div>
+                       <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1 truncate">Link Project (Optional)</label><select value={expenseForm.project_id} onChange={e=>setExpenseForm({...expenseForm, project_id: e.target.value})} disabled={!expenseForm.company_id} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none cursor-pointer shadow-sm disabled:opacity-50"><option value="">-- General --</option>{globalProjects.filter(p=>p.company_id.toString()===expenseForm.company_id).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+                     </div>
                    </div>
                 </div>
 
