@@ -91,8 +91,9 @@ export default function ProjectsPage() {
   };
 
   const handleSaveProject = async () => {
-    if (!formData.name.trim()) return alert("Project name is required.");
-    if (!formData.company_id) return alert("Please select a Company for this project.");
+    // Failsafe validation auto-switches back to details tab if empty
+    if (!formData.name.trim()) { setModalTab('details'); return alert("Project name is required."); }
+    if (!formData.company_id) { setModalTab('details'); return alert("Please select a Company for this project."); }
     
     let finalCustomerId: number | null = formData.customer_id ? parseInt(formData.customer_id) : null;
     let finalInternalId: number | null = null;
@@ -100,7 +101,10 @@ export default function ProjectsPage() {
     setIsSaving(true);
     try {
       if (customerType === 'new') {
-        if (!newCustomer.name.trim()) throw new Error("New Customer Name is required.");
+        if (!newCustomer.name.trim()) {
+          setModalTab('details');
+          throw new Error("New Customer Name is required.");
+        }
         const { data: cData, error: cError } = await supabase.from('customers').insert([{ company_id: parseInt(formData.company_id), name: newCustomer.name, phone: newCustomer.phone }]).select().single();
         if (cError) throw cError;
         finalCustomerId = cData.id;
@@ -280,7 +284,6 @@ export default function ProjectsPage() {
 
   const getAvatar = (id: number) => employees.find(e => e.id === id);
   
-  // Sorted tasks to prevent visual jumping bug
   const displayTasks = selectedProject 
     ? tasks.filter(t => t.project_id === selectedProject.id).sort((a, b) => (a.id > b.id ? 1 : -1)) 
     : pendingTasks;
@@ -534,7 +537,7 @@ export default function ProjectsPage() {
 
       </div>
 
-      {/* --- MAIN PROJECT MODAL (NATIVE OS WINDOW ARCHITECTURE - PORTALED) --- */}
+      {/* --- MAIN PROJECT MODAL --- */}
       {typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           {isModalOpen && !isPrintingPayslip && (
@@ -564,7 +567,7 @@ export default function ProjectsPage() {
                   
                   <div className="flex gap-4 sm:gap-8 overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     <button onClick={() => setModalTab('details')} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${modalTab === 'details' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>1. Details</button>
-                    <button onClick={() => setModalTab('tasks')} disabled={!selectedProject} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${!selectedProject ? 'opacity-30 cursor-not-allowed' : modalTab === 'tasks' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>2. Action Items</button>
+                    <button onClick={() => setModalTab('tasks')} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${modalTab === 'tasks' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>2. Action Items</button>
                     <button onClick={() => setModalTab('progress')} disabled={!selectedProject} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${!selectedProject ? 'opacity-30 cursor-not-allowed' : modalTab === 'progress' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>3. Timeline</button>
                     <button onClick={() => setModalTab('finance')} disabled={!selectedProject} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${!selectedProject ? 'opacity-30 cursor-not-allowed' : modalTab === 'finance' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>4. Budget & Finances</button>
                   </div>
@@ -894,13 +897,33 @@ export default function ProjectsPage() {
                   {selectedProject && (role === 'admin' || role === 'head') && modalTab === 'details' && (
                     <button onClick={handleDeleteProject} disabled={isSaving} className="border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 rounded-xl h-10 sm:h-12 px-3 sm:px-5 flex items-center justify-center shadow-sm mr-auto transition-colors shrink-0"><Trash2 className="h-4 w-4" /></button>
                   )}
+                  
                   <button onClick={() => setIsModalOpen(false)} className="rounded-xl border border-slate-200 bg-white h-10 sm:h-12 px-4 sm:px-8 font-bold text-[12px] sm:text-sm text-slate-600 hover:bg-slate-50 shadow-sm transition-colors flex-1 sm:flex-none">Close</button>
-                  {(role === 'admin' || role === 'head') && modalTab === 'details' && (
-                    <button onClick={handleSaveProject} disabled={isSaving} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-10 sm:h-12 px-6 sm:px-10 font-bold text-[12px] sm:text-sm shadow-md shadow-blue-900/20 hover:shadow-lg hover:-translate-y-0.5 transition-all flex-1 sm:flex-none flex items-center justify-center">
-                      {isSaving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : "Save Details"}
-                    </button>
+                  
+                  {(role === 'admin' || role === 'head') && (
+                    <>
+                      {/* NEW PROJECT CREATION FLOW */}
+                      {!selectedProject && modalTab === 'details' && (
+                        <button onClick={() => setModalTab('tasks')} className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl h-10 sm:h-12 px-6 sm:px-10 font-bold text-[12px] sm:text-sm shadow-md transition-all flex-1 sm:flex-none flex items-center justify-center">
+                          Next: Action Items
+                        </button>
+                      )}
+                      {!selectedProject && modalTab === 'tasks' && (
+                        <button onClick={handleSaveProject} disabled={isSaving} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-10 sm:h-12 px-6 sm:px-10 font-bold text-[12px] sm:text-sm shadow-md shadow-blue-900/20 hover:shadow-lg hover:-translate-y-0.5 transition-all flex-1 sm:flex-none flex items-center justify-center">
+                          {isSaving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : "Create Project"}
+                        </button>
+                      )}
+
+                      {/* EDITING EXISTING PROJECT FLOW */}
+                      {selectedProject && modalTab === 'details' && (
+                        <button onClick={handleSaveProject} disabled={isSaving} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-10 sm:h-12 px-6 sm:px-10 font-bold text-[12px] sm:text-sm shadow-md shadow-blue-900/20 hover:shadow-lg hover:-translate-y-0.5 transition-all flex-1 sm:flex-none flex items-center justify-center">
+                          {isSaving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : "Save Details"}
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
+
               </motion.div>
             </motion.div>
           )}
