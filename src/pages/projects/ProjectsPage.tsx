@@ -18,7 +18,7 @@ export default function ProjectsPage() {
   const [filterCompanyId, setFilterCompanyId] = useState<string>("all");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalTab, setModalTab] = useState<"details" | "progress" | "finance">("details");
+  const [modalTab, setModalTab] = useState<"details" | "tasks" | "progress" | "finance">("details");
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -279,7 +279,11 @@ export default function ProjectsPage() {
   };
 
   const getAvatar = (id: number) => employees.find(e => e.id === id);
-  const displayTasks = selectedProject ? tasks.filter(t => t.project_id === selectedProject.id) : pendingTasks;
+  
+  // Sorted tasks to prevent visual jumping bug
+  const displayTasks = selectedProject 
+    ? tasks.filter(t => t.project_id === selectedProject.id).sort((a, b) => (a.id > b.id ? 1 : -1)) 
+    : pendingTasks;
 
   const getStatusStyle = (status: string) => {
     switch(status) {
@@ -404,7 +408,6 @@ export default function ProjectsPage() {
                       </div>
                     )}
 
-                    {/* COMPACT MOBILE HORIZONTAL LAYOUT */}
                     <div className="ml-1.5 p-4 sm:p-7 flex flex-col gap-4 sm:gap-6">
                       
                       <div className="flex justify-between items-start gap-4">
@@ -489,8 +492,8 @@ export default function ProjectsPage() {
 
             <div className="border border-slate-200 rounded-2xl overflow-hidden mb-10">
                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between font-bold text-slate-800 text-xs uppercase tracking-widest">
-                  <span>Compensation Breakdown</span>
-                  <span>Amount</span>
+                 <span>Compensation Breakdown</span>
+                 <span>Amount</span>
                </div>
                <div className="px-6 py-5 flex justify-between border-b border-slate-100">
                   <span className="font-medium text-slate-700">Project Allocation</span>
@@ -560,15 +563,16 @@ export default function ProjectsPage() {
                   </div>
                   
                   <div className="flex gap-4 sm:gap-8 overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                    <button onClick={() => setModalTab('details')} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${modalTab === 'details' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>1. Details & Tasks</button>
-                    <button onClick={() => setModalTab('progress')} disabled={!selectedProject} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${!selectedProject ? 'opacity-30 cursor-not-allowed' : modalTab === 'progress' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>2. Project Timeline</button>
-                    <button onClick={() => setModalTab('finance')} disabled={!selectedProject} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${!selectedProject ? 'opacity-30 cursor-not-allowed' : modalTab === 'finance' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>3. Budget & Allocations</button>
+                    <button onClick={() => setModalTab('details')} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${modalTab === 'details' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>1. Details</button>
+                    <button onClick={() => setModalTab('tasks')} disabled={!selectedProject} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${!selectedProject ? 'opacity-30 cursor-not-allowed' : modalTab === 'tasks' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>2. Action Items</button>
+                    <button onClick={() => setModalTab('progress')} disabled={!selectedProject} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${!selectedProject ? 'opacity-30 cursor-not-allowed' : modalTab === 'progress' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>3. Timeline</button>
+                    <button onClick={() => setModalTab('finance')} disabled={!selectedProject} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${!selectedProject ? 'opacity-30 cursor-not-allowed' : modalTab === 'finance' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>4. Budget & Finances</button>
                   </div>
                 </div>
 
                 {/* TAB 1: DETAILS */}
                 {modalTab === 'details' && (
-                  <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col lg:flex-row gap-6 sm:gap-10 max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-200 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
+                  <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-200 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
                     <div className="flex-1 space-y-5 sm:space-y-6">
                       
                       <div className="bg-slate-50 border border-slate-100 rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-4 sm:space-y-6">
@@ -652,36 +656,64 @@ export default function ProjectsPage() {
                         </div>
                       )}
                     </div>
+                  </div>
+                )}
 
-                    {/* TASKS PANEL */}
-                    <div className="lg:w-[380px] shrink-0 flex flex-col lg:border-l lg:border-t-0 border-t border-slate-100 lg:pl-8 pt-6 lg:pt-0">
-                      <h3 className="text-[13px] sm:text-sm font-bold text-slate-900 mb-4 sm:mb-5 flex items-center gap-2"><CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500"/> Action Items</h3>
-                      <div className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 pr-2 max-h-[300px] lg:max-h-[500px] max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-200 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
-                        {displayTasks.length === 0 ? (
-                          <div className="h-32 sm:h-40 flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 rounded-2xl sm:rounded-3xl border border-dashed border-slate-200"><p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">No tasks added</p></div>
-                        ) : (
-                          displayTasks.map((task, index) => (
-                            <div key={task.id || index} onClick={() => toggleTask(task, index)} className={`flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all cursor-pointer ${task.is_completed ? 'bg-slate-50 border-slate-100' : 'bg-white border-slate-200 hover:border-blue-200 shadow-sm'}`}>
-                              <div className={`mt-0.5 h-4 w-4 sm:h-5 sm:w-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${task.is_completed ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300'}`}>{task.is_completed && <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white" />}</div>
-                              <div className="flex-1 min-w-0"><p className={`text-[12px] sm:text-[13px] font-bold leading-relaxed break-words ${task.is_completed ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{task.title}</p>{task.assignee_id && <p className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-wider mt-1 sm:mt-1.5 truncate">{getAvatar(task.assignee_id)?.name}</p>}</div>
+                {/* TAB 2: TASKS PANEL */}
+                {modalTab === 'tasks' && (
+                  <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col items-center max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
+                    <div className="w-full max-w-3xl flex flex-col space-y-5 sm:space-y-6 h-full">
+                      
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-3 sm:pb-4 shrink-0">
+                        <div>
+                          <h3 className="text-[16px] sm:text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-500" /> Action Items & Tasks
+                          </h3>
+                          <p className="text-[11px] sm:text-sm font-medium text-slate-500 mt-0.5 sm:mt-1">Manage deliverables and track step-by-step progress.</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-white border border-slate-100 shadow-sm rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex flex-col flex-1 min-h-[400px]">
+                        <div className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 pr-2 max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-200 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
+                          {displayTasks.length === 0 ? (
+                            <div className="h-32 sm:h-40 flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 rounded-2xl sm:rounded-3xl border border-dashed border-slate-200">
+                              <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">No tasks added</p>
                             </div>
-                          ))
+                          ) : (
+                            displayTasks.map((task, index) => (
+                              <div key={task.id || index} onClick={() => toggleTask(task, index)} className={`flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all cursor-pointer ${task.is_completed ? 'bg-slate-50 border-slate-100' : 'bg-white border-slate-200 hover:border-blue-200 shadow-sm'}`}>
+                                <div className={`mt-0.5 h-4 w-4 sm:h-5 sm:w-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${task.is_completed ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300'}`}>
+                                  {task.is_completed && <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className={`text-[12px] sm:text-[13px] font-bold leading-relaxed break-words ${task.is_completed ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{task.title}</p>
+                                  {task.assignee_id && <p className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-wider mt-1 sm:mt-1.5 truncate">{getAvatar(task.assignee_id)?.name}</p>}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        {(role === 'admin' || role === 'head') && (
+                          <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-slate-100 space-y-2 sm:space-y-3 shrink-0">
+                            <input type="text" placeholder="New task title..." value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddTask()} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-[13px] font-medium outline-none focus:border-blue-500 shadow-sm" />
+                            <div className="flex gap-2">
+                              <select value={newTaskAssignee} onChange={(e) => setNewTaskAssignee(parseInt(e.target.value) || "")} className="flex-1 h-10 sm:h-12 rounded-xl border border-slate-200 px-2 sm:px-3 text-[11px] sm:text-[13px] font-medium outline-none bg-white shadow-sm cursor-pointer">
+                                <option value="">Anyone</option>
+                                {(formData.assignee_ids || []).map(id => <option key={id} value={id}>{getAvatar(id)?.name || 'Unknown'}</option>)}
+                              </select>
+                              <button onClick={handleAddTask} className="h-10 w-10 sm:h-12 sm:w-12 bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl flex items-center justify-center font-bold shadow-md hover:shadow-lg transition-all">
+                                <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
-                      {(role === 'admin' || role === 'head') && (
-                        <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-slate-100 space-y-2 sm:space-y-3">
-                           <input type="text" placeholder="New task title..." value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddTask()} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-[13px] font-medium outline-none focus:border-blue-500 shadow-sm" />
-                           <div className="flex gap-2">
-                             <select value={newTaskAssignee} onChange={(e) => setNewTaskAssignee(parseInt(e.target.value) || "")} className="flex-1 h-10 sm:h-12 rounded-xl border border-slate-200 px-2 sm:px-3 text-[11px] sm:text-[13px] font-medium outline-none bg-white shadow-sm cursor-pointer"><option value="">Anyone</option>{(formData.assignee_ids || []).map(id => <option key={id} value={id}>{getAvatar(id)?.name || 'Unknown'}</option>)}</select>
-                             <button onClick={handleAddTask} className="h-10 w-10 sm:h-12 sm:w-12 bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl flex items-center justify-center font-bold shadow-md hover:shadow-lg transition-all"><Plus className="h-4 w-4 sm:h-5 sm:w-5" /></button>
-                           </div>
-                        </div>
-                      )}
+
                     </div>
                   </div>
                 )}
 
-                {/* TAB 2: REPORTS TIMELINE */}
+                {/* TAB 3: REPORTS TIMELINE */}
                 {modalTab === 'progress' && (
                   <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col items-center max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
                     <div className="w-full max-w-3xl flex flex-col space-y-5 sm:space-y-6">
@@ -736,7 +768,7 @@ export default function ProjectsPage() {
                   </div>
                 )}
 
-                {/* TAB 3: FINANCIALS */}
+                {/* TAB 4: FINANCIALS */}
                 {modalTab === 'finance' && (
                   <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col items-center max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
                     
