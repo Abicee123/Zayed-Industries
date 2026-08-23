@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, FolderKanban, CheckCircle2, AlertCircle, X, Check, User, Trash2, Wallet, Star, ChevronDown, Clock, Download, Loader2 } from "lucide-react";
+import { Plus, Search, FolderKanban, CheckCircle2, AlertCircle, X, Check, User, Trash2, Wallet, Star, Clock, Download, Loader2 } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { useDataStore } from "../../store/dataStore";
 import { supabase } from "../../supabase";
@@ -664,42 +664,41 @@ export default function ProjectsPage() {
 
                 {/* TAB 2: TASKS PANEL */}
                 {modalTab === 'tasks' && (
-                  <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col items-center max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
-                    <div className="w-full max-w-3xl flex flex-col h-full">
+                  <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-200 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
+                    <div className="w-full flex flex-col h-full gap-5 sm:gap-6">
                       
-                      <div className="bg-white border border-slate-100 shadow-sm rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex flex-col flex-1 min-h-[400px]">
-                        <div className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 pr-2 max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-200 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
-                          {displayTasks.length === 0 ? (
-                            <div className="h-32 sm:h-40 flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 rounded-2xl sm:rounded-3xl border border-dashed border-slate-200">
-                              <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">No tasks added</p>
-                            </div>
-                          ) : (
-                            displayTasks.map((task, index) => (
-                              <div key={task.id || index} onClick={() => toggleTask(task, index)} className={`flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all cursor-pointer ${task.is_completed ? 'bg-slate-50 border-slate-100' : 'bg-white border-slate-200 hover:border-blue-200 shadow-sm'}`}>
-                                <div className={`mt-0.5 h-4 w-4 sm:h-5 sm:w-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${task.is_completed ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300'}`}>
-                                  {task.is_completed && <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white" />}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className={`text-[12px] sm:text-[13px] font-bold leading-relaxed break-words ${task.is_completed ? 'text-slate-400' : 'text-slate-700'}`}>{task.title}</p>
-                                  {task.assignee_id && <p className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-wider mt-1 sm:mt-1.5 truncate">{getAvatar(task.assignee_id)?.name}</p>}
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                        {(role === 'admin' || role === 'head') && (
-                          <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-slate-100 space-y-2 sm:space-y-3 shrink-0">
-                            <input type="text" placeholder="New task title..." value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddTask()} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-[13px] font-medium outline-none focus:border-blue-500 shadow-sm" />
-                            <div className="flex gap-2">
-                              <select value={newTaskAssignee} onChange={(e) => setNewTaskAssignee(parseInt(e.target.value) || "")} className="flex-1 h-10 sm:h-12 rounded-xl border border-slate-200 px-2 sm:px-3 text-[11px] sm:text-[13px] font-medium outline-none bg-white shadow-sm cursor-pointer">
-                                <option value="">Anyone</option>
-                                {(formData.assignee_ids || []).map(id => <option key={id} value={id}>{getAvatar(id)?.name || 'Unknown'}</option>)}
-                              </select>
-                              <button onClick={handleAddTask} className="h-10 w-10 sm:h-12 sm:w-12 bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl flex items-center justify-center font-bold shadow-md hover:shadow-lg transition-all">
-                                <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
-                              </button>
-                            </div>
+                      {(role === 'admin' || role === 'head') && (
+                        <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+                          <input type="text" placeholder="New task title..." value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddTask()} className="flex-1 h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-[13px] font-medium outline-none focus:border-blue-500 shadow-sm bg-white" />
+                          <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
+                            <select value={newTaskAssignee} onChange={(e) => setNewTaskAssignee(parseInt(e.target.value) || "")} className="flex-1 sm:w-48 h-10 sm:h-12 rounded-xl border border-slate-200 px-2 sm:px-3 text-[11px] sm:text-[13px] font-medium outline-none bg-white shadow-sm cursor-pointer">
+                              <option value="">Anyone</option>
+                              {(formData.assignee_ids || []).map(id => <option key={id} value={id}>{getAvatar(id)?.name || 'Unknown'}</option>)}
+                            </select>
+                            <button onClick={handleAddTask} className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl flex items-center justify-center font-bold shadow-md hover:shadow-lg transition-all">
+                              <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+                            </button>
                           </div>
+                        </div>
+                      )}
+
+                      <div className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 pr-2 max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-200 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
+                        {displayTasks.length === 0 ? (
+                          <div className="h-32 sm:h-40 flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 rounded-2xl sm:rounded-3xl border border-dashed border-slate-200">
+                            <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">No tasks added</p>
+                          </div>
+                        ) : (
+                          displayTasks.map((task, index) => (
+                            <div key={task.id || index} onClick={() => toggleTask(task, index)} className={`flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all cursor-pointer ${task.is_completed ? 'bg-slate-50 border-slate-100' : 'bg-white border-slate-200 hover:border-blue-200 shadow-sm'}`}>
+                              <div className={`mt-0.5 h-4 w-4 sm:h-5 sm:w-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${task.is_completed ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300'}`}>
+                                {task.is_completed && <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-[12px] sm:text-[13px] font-bold leading-relaxed break-words ${task.is_completed ? 'text-slate-400' : 'text-slate-700'}`}>{task.title}</p>
+                                {task.assignee_id && <p className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-wider mt-1 sm:mt-1.5 truncate">{getAvatar(task.assignee_id)?.name}</p>}
+                              </div>
+                            </div>
+                          ))
                         )}
                       </div>
 
@@ -709,23 +708,11 @@ export default function ProjectsPage() {
 
                 {/* TAB 3: REPORTS TIMELINE */}
                 {modalTab === 'progress' && (
-                  <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col items-center max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
-                    <div className="w-full max-w-3xl flex flex-col">
+                  <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-200 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
+                    <div className="w-full flex flex-col h-full gap-6">
                        {role === 'user' ? (
-                         <div className="flex flex-col bg-white border border-slate-100 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-sm h-full min-h-[400px]">
-                           
-                           <div className="flex-1 overflow-y-auto mb-5 sm:mb-6 sm:pr-4 space-y-3 sm:space-y-4 max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-200 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
-                             <h4 className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest sticky top-0 bg-white pb-2 border-b border-slate-100 mb-3 sm:mb-4 z-10">Previous Updates</h4>
-                             {reports.find(r => r.project_id === selectedProject?.id && r.employee_id === employeeId)?.report_text ? (
-                               <pre className="text-[12px] sm:text-[13px] text-slate-700 whitespace-pre-wrap font-sans leading-relaxed bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-100">
-                                 {reports.find(r => r.project_id === selectedProject?.id && r.employee_id === employeeId)?.report_text}
-                               </pre>
-                             ) : (
-                               <p className="text-[12px] sm:text-sm italic text-slate-400">No updates submitted yet.</p>
-                             )}
-                           </div>
-
-                           <div className="border-t border-slate-100 pt-5 sm:pt-6">
+                         <>
+                           <div className="flex flex-col shrink-0">
                              <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 sm:mb-3">Add New Log Entry</p>
                              <textarea value={myReportText} onChange={e => setMyReportText(e.target.value)} placeholder="Type your latest progress update here..." className="w-full h-20 sm:h-24 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all resize-none mb-3 sm:mb-4 shadow-sm" />
                              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0">
@@ -733,19 +720,31 @@ export default function ProjectsPage() {
                                <button onClick={handleSaveMyReport} className="w-full sm:w-auto bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-10 sm:h-11 px-6 sm:px-8 text-[12px] sm:text-sm font-bold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all">Append Update</button>
                              </div>
                            </div>
-                         </div>
+
+                           <div className="flex-1 overflow-y-auto pt-5 sm:pt-6 border-t border-slate-100 max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-200 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
+                             <h4 className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 sm:mb-4">Previous Updates</h4>
+                             {reports.find(r => r.project_id === selectedProject?.id && r.employee_id === employeeId)?.report_text ? (
+                               <pre className="text-[12px] sm:text-[13px] text-slate-700 whitespace-pre-wrap font-sans leading-relaxed bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                                 {reports.find(r => r.project_id === selectedProject?.id && r.employee_id === employeeId)?.report_text}
+                               </pre>
+                             ) : (
+                               <p className="text-[12px] sm:text-sm italic text-slate-400">No updates submitted yet.</p>
+                             )}
+                           </div>
+                         </>
                        ) : (
-                         <div className="space-y-4 sm:space-y-5">
-                           {(formData.assignee_ids || []).length === 0 && <p className="text-[12px] sm:text-sm text-center text-slate-400 italic py-8 sm:py-10">No team members assigned.</p>}
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+                           {(formData.assignee_ids || []).length === 0 && <p className="text-[12px] sm:text-sm text-slate-400 italic md:col-span-2">No team members assigned.</p>}
                            {(formData.assignee_ids || []).map(empId => {
                              const emp = getAvatar(empId);
                              const empReport = reports.find(r => r.project_id === selectedProject?.id && r.employee_id === empId);
                              return (
-                               <div key={empId} className="bg-white border border-slate-100 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm">
-                                 <div className="flex justify-between items-center mb-3 sm:mb-4 border-b border-slate-50 pb-3 sm:pb-4">
-                                   <div className="flex items-center gap-3 sm:gap-4"><div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-[10px] sm:text-[11px] font-bold text-slate-600 overflow-hidden">{emp?.profile_image_url ? <img src={emp.profile_image_url} alt="" className="h-full w-full object-cover" /> : (emp?.name || 'U').charAt(0).toUpperCase()}</div><p className="text-[14px] sm:text-base font-bold text-slate-900">{emp?.name}</p></div>
+                               <div key={empId} className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col max-h-[400px]">
+                                 <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4 border-b border-slate-50 pb-3 sm:pb-4 shrink-0">
+                                   <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-[10px] sm:text-[11px] font-bold text-slate-600 overflow-hidden">{emp?.profile_image_url ? <img src={emp.profile_image_url} alt="" className="h-full w-full object-cover" /> : (emp?.name || 'U').charAt(0).toUpperCase()}</div>
+                                   <p className="text-[14px] sm:text-base font-bold text-slate-900">{emp?.name}</p>
                                  </div>
-                                 <div className="bg-slate-50 rounded-xl sm:rounded-2xl p-4 sm:p-5 min-h-[80px] max-h-[300px] overflow-y-auto">
+                                 <div className="flex-1 bg-slate-50 rounded-xl sm:rounded-2xl p-4 sm:p-5 overflow-y-auto">
                                    {empReport?.report_text ? <pre className="text-[12px] sm:text-[13px] text-slate-700 leading-relaxed font-sans whitespace-pre-wrap">{empReport.report_text}</pre> : <p className="text-[12px] sm:text-sm text-slate-400 italic">No timeline entries.</p>}
                                  </div>
                                </div>
@@ -759,137 +758,138 @@ export default function ProjectsPage() {
 
                 {/* TAB 4: FINANCIALS */}
                 {modalTab === 'finance' && (
-                  <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col items-center max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
-                    
-                    {role === 'user' ? (
-                       <div className="w-full max-w-2xl bg-white border border-slate-100 rounded-3xl p-6 sm:p-10 shadow-sm flex flex-col items-center">
-                          <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
-                             <div className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-4 sm:p-5 text-center">
-                                <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Earned</p>
-                                <p className="text-xl sm:text-2xl font-black text-emerald-600">₹{userTotalAllocated.toLocaleString()}</p>
-                             </div>
-                             <div className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-4 sm:p-5 text-center">
-                                <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Payments Rec'd</p>
-                                <p className="text-xl sm:text-2xl font-black text-slate-800">₹{userTotalEarned.toLocaleString()}</p>
-                             </div>
-                             <div className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-4 sm:p-5 text-center">
-                                <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Balance Due</p>
-                                <p className="text-xl sm:text-2xl font-black text-rose-500">₹{userBalanceDue.toLocaleString()}</p>
-                             </div>
-                          </div>
+                  <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-200 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
+                    <div className="w-full flex flex-col h-full">
+                      {role === 'user' ? (
+                         <div className="w-full max-w-2xl mx-auto bg-white border border-slate-100 rounded-3xl p-6 sm:p-10 shadow-sm flex flex-col items-center">
+                            <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
+                               <div className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-4 sm:p-5 text-center">
+                                  <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Earned</p>
+                                  <p className="text-xl sm:text-2xl font-black text-emerald-600">₹{userTotalAllocated.toLocaleString()}</p>
+                               </div>
+                               <div className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-4 sm:p-5 text-center">
+                                  <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Payments Rec'd</p>
+                                  <p className="text-xl sm:text-2xl font-black text-slate-800">₹{userTotalEarned.toLocaleString()}</p>
+                               </div>
+                               <div className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-4 sm:p-5 text-center">
+                                  <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Balance Due</p>
+                                  <p className="text-xl sm:text-2xl font-black text-rose-500">₹{userBalanceDue.toLocaleString()}</p>
+                               </div>
+                            </div>
 
-                          <button onClick={handlePrintPayslip} disabled={isPrintingPayslip} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-12 sm:h-14 px-6 sm:px-10 text-[12px] sm:text-sm font-bold shadow-xl shadow-blue-900/20 hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center gap-2">
-                             <Download className="h-4 w-4 sm:h-5 sm:w-5" /> Download PDF Payslip
-                          </button>
-                       </div>
-                    ) : (
-                       <div className="w-full max-w-5xl space-y-6 sm:space-y-8">
-                          <div className="bg-white border border-slate-100 shadow-sm rounded-2xl sm:rounded-3xl overflow-hidden">
-                             {/* Mobile Scrollable Table Wrapper */}
-                             <div className="overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                               <div className="min-w-[700px]">
-                                 <div className="grid grid-cols-12 gap-4 bg-slate-50 px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                                    <div className="col-span-3">Team Member</div>
-                                    <div className="col-span-2">Allocated (₹)</div>
-                                    <div className="col-span-2">Bonus (₹)</div>
-                                    <div className="col-span-2 text-emerald-600">Paid (₹)</div>
-                                    <div className="col-span-3 text-right">Balance Due (₹)</div>
-                                 </div>
-                                 
-                                 {(formData.assignee_ids || []).length === 0 && <p className="text-[12px] sm:text-sm text-center text-slate-400 italic py-6 sm:py-8">No team members assigned.</p>}
-                                 
-                                 <div className="divide-y divide-slate-50">
-                                    {(formData.assignee_ids || []).map(empId => {
-                                       const emp = getAvatar(empId);
-                                       const alloc = allocationsForm[empId] || {allocated: 0, incentive: 0};
-                                       
-                                       const empPaid = salaryPayments.filter(sp => sp.project_id === selectedProject.id && sp.employee_id === empId).reduce((sum, sp) => sum + parseFloat(sp.amount || 0), 0);
-                                       
-                                       const lineTotal = alloc.allocated + alloc.incentive;
-                                       const empBalance = lineTotal - empPaid;
+                            <button onClick={handlePrintPayslip} disabled={isPrintingPayslip} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-12 sm:h-14 px-6 sm:px-10 text-[12px] sm:text-sm font-bold shadow-xl shadow-blue-900/20 hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center gap-2">
+                               <Download className="h-4 w-4 sm:h-5 sm:w-5" /> Download PDF Payslip
+                            </button>
+                         </div>
+                      ) : (
+                         <div className="w-full space-y-6 sm:space-y-8">
+                            <div className="bg-white border border-slate-100 shadow-sm rounded-2xl sm:rounded-3xl overflow-hidden">
+                               {/* Mobile Scrollable Table Wrapper */}
+                               <div className="overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                                 <div className="min-w-[700px]">
+                                   <div className="grid grid-cols-12 gap-4 bg-slate-50 px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                      <div className="col-span-3">Team Member</div>
+                                      <div className="col-span-2">Allocated (₹)</div>
+                                      <div className="col-span-2">Bonus (₹)</div>
+                                      <div className="col-span-2 text-emerald-600">Paid (₹)</div>
+                                      <div className="col-span-3 text-right">Balance Due (₹)</div>
+                                   </div>
+                                   
+                                   {(formData.assignee_ids || []).length === 0 && <p className="text-[12px] sm:text-sm text-center text-slate-400 italic py-6 sm:py-8">No team members assigned.</p>}
+                                   
+                                   <div className="divide-y divide-slate-50">
+                                      {(formData.assignee_ids || []).map(empId => {
+                                         const emp = getAvatar(empId);
+                                         const alloc = allocationsForm[empId] || {allocated: 0, incentive: 0};
+                                         
+                                         const empPaid = salaryPayments.filter(sp => sp.project_id === selectedProject.id && sp.employee_id === empId).reduce((sum, sp) => sum + parseFloat(sp.amount || 0), 0);
+                                         
+                                         const lineTotal = alloc.allocated + alloc.incentive;
+                                         const empBalance = lineTotal - empPaid;
 
-                                       return (
-                                         <div key={empId} className="grid grid-cols-12 gap-4 items-center px-4 sm:px-6 py-3 sm:py-4 hover:bg-blue-50/30 transition-colors">
-                                            <div className="col-span-3 flex items-center gap-2 sm:gap-3">
-                                              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-slate-100 flex items-center justify-center text-[9px] sm:text-[10px] font-bold text-slate-600 overflow-hidden shadow-sm shrink-0">{emp?.profile_image_url ? <img src={emp.profile_image_url} alt="" className="h-full w-full object-cover" /> : (emp?.name || 'U').charAt(0).toUpperCase()}</div>
-                                              <span className="text-[12px] sm:text-sm font-bold text-slate-900 truncate">{emp?.name}</span>
-                                            </div>
-                                            <div className="col-span-2">
-                                               <input type="number" value={alloc.allocated} onChange={e => setAllocationsForm({...allocationsForm, [empId]: {...alloc, allocated: parseFloat(e.target.value)||0}})} className="w-full h-9 sm:h-10 border border-slate-200 rounded-lg sm:rounded-xl px-2 sm:px-3 font-bold text-[12px] sm:text-sm outline-none focus:border-blue-500 transition-all" />
-                                            </div>
-                                            <div className="col-span-2">
-                                               <input type="number" value={alloc.incentive} onChange={e => setAllocationsForm({...allocationsForm, [empId]: {...alloc, incentive: parseFloat(e.target.value)||0}})} className="w-full h-9 sm:h-10 border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-lg sm:rounded-xl px-2 sm:px-3 font-bold text-[12px] sm:text-sm outline-none focus:border-emerald-500 transition-all" />
-                                            </div>
-                                            <div className="col-span-2 text-[12px] sm:text-sm font-bold text-emerald-600">
-                                               ₹{empPaid.toLocaleString()}
-                                            </div>
-                                            <div className="col-span-3 text-right text-[14px] sm:text-base font-black text-slate-900">
-                                               ₹{empBalance.toLocaleString()}
-                                            </div>
-                                         </div>
-                                       )
-                                    })}
+                                         return (
+                                           <div key={empId} className="grid grid-cols-12 gap-4 items-center px-4 sm:px-6 py-3 sm:py-4 hover:bg-blue-50/30 transition-colors">
+                                              <div className="col-span-3 flex items-center gap-2 sm:gap-3">
+                                                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-slate-100 flex items-center justify-center text-[9px] sm:text-[10px] font-bold text-slate-600 overflow-hidden shadow-sm shrink-0">{emp?.profile_image_url ? <img src={emp.profile_image_url} alt="" className="h-full w-full object-cover" /> : (emp?.name || 'U').charAt(0).toUpperCase()}</div>
+                                                <span className="text-[12px] sm:text-sm font-bold text-slate-900 truncate">{emp?.name}</span>
+                                              </div>
+                                              <div className="col-span-2">
+                                                 <input type="number" value={alloc.allocated} onChange={e => setAllocationsForm({...allocationsForm, [empId]: {...alloc, allocated: parseFloat(e.target.value)||0}})} className="w-full h-9 sm:h-10 border border-slate-200 rounded-lg sm:rounded-xl px-2 sm:px-3 font-bold text-[12px] sm:text-sm outline-none focus:border-blue-500 transition-all" />
+                                              </div>
+                                              <div className="col-span-2">
+                                                 <input type="number" value={alloc.incentive} onChange={e => setAllocationsForm({...allocationsForm, [empId]: {...alloc, incentive: parseFloat(e.target.value)||0}})} className="w-full h-9 sm:h-10 border border-emerald-200 bg-emerald-50 text-emerald-700 rounded-lg sm:rounded-xl px-2 sm:px-3 font-bold text-[12px] sm:text-sm outline-none focus:border-emerald-500 transition-all" />
+                                              </div>
+                                              <div className="col-span-2 text-[12px] sm:text-sm font-bold text-emerald-600">
+                                                 ₹{empPaid.toLocaleString()}
+                                              </div>
+                                              <div className="col-span-3 text-right text-[14px] sm:text-base font-black text-slate-900">
+                                                 ₹{empBalance.toLocaleString()}
+                                              </div>
+                                           </div>
+                                         )
+                                      })}
+                                   </div>
                                  </div>
                                </div>
-                             </div>
-                             <div className="bg-slate-50 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 flex justify-end">
-                                <button onClick={handleSaveAllocations} disabled={isSaving} className="bg-white border border-slate-200 text-slate-800 hover:text-blue-600 hover:border-blue-200 rounded-lg sm:rounded-xl h-9 sm:h-10 px-4 sm:px-6 text-[11px] sm:text-xs font-bold shadow-sm transition-all">Save Allocations</button>
-                             </div>
-                          </div>
+                               <div className="bg-slate-50 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 flex justify-end">
+                                  <button onClick={handleSaveAllocations} disabled={isSaving} className="bg-white border border-slate-200 text-slate-800 hover:text-blue-600 hover:border-blue-200 rounded-lg sm:rounded-xl h-9 sm:h-10 px-4 sm:px-6 text-[11px] sm:text-xs font-bold shadow-sm transition-all">Save Allocations</button>
+                               </div>
+                            </div>
 
-                          <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl sm:rounded-3xl p-5 sm:p-8">
-                             <h4 className="text-[12px] sm:text-sm font-bold text-emerald-800 uppercase tracking-widest mb-4 sm:mb-6">Issue Payout / Advance</h4>
-                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-4">
-                                <div className="lg:col-span-1">
-                                  <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1.5 px-1">Employee</label>
-                                  <select value={paymentForm.employee_id} onChange={e => setPaymentForm({...paymentForm, employee_id: e.target.value})} className="w-full h-10 sm:h-11 rounded-xl border border-emerald-200 bg-white px-3 text-[12px] sm:text-sm font-bold text-slate-800 outline-none focus:border-emerald-500 shadow-sm cursor-pointer"><option value="">-- Select --</option>{(formData.assignee_ids || []).map(id => <option key={id} value={id}>{getAvatar(id)?.name}</option>)}</select>
-                                </div>
-                                <div className="lg:col-span-1">
-                                  <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1.5 px-1">Amount (₹)</label>
-                                  <input type="number" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: parseFloat(e.target.value)||0})} className="w-full h-10 sm:h-11 rounded-xl border border-emerald-200 bg-white px-3 text-[12px] sm:text-sm font-black text-emerald-700 outline-none focus:border-emerald-500 shadow-sm" />
-                                </div>
-                                <div className="lg:col-span-1">
-                                  <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1.5 px-1">Type</label>
-                                  <select value={paymentForm.payment_type} onChange={e => setPaymentForm({...paymentForm, payment_type: e.target.value})} className="w-full h-10 sm:h-11 rounded-xl border border-emerald-200 bg-white px-3 text-[12px] sm:text-sm font-bold text-slate-800 outline-none focus:border-emerald-500 shadow-sm cursor-pointer"><option>Advance</option><option>Final Payout</option><option>Incentive / Bonus</option></select>
-                                </div>
-                                <div className="lg:col-span-2">
-                                  <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1.5 px-1">Notes (Optional)</label>
-                                  <div className="flex gap-2">
-                                    <input type="text" placeholder="Ref or details..." value={paymentForm.notes} onChange={e => setPaymentForm({...paymentForm, notes: e.target.value})} className="flex-1 h-10 sm:h-11 rounded-xl border border-emerald-200 bg-white px-3 text-[12px] sm:text-sm font-medium outline-none focus:border-emerald-500 shadow-sm" />
-                                    <button onClick={handleRecordProjectPayment} disabled={isSaving} className="h-10 sm:h-11 px-4 sm:px-6 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-[11px] sm:text-xs font-bold rounded-xl shadow-md hover:shadow-lg transition-all shrink-0">Transfer</button>
+                            <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl sm:rounded-3xl p-5 sm:p-8">
+                               <h4 className="text-[12px] sm:text-sm font-bold text-emerald-800 uppercase tracking-widest mb-4 sm:mb-6">Issue Payout / Advance</h4>
+                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-4">
+                                  <div className="lg:col-span-1">
+                                    <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1.5 px-1">Employee</label>
+                                    <select value={paymentForm.employee_id} onChange={e => setPaymentForm({...paymentForm, employee_id: e.target.value})} className="w-full h-10 sm:h-11 rounded-xl border border-emerald-200 bg-white px-3 text-[12px] sm:text-sm font-bold text-slate-800 outline-none focus:border-emerald-500 shadow-sm cursor-pointer"><option value="">-- Select --</option>{(formData.assignee_ids || []).map(id => <option key={id} value={id}>{getAvatar(id)?.name}</option>)}</select>
                                   </div>
-                                </div>
-                             </div>
+                                  <div className="lg:col-span-1">
+                                    <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1.5 px-1">Amount (₹)</label>
+                                    <input type="number" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: parseFloat(e.target.value)||0})} className="w-full h-10 sm:h-11 rounded-xl border border-emerald-200 bg-white px-3 text-[12px] sm:text-sm font-black text-emerald-700 outline-none focus:border-emerald-500 shadow-sm" />
+                                  </div>
+                                  <div className="lg:col-span-1">
+                                    <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1.5 px-1">Type</label>
+                                    <select value={paymentForm.payment_type} onChange={e => setPaymentForm({...paymentForm, payment_type: e.target.value})} className="w-full h-10 sm:h-11 rounded-xl border border-emerald-200 bg-white px-3 text-[12px] sm:text-sm font-bold text-slate-800 outline-none focus:border-emerald-500 shadow-sm cursor-pointer"><option>Advance</option><option>Final Payout</option><option>Incentive / Bonus</option></select>
+                                  </div>
+                                  <div className="lg:col-span-2">
+                                    <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1.5 px-1">Notes (Optional)</label>
+                                    <div className="flex gap-2">
+                                      <input type="text" placeholder="Ref or details..." value={paymentForm.notes} onChange={e => setPaymentForm({...paymentForm, notes: e.target.value})} className="flex-1 h-10 sm:h-11 rounded-xl border border-emerald-200 bg-white px-3 text-[12px] sm:text-sm font-medium outline-none focus:border-emerald-500 shadow-sm" />
+                                      <button onClick={handleRecordProjectPayment} disabled={isSaving} className="h-10 sm:h-11 px-4 sm:px-6 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-[11px] sm:text-xs font-bold rounded-xl shadow-md hover:shadow-lg transition-all shrink-0">Transfer</button>
+                                    </div>
+                                  </div>
+                               </div>
 
-                             <div className="mt-6 sm:mt-8 border-t border-emerald-100 pt-6 sm:pt-8">
-                               <h4 className="text-[12px] sm:text-sm font-bold text-emerald-800 uppercase tracking-widest mb-4 sm:mb-6">Recorded Payouts History</h4>
-                               
-                                {/* Mobile Scrollable List for Payouts */}
-                                <div className="overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                                  <div className="min-w-[500px] space-y-2 sm:space-y-3">
-                                     {salaryPayments.filter(sp => sp.project_id === selectedProject.id).length === 0 ? (
-                                       <p className="text-[12px] sm:text-sm italic text-emerald-600/70">No payments recorded for this project.</p>
-                                     ) : salaryPayments.filter(sp => sp.project_id === selectedProject.id).map(p => (
-                                       <div key={p.id} className="flex justify-between items-center bg-white p-3 sm:p-4 rounded-xl border border-emerald-100 shadow-sm">
-                                          <div className="flex items-center gap-2 sm:gap-3">
-                                             <div className="h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4" /></div>
-                                             <div>
-                                               <p className="text-[12px] sm:text-sm font-bold text-slate-900">{getAvatar(p.employee_id)?.name} <span className="text-slate-400 font-medium ml-1">({p.payment_type})</span></p>
-                                               <p className="text-[9px] sm:text-[10px] text-slate-500 uppercase tracking-widest mt-0.5">{new Date(p.payment_date).toLocaleDateString()} {p.notes && `• Ref: ${p.notes}`}</p>
-                                             </div>
-                                          </div>
-                                          <div className="flex items-center gap-3 sm:gap-4">
-                                            <p className="text-[14px] sm:text-base font-bold text-emerald-600">₹{parseFloat(p.amount).toLocaleString()}</p>
-                                            <button onClick={() => handleDeleteProjectPayment(p.id)} className="sm:opacity-0 group-hover:opacity-100 transition-opacity text-rose-400 hover:text-rose-600 bg-rose-50 p-1.5 rounded-lg shrink-0"><Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
-                                          </div>
-                                       </div>
-                                     ))}
+                               <div className="mt-6 sm:mt-8 border-t border-emerald-100 pt-6 sm:pt-8">
+                                 <h4 className="text-[12px] sm:text-sm font-bold text-emerald-800 uppercase tracking-widest mb-4 sm:mb-6">Recorded Payouts History</h4>
+                                 
+                                  {/* Mobile Scrollable List for Payouts */}
+                                  <div className="overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                                    <div className="min-w-[500px] space-y-2 sm:space-y-3">
+                                       {salaryPayments.filter(sp => sp.project_id === selectedProject.id).length === 0 ? (
+                                         <p className="text-[12px] sm:text-sm italic text-emerald-600/70">No payments recorded for this project.</p>
+                                       ) : salaryPayments.filter(sp => sp.project_id === selectedProject.id).map(p => (
+                                         <div key={p.id} className="flex justify-between items-center bg-white p-3 sm:p-4 rounded-xl border border-emerald-100 shadow-sm">
+                                            <div className="flex items-center gap-2 sm:gap-3">
+                                               <div className="h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4" /></div>
+                                               <div>
+                                                 <p className="text-[12px] sm:text-sm font-bold text-slate-900">{getAvatar(p.employee_id)?.name} <span className="text-slate-400 font-medium ml-1">({p.payment_type})</span></p>
+                                                 <p className="text-[9px] sm:text-[10px] text-slate-500 uppercase tracking-widest mt-0.5">{new Date(p.payment_date).toLocaleDateString()} {p.notes && `• Ref: ${p.notes}`}</p>
+                                               </div>
+                                            </div>
+                                            <div className="flex items-center gap-3 sm:gap-4">
+                                              <p className="text-[14px] sm:text-base font-bold text-emerald-600">₹{parseFloat(p.amount).toLocaleString()}</p>
+                                              <button onClick={() => handleDeleteProjectPayment(p.id)} className="sm:opacity-0 group-hover:opacity-100 transition-opacity text-rose-400 hover:text-rose-600 bg-rose-50 p-1.5 rounded-lg shrink-0"><Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
+                                            </div>
+                                         </div>
+                                       ))}
+                                    </div>
                                   </div>
-                                </div>
-                             </div>
-                          </div>
-                       </div>
-                    )}
+                               </div>
+                            </div>
+                         </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
