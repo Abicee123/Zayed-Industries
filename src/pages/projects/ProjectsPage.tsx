@@ -662,17 +662,8 @@ export default function ProjectsPage() {
                 {/* TAB 2: TASKS PANEL */}
                 {modalTab === 'tasks' && (
                   <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col items-center max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
-                    <div className="w-full max-w-3xl flex flex-col space-y-5 sm:space-y-6 h-full">
+                    <div className="w-full max-w-3xl flex flex-col h-full">
                       
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-3 sm:pb-4 shrink-0">
-                        <div>
-                          <h3 className="text-[16px] sm:text-xl font-bold text-slate-900 flex items-center gap-2">
-                            <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-500" /> Action Items & Tasks
-                          </h3>
-                          <p className="text-[11px] sm:text-sm font-medium text-slate-500 mt-0.5 sm:mt-1">Manage deliverables and track step-by-step progress.</p>
-                        </div>
-                      </div>
-
                       <div className="bg-white border border-slate-100 shadow-sm rounded-2xl sm:rounded-3xl p-5 sm:p-6 flex flex-col flex-1 min-h-[400px]">
                         <div className="flex-1 overflow-y-auto space-y-2 sm:space-y-3 pr-2 max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-200 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
                           {displayTasks.length === 0 ? (
@@ -686,7 +677,7 @@ export default function ProjectsPage() {
                                   {task.is_completed && <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className={`text-[12px] sm:text-[13px] font-bold leading-relaxed break-words ${task.is_completed ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{task.title}</p>
+                                  <p className={`text-[12px] sm:text-[13px] font-bold leading-relaxed break-words ${task.is_completed ? 'text-slate-400' : 'text-slate-700'}`}>{task.title}</p>
                                   {task.assignee_id && <p className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-wider mt-1 sm:mt-1.5 truncate">{getAvatar(task.assignee_id)?.name}</p>}
                                 </div>
                               </div>
@@ -716,12 +707,7 @@ export default function ProjectsPage() {
                 {/* TAB 3: REPORTS TIMELINE */}
                 {modalTab === 'progress' && (
                   <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col items-center max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
-                    <div className="w-full max-w-3xl flex flex-col space-y-5 sm:space-y-6">
-                       <div className="flex items-center justify-between mb-2 border-b border-slate-100 pb-3 sm:pb-4">
-                         <h3 className="text-[14px] sm:text-base font-bold text-slate-900 uppercase tracking-wider">Project Timeline</h3>
-                         <Star className="h-5 w-5 sm:h-6 sm:w-6 text-amber-400 fill-amber-400" />
-                       </div>
-                       
+                    <div className="w-full max-w-3xl flex flex-col">
                        {role === 'user' ? (
                          <div className="flex flex-col bg-white border border-slate-100 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-sm h-full min-h-[400px]">
                            
@@ -774,10 +760,6 @@ export default function ProjectsPage() {
                     
                     {role === 'user' ? (
                        <div className="w-full max-w-2xl bg-white border border-slate-100 rounded-3xl p-6 sm:p-10 shadow-sm flex flex-col items-center">
-                          <Wallet className="h-12 w-12 sm:h-16 sm:w-16 text-emerald-500 mb-4 sm:mb-6" />
-                          <h2 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight mb-2 text-center">My Financial Ledger</h2>
-                          <p className="text-[12px] sm:text-sm font-medium text-slate-500 mb-6 sm:mb-10 text-center">Your compensation breakdown and payment history for {selectedProject.name}.</p>
-                          
                           <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
                              <div className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-4 sm:p-5 text-center">
                                 <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Earned</p>
@@ -799,14 +781,6 @@ export default function ProjectsPage() {
                        </div>
                     ) : (
                        <div className="w-full max-w-5xl space-y-6 sm:space-y-8">
-                          <div className="flex items-center justify-between border-b border-slate-100 pb-3 sm:pb-4">
-                            <div>
-                              <h3 className="text-[16px] sm:text-xl font-bold text-slate-900">Project Compensation & Payouts</h3>
-                              <p className="text-[11px] sm:text-sm font-medium text-slate-500 mt-0.5 sm:mt-1">Assign funds and issue payments from this project's revenue.</p>
-                            </div>
-                            <Wallet className="h-6 w-6 sm:h-8 sm:w-8 text-emerald-500 opacity-50 shrink-0" />
-                          </div>
-
                           <div className="bg-white border border-slate-100 shadow-sm rounded-2xl sm:rounded-3xl overflow-hidden">
                              {/* Mobile Scrollable Table Wrapper */}
                              <div className="overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
