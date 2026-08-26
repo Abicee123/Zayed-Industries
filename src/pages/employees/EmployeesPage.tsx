@@ -61,7 +61,11 @@ export default function EmployeesPage() {
   
   const today = new Date().toISOString().split('T')[0];
   const [showEmpPaymentForm, setShowEmpPaymentForm] = useState(false);
-  const [empPaymentForm, setEmpPaymentForm] = useState({ amount: 0, payment_type: "Advance", payment_date: today, notes: "", project_id: "" });
+  
+  // Changed amount to string to fix the un-erasable "0" backspace issue
+  const [empPaymentForm, setEmpPaymentForm] = useState<{amount: string | number, payment_type: string, payment_date: string, notes: string, project_id: string}>({ 
+    amount: "", payment_type: "Advance", payment_date: today, notes: "", project_id: "" 
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -74,6 +78,7 @@ export default function EmployeesPage() {
     name: "", email: "", phone: "", role: "", access_level: "user", company_id: currentCompanyId?.toString() || "", password: ""
   });
 
+  // --- SORTING LOGIC: Admin -> Head -> User, then by Creation Order ---
   const visibleEmployees = employees.filter(emp => {
     const matchesSearch = emp.name?.toLowerCase().includes(searchQuery.toLowerCase()) || (emp.email && emp.email.toLowerCase().includes(searchQuery.toLowerCase()));
     
@@ -83,7 +88,26 @@ export default function EmployeesPage() {
     }
     
     return matchesSearch && (emp.company_id === currentCompanyId || emp.access_level === 'admin');
-  }).sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  }).sort((a, b) => {
+    const getRank = (lvl: string) => lvl === 'admin' ? 1 : lvl === 'head' ? 2 : 3;
+    const rankDiff = getRank(a.access_level || 'user') - getRank(b.access_level || 'user');
+    if (rankDiff !== 0) return rankDiff;
+    
+    const timeA = a.created_at ? new Date(a.created_at).getTime() : a.id;
+    const timeB = b.created_at ? new Date(b.created_at).getTime() : b.id;
+    return timeA - timeB;
+  });
+
+  // --- FINANCIAL CALCULATION HELPERS ---
+  const getProjectDue = (empId: number, projectIdStr: string) => {
+    if (!projectIdStr) return 0;
+    const pid = parseInt(projectIdStr);
+    const pAlloc = projectAllocations.filter(a => a.employee_id === empId && a.project_id === pid);
+    const pPay = salaryPayments.filter(p => p.employee_id === empId && p.project_id === pid);
+    const pAll = pAlloc.reduce((sum, a) => sum + (parseFloat(a.allocated_amount || 0) + parseFloat(a.incentive_amount || 0)), 0);
+    const pPd = pPay.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+    return Math.max(0, pAll - pPd);
+  };
 
   const getFinancials = (empId: number) => {
     const allocs = projectAllocations.filter(a => a.employee_id === empId);
@@ -116,7 +140,7 @@ export default function EmployeesPage() {
   const openLedger = (emp: any) => {
     setLedgerEmployee(emp);
     setShowEmpPaymentForm(false);
-    setEmpPaymentForm({ amount: 0, payment_type: "Advance", payment_date: today, notes: "", project_id: "" });
+    setEmpPaymentForm({ amount: "", payment_type: "Advance", payment_date: today, notes: "", project_id: "" });
     setIsLedgerOpen(true);
   };
 
@@ -169,6 +193,7 @@ export default function EmployeesPage() {
       }
 
       setSaveStatus("saving");
+      // Access Level modification is processed here dynamically for the user->head conversion
       const payload: any = {
         name: formData.name, email: formData.email, phone: formData.phone, role: formData.role,
         access_level: formData.access_level, company_id: formData.company_id ? parseInt(formData.company_id) : null,
@@ -220,23 +245,40 @@ export default function EmployeesPage() {
   };
 
   const handleRecordEmployeePayment = async () => {
-    if (empPaymentForm.amount <= 0) return alert("Enter a valid amount.");
+    const amountVal = parseFloat(empPaymentForm.amount.toString()) || 0;
+    if (amountVal <= 0) return alert("Enter a valid amount.");
+    
     setIsSavingLedger(true);
     try {
+      let finalType = empPaymentForm.payment_type;
+      let finalNotes = empPaymentForm.notes;
+
+      // Handle Bonus Dynamic Calculation for Save Function
+      if (empPaymentForm.project_id) {
+        const projectDue = getProjectDue(ledgerEmployee.id, empPaymentForm.project_id);
+        if (amountVal > projectDue && projectDue > 0) {
+            finalType = `Bonus + ${empPaymentForm.payment_type}`;
+            const bonusAmt = amountVal - projectDue;
+            finalNotes = finalNotes 
+                ? `${finalNotes} (Includes ₹${bonusAmt} Bonus)` 
+                : `Includes ₹${bonusAmt} Extra/Bonus Payout`;
+        }
+      }
+
       const { error } = await supabase.from('salary_payments').insert([{
         employee_id: ledgerEmployee.id,
         company_id: ledgerEmployee.company_id || currentCompanyId, 
         project_id: empPaymentForm.project_id ? parseInt(empPaymentForm.project_id) : null,
-        amount: empPaymentForm.amount,
-        payment_type: empPaymentForm.payment_type,
+        amount: amountVal,
+        payment_type: finalType,
         payment_date: empPaymentForm.payment_date,
         payment_month: empPaymentForm.payment_date.substring(0, 7),
-        notes: empPaymentForm.notes
+        notes: finalNotes
       }]);
       
       if (error) throw new Error(`Database Error: ${error.message}`);
       
-      setEmpPaymentForm({ amount: 0, payment_type: "Advance", payment_date: today, notes: "", project_id: "" });
+      setEmpPaymentForm({ amount: "", payment_type: "Advance", payment_date: today, notes: "", project_id: "" });
       setShowEmpPaymentForm(false);
       await fetchAllData();
     } catch (error: any) {
@@ -507,7 +549,14 @@ export default function EmployeesPage() {
                       )}
                       
                       <div className="sm:col-span-2 grid grid-cols-2 gap-4 sm:gap-5 pb-4">
-                        <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Access Level</label><select value={formData.access_level} onChange={(e) => setFormData({...formData, access_level: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-bold outline-none cursor-pointer"><option value="user">Operator (User)</option><option value="head">Director (Head)</option>{role === 'admin' && <option value="admin">Global Admin</option>}</select></div>
+                        <div>
+                            <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Access Level</label>
+                            <select value={formData.access_level} onChange={(e) => setFormData({...formData, access_level: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-bold outline-none cursor-pointer">
+                                <option value="user">Operator (User)</option>
+                                <option value="head">Director (Head)</option>
+                                {role === 'admin' && <option value="admin">Global Admin</option>}
+                            </select>
+                        </div>
                         <div>
                           <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1 truncate" title={`System Password ${selectedEmployee ? '(Optional Edit)' : '*'}`}>Sys Password {selectedEmployee ? '(Opt)' : '*'}</label>
                           <input type="text" placeholder={selectedEmployee ? "Leave blank..." : "Set initial pwd"} value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 shadow-sm placeholder:truncate" />
@@ -571,24 +620,10 @@ export default function EmployeesPage() {
                   {(() => {
                     const { totalAllocated, totalPaid, balanceDue, payments } = getFinancials(ledgerEmployee.id);
                     
-                    // --- RELEVANT FIX: Find only Assigned Projects for this employee ---
                     const assignedProjectIds = projectAllocations
                       .filter(a => a.employee_id === ledgerEmployee.id)
                       .map(a => a.project_id);
                     const assignedProjects = projects.filter(p => assignedProjectIds.includes(p.id) && (p.company_id === ledgerEmployee.company_id || role === 'admin'));
-
-                    // --- RELEVANT FIX: Helper to get due balance for a specific project ---
-                    const getProjectDue = (projectIdStr: string) => {
-                       if (!projectIdStr) return 0;
-                       const pid = parseInt(projectIdStr);
-                       const pAlloc = projectAllocations.filter(a => a.employee_id === ledgerEmployee.id && a.project_id === pid);
-                       const pPay = salaryPayments.filter(p => p.employee_id === ledgerEmployee.id && p.project_id === pid);
-                       const pAll = pAlloc.reduce((sum, a) => sum + (parseFloat(a.allocated_amount || 0) + parseFloat(a.incentive_amount || 0)), 0);
-                       const pPd = pPay.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
-                       return Math.max(0, pAll - pPd);
-                    };
-
-                    const selectedProjectDue = empPaymentForm.project_id ? getProjectDue(empPaymentForm.project_id) : 0;
 
                     return (
                       <>
@@ -596,14 +631,33 @@ export default function EmployeesPage() {
                            <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-4 sm:p-6 mb-6">
                               <h4 className="text-[10px] sm:text-[11px] font-bold text-emerald-800 uppercase tracking-widest mb-3 sm:mb-4">Record New Transaction</h4>
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-5">
-                                 <div>
+                                 <div className="flex flex-col justify-start">
                                     <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1">Amount (₹) *</label>
-                                    <input type="number" value={empPaymentForm.amount} onChange={e=>setEmpPaymentForm({...empPaymentForm, amount: parseFloat(e.target.value)||0})} className="w-full h-10 sm:h-11 border border-emerald-200 rounded-xl px-3 outline-none focus:border-emerald-500 font-black text-emerald-700 bg-white" />
+                                    <input type="number" value={empPaymentForm.amount} onChange={e=>setEmpPaymentForm({...empPaymentForm, amount: e.target.value})} className="w-full h-10 sm:h-11 border border-emerald-200 rounded-xl px-3 outline-none focus:border-emerald-500 font-black text-emerald-700 bg-white" />
+                                    
+                                    {/* --- LIVE DYNAMIC DUE INDICATION --- */}
+                                    <AnimatePresence>
+                                        {empPaymentForm.project_id && (
+                                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                                {(() => {
+                                                    const due = getProjectDue(ledgerEmployee.id, empPaymentForm.project_id);
+                                                    const entered = parseFloat(empPaymentForm.amount.toString()) || 0;
+                                                    const remaining = due - entered;
+                                                    
+                                                    if (remaining > 0) return <p className="text-[10px] font-bold mt-1.5 flex items-center gap-1 text-amber-600"><AlertCircle className="h-3 w-3" /> Remaining Due: ₹{remaining.toLocaleString()}</p>;
+                                                    if (remaining === 0) return <p className="text-[10px] font-bold mt-1.5 flex items-center gap-1 text-emerald-600"><CheckCircle2 className="h-3 w-3" /> Fully Settled</p>;
+                                                    return <p className="text-[10px] font-bold mt-1.5 flex items-center gap-1 text-indigo-600"><CheckCircle2 className="h-3 w-3" /> Due: ₹0 | Bonus: ₹{Math.abs(remaining).toLocaleString()}</p>;
+                                                })()}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                  </div>
+                                 
                                  <div>
                                     <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1">Date</label>
                                     <input type="date" value={empPaymentForm.payment_date} onChange={e=>setEmpPaymentForm({...empPaymentForm, payment_date: e.target.value})} className="w-full h-10 sm:h-11 border border-emerald-200 rounded-xl px-3 outline-none focus:border-emerald-500 font-medium text-[12px] sm:text-sm bg-white" />
                                  </div>
+                                 
                                  <div>
                                     <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1">Type</label>
                                     <select value={empPaymentForm.payment_type} onChange={e=>setEmpPaymentForm({...empPaymentForm, payment_type: e.target.value})} className="w-full h-10 sm:h-11 border border-emerald-200 rounded-xl px-3 outline-none focus:border-emerald-500 font-bold text-[12px] sm:text-sm bg-white cursor-pointer">
@@ -614,24 +668,27 @@ export default function EmployeesPage() {
                                         <option>General Reimbursement</option>
                                     </select>
                                  </div>
-                                 <div className="flex flex-col justify-start">
+                                 
+                                 <div>
                                     <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1 truncate">Link Project (Assigned Only)</label>
-                                    <select value={empPaymentForm.project_id} onChange={e=>setEmpPaymentForm({...empPaymentForm, project_id: e.target.value})} className="w-full h-10 sm:h-11 border border-emerald-200 rounded-xl px-3 outline-none focus:border-emerald-500 font-medium text-[12px] sm:text-sm bg-white cursor-pointer">
+                                    <select 
+                                        value={empPaymentForm.project_id} 
+                                        onChange={e => {
+                                            const pid = e.target.value;
+                                            let newAmount = empPaymentForm.amount;
+                                            if (pid) {
+                                                const due = getProjectDue(ledgerEmployee.id, pid);
+                                                if (due > 0) newAmount = due.toString(); // Auto fetch current due
+                                            }
+                                            setEmpPaymentForm({...empPaymentForm, project_id: pid, amount: newAmount});
+                                        }} 
+                                        className="w-full h-10 sm:h-11 border border-emerald-200 rounded-xl px-3 outline-none focus:border-emerald-500 font-medium text-[12px] sm:text-sm bg-white cursor-pointer"
+                                    >
                                         <option value="">-- General Payment --</option>
                                         {assignedProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
                                     </select>
-                                    {/* --- DYNAMIC PROJECT BALANCE INDICATOR --- */}
-                                    <AnimatePresence>
-                                        {empPaymentForm.project_id && (
-                                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-                                                <p className={`text-[10px] font-bold mt-1.5 flex items-center gap-1 ${selectedProjectDue > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                                                    {selectedProjectDue > 0 ? <AlertCircle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
-                                                    Project Due: ₹{selectedProjectDue.toLocaleString()}
-                                                </p>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
                                  </div>
+                                 
                                  <div className="sm:col-span-2 mt-1">
                                     <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1">Notes / Ref (Optional)</label>
                                     <input type="text" placeholder="Bank ref, details..." value={empPaymentForm.notes} onChange={e=>setEmpPaymentForm({...empPaymentForm, notes: e.target.value})} className="w-full h-10 sm:h-11 border border-emerald-200 rounded-xl px-3 outline-none focus:border-emerald-500 font-medium text-[12px] sm:text-sm bg-white" />
