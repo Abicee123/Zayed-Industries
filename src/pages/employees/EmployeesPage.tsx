@@ -570,6 +570,26 @@ export default function EmployeesPage() {
                 <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 space-y-6 sm:space-y-8 bg-white max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
                   {(() => {
                     const { totalAllocated, totalPaid, balanceDue, payments } = getFinancials(ledgerEmployee.id);
+                    
+                    // --- RELEVANT FIX: Find only Assigned Projects for this employee ---
+                    const assignedProjectIds = projectAllocations
+                      .filter(a => a.employee_id === ledgerEmployee.id)
+                      .map(a => a.project_id);
+                    const assignedProjects = projects.filter(p => assignedProjectIds.includes(p.id) && (p.company_id === ledgerEmployee.company_id || role === 'admin'));
+
+                    // --- RELEVANT FIX: Helper to get due balance for a specific project ---
+                    const getProjectDue = (projectIdStr: string) => {
+                       if (!projectIdStr) return 0;
+                       const pid = parseInt(projectIdStr);
+                       const pAlloc = projectAllocations.filter(a => a.employee_id === ledgerEmployee.id && a.project_id === pid);
+                       const pPay = salaryPayments.filter(p => p.employee_id === ledgerEmployee.id && p.project_id === pid);
+                       const pAll = pAlloc.reduce((sum, a) => sum + (parseFloat(a.allocated_amount || 0) + parseFloat(a.incentive_amount || 0)), 0);
+                       const pPd = pPay.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+                       return Math.max(0, pAll - pPd);
+                    };
+
+                    const selectedProjectDue = empPaymentForm.project_id ? getProjectDue(empPaymentForm.project_id) : 0;
+
                     return (
                       <>
                         {(role === 'admin' || role === 'head') && showEmpPaymentForm && (
@@ -586,18 +606,38 @@ export default function EmployeesPage() {
                                  </div>
                                  <div>
                                     <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1">Type</label>
-                                    <select value={empPaymentForm.payment_type} onChange={e=>setEmpPaymentForm({...empPaymentForm, payment_type: e.target.value})} className="w-full h-10 sm:h-11 border border-emerald-200 rounded-xl px-3 outline-none focus:border-emerald-500 font-bold text-[12px] sm:text-sm bg-white cursor-pointer"><option>Advance</option><option>Final Payout</option><option>Incentive / Bonus</option><option>General Reimbursement</option></select>
+                                    <select value={empPaymentForm.payment_type} onChange={e=>setEmpPaymentForm({...empPaymentForm, payment_type: e.target.value})} className="w-full h-10 sm:h-11 border border-emerald-200 rounded-xl px-3 outline-none focus:border-emerald-500 font-bold text-[12px] sm:text-sm bg-white cursor-pointer">
+                                        <option>Advance</option>
+                                        <option>Installment</option>
+                                        <option>Final Payout</option>
+                                        <option>Incentive / Bonus</option>
+                                        <option>General Reimbursement</option>
+                                    </select>
                                  </div>
-                                 <div>
-                                    <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1 truncate">Link Project (Optional)</label>
-                                    <select value={empPaymentForm.project_id} onChange={e=>setEmpPaymentForm({...empPaymentForm, project_id: e.target.value})} className="w-full h-10 sm:h-11 border border-emerald-200 rounded-xl px-3 outline-none focus:border-emerald-500 font-medium text-[12px] sm:text-sm bg-white cursor-pointer"><option value="">-- General Payment --</option>{projects.filter(p=>p.company_id === ledgerEmployee.company_id || role === 'admin').map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>
+                                 <div className="flex flex-col justify-start">
+                                    <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1 truncate">Link Project (Assigned Only)</label>
+                                    <select value={empPaymentForm.project_id} onChange={e=>setEmpPaymentForm({...empPaymentForm, project_id: e.target.value})} className="w-full h-10 sm:h-11 border border-emerald-200 rounded-xl px-3 outline-none focus:border-emerald-500 font-medium text-[12px] sm:text-sm bg-white cursor-pointer">
+                                        <option value="">-- General Payment --</option>
+                                        {assignedProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                                    </select>
+                                    {/* --- DYNAMIC PROJECT BALANCE INDICATOR --- */}
+                                    <AnimatePresence>
+                                        {empPaymentForm.project_id && (
+                                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                                                <p className={`text-[10px] font-bold mt-1.5 flex items-center gap-1 ${selectedProjectDue > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                                                    {selectedProjectDue > 0 ? <AlertCircle className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+                                                    Project Due: ₹{selectedProjectDue.toLocaleString()}
+                                                </p>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
                                  </div>
-                                 <div className="sm:col-span-2">
+                                 <div className="sm:col-span-2 mt-1">
                                     <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1">Notes / Ref (Optional)</label>
                                     <input type="text" placeholder="Bank ref, details..." value={empPaymentForm.notes} onChange={e=>setEmpPaymentForm({...empPaymentForm, notes: e.target.value})} className="w-full h-10 sm:h-11 border border-emerald-200 rounded-xl px-3 outline-none focus:border-emerald-500 font-medium text-[12px] sm:text-sm bg-white" />
                                  </div>
                               </div>
-                              <div className="flex justify-end gap-2">
+                              <div className="flex justify-end gap-2 mt-2">
                                  <button onClick={() => setShowEmpPaymentForm(false)} className="h-10 px-4 sm:px-5 text-[11px] sm:text-xs font-bold text-slate-500 hover:bg-white rounded-xl border border-slate-200 transition-colors flex-1 sm:flex-none">Cancel</button>
                                  <button onClick={handleRecordEmployeePayment} disabled={isSavingLedger} className="h-10 px-4 sm:px-8 text-[11px] sm:text-xs font-bold text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:shadow-lg hover:-translate-y-0.5 rounded-xl shadow-md transition-all flex-1 sm:flex-none flex items-center justify-center">
                                    {isSavingLedger ? <><Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Processing...</> : 'Record Payment'}
@@ -643,7 +683,7 @@ export default function EmployeesPage() {
                                       )}
                                    </div>
                                 </div>
-                             ))}
+                              ))}
                           </div>
                         </div>
                       </>
