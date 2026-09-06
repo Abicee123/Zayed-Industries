@@ -7,6 +7,7 @@ import { supabase } from "../../supabase";
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
+// --- NATIVE IMAGE COMPRESSION ENGINE ---
 const compressImage = async (file: File, maxWidth = 400, quality = 0.8): Promise<File> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -344,7 +345,6 @@ export default function SettingsPage() {
       }
 
       setSaveStatus("idle");
-      // Success state change removed from here to prevent green popup on download completion
     } catch (err) {
       alert("Failed to generate Excel backup.");
       setSaveStatus("idle");
