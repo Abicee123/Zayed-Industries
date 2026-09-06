@@ -178,7 +178,7 @@ export default function SettingsPage() {
     });
   };
 
-  // --- PREMIUM EXCEL GENERATION ENGINE ---
+  // --- PREMIUM EXCEL FORMATTING ENGINE ---
   const applyPremiumStyle = (sheet: ExcelJS.Worksheet, data: any[], title: string) => {
     if (data.length === 0) {
       sheet.addRow(['No records found for this period.']);
@@ -251,15 +251,18 @@ export default function SettingsPage() {
       });
     });
 
-    // 6. Intelligent Column Sizing
-    sheet.columns.forEach((column) => {
+    // 6. Intelligent Column Sizing (FIXED STRICT TYPING)
+    headers.forEach((_, index) => {
+      const column = sheet.getColumn(index + 1);
       let maxLength = 0;
+      
       column.eachCell({ includeEmpty: true }, (cell, rowNumber) => {
         if (rowNumber > 3) { // Skip title and meta rows
           const val = cell.value ? cell.value.toString() : '';
           if (val.length > maxLength) maxLength = val.length;
         }
       });
+      
       column.width = Math.min(Math.max(maxLength + 4, 15), 45); // Clamp widths
     });
   };
