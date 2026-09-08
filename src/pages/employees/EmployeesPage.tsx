@@ -62,7 +62,6 @@ export default function EmployeesPage() {
   const today = new Date().toISOString().split('T')[0];
   const [showEmpPaymentForm, setShowEmpPaymentForm] = useState(false);
   
-  // Changed amount to string to fix the un-erasable "0" backspace issue
   const [empPaymentForm, setEmpPaymentForm] = useState<{amount: string | number, payment_type: string, payment_date: string, notes: string, project_id: string}>({ 
     amount: "", payment_type: "Advance", payment_date: today, notes: "", project_id: "" 
   });
@@ -78,7 +77,6 @@ export default function EmployeesPage() {
     name: "", email: "", phone: "", role: "", access_level: "user", company_id: currentCompanyId?.toString() || "", password: ""
   });
 
-  // --- SORTING LOGIC: Admin -> Head -> User, then by Creation Order ---
   const visibleEmployees = employees.filter(emp => {
     const matchesSearch = emp.name?.toLowerCase().includes(searchQuery.toLowerCase()) || (emp.email && emp.email.toLowerCase().includes(searchQuery.toLowerCase()));
     
@@ -98,7 +96,6 @@ export default function EmployeesPage() {
     return timeA - timeB;
   });
 
-  // --- FINANCIAL CALCULATION HELPERS ---
   const getProjectDue = (empId: number, projectIdStr: string) => {
     if (!projectIdStr) return 0;
     const pid = parseInt(projectIdStr);
@@ -149,7 +146,6 @@ export default function EmployeesPage() {
     if (file) { setImageFile(file); setImagePreview(URL.createObjectURL(file)); setRemoveImage(false); }
   };
 
-  // --- GARBAGE COLLECTION UTILITY ---
   const deleteOldAvatar = async (url: string | null) => {
     if (!url) return;
     try {
@@ -170,7 +166,6 @@ export default function EmployeesPage() {
     let finalImageUrl = selectedEmployee?.profile_image_url || null;
 
     try {
-      // 1. Handle Image Deletion or Replacement (Garbage Collection)
       if (removeImage || imageFile) {
         if (selectedEmployee?.profile_image_url) {
           await deleteOldAvatar(selectedEmployee.profile_image_url);
@@ -178,7 +173,6 @@ export default function EmployeesPage() {
         if (removeImage) finalImageUrl = null;
       }
 
-      // 2. Handle New Image Upload & Compression
       if (imageFile) {
         setSaveStatus("compressing");
         const compressedFile = await compressImage(imageFile, 300, 0.8);
@@ -193,7 +187,6 @@ export default function EmployeesPage() {
       }
 
       setSaveStatus("saving");
-      // Access Level modification is processed here dynamically for the user->head conversion
       const payload: any = {
         name: formData.name, email: formData.email, phone: formData.phone, role: formData.role,
         access_level: formData.access_level, company_id: formData.company_id ? parseInt(formData.company_id) : null,
@@ -201,21 +194,31 @@ export default function EmployeesPage() {
       };
 
       if (!selectedEmployee) {
-        // --- CRITICAL FIX: SECURE AUTHENTICATION BRIDGE ---
+        // --- 1. CREATE BRAND NEW USER ---
         const { error: authError } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
         });
         
-        if (authError) {
-          throw new Error(`Authentication Engine Error: ${authError.message}`);
-        }
+        if (authError) throw new Error(`Authentication Engine Error: ${authError.message}`);
 
         payload.password = formData.password; 
         const { error } = await supabase.from('employees').insert([payload]);
         if (error) throw error;
+
       } else {
-        if (formData.password) payload.password = formData.password; 
+        // --- 2. UPDATE EXISTING USER ---
+        if (formData.password.trim()) {
+           // OVERWRITE PASSWORD USING THE SQL BYPASS FUNCTION
+           const { error: rpcError } = await supabase.rpc('admin_update_user_password', {
+              target_email: selectedEmployee.email,
+              new_password: formData.password
+           });
+           
+           if (rpcError) throw new Error(`Failed to forcefully change password: ${rpcError.message}`);
+           payload.password = formData.password; // Keep plain text reference updated if needed
+        }
+
         const { error } = await supabase.from('employees').update(payload).eq('id', selectedEmployee.id);
         if (error) throw error;
       }
@@ -253,7 +256,6 @@ export default function EmployeesPage() {
       let finalType = empPaymentForm.payment_type;
       let finalNotes = empPaymentForm.notes;
 
-      // Handle Bonus Dynamic Calculation for Save Function
       if (empPaymentForm.project_id) {
         const projectDue = getProjectDue(ledgerEmployee.id, empPaymentForm.project_id);
         if (amountVal > projectDue && projectDue > 0) {
@@ -303,12 +305,10 @@ export default function EmployeesPage() {
     <>
       <div className="max-w-[1200px] mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-700 pb-8 relative z-0">
         
-        {/* Minimal Dotted Background Pattern */}
         <div className="absolute inset-0 pointer-events-none z-[-1] overflow-hidden print:hidden">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMTQ4LCAxNjMsIDE4NCwgMC4wOCkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
         </div>
 
-        {/* HEADER */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6">
           <div>
             <p className="text-[9px] sm:text-[11px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-1.5 sm:mb-2 bg-blue-50 inline-block px-3 py-1 rounded-full">Team Management</p>
@@ -327,14 +327,12 @@ export default function EmployeesPage() {
           )}
         </div>
 
-        {/* SEARCH AND SUBSIDIARY FILTER BAR */}
         <div className="bg-white p-2 rounded-xl sm:rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-slate-400" />
             <input type="text" placeholder="Search personnel..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full h-10 sm:h-11 pl-9 sm:pl-11 pr-4 rounded-lg sm:rounded-xl border-none text-[13px] sm:text-sm font-medium outline-none bg-transparent focus:ring-0 placeholder:text-slate-400" />
           </div>
 
-          {/* Master Admin Subsidiary Filter */}
           {role === 'admin' && !activeWorkspace && (
             <div className="sm:w-64 shrink-0 border-t sm:border-t-0 sm:border-l border-slate-100 pt-2 sm:pt-0 sm:pl-2">
               <select
@@ -350,7 +348,6 @@ export default function EmployeesPage() {
           )}
         </div>
 
-        {/* --- GRID VIEW --- */}
         {viewMode === 'grid' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {visibleEmployees.map(emp => {
@@ -399,7 +396,6 @@ export default function EmployeesPage() {
           </div>
         )}
 
-        {/* --- LIST VIEW --- */}
         {viewMode === 'list' && (
           <div className="bg-white border border-slate-100 rounded-2xl sm:rounded-3xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full">
@@ -467,7 +463,6 @@ export default function EmployeesPage() {
           </div>
         )}
 
-        {/* --- ADD/EDIT MODAL --- */}
         <AnimatePresence>
           {isModalOpen && (
             <motion.div 
@@ -497,7 +492,6 @@ export default function EmployeesPage() {
 
                 <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 flex flex-col md:flex-row gap-6 sm:gap-10 max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-200 sm:[&::-webkit-scrollbar-thumb]:rounded-full">
                   
-                  {/* HORIZONTAL COMPACT LAYOUT FOR MOBILE AVATAR + NAME + EMAIL */}
                   <div className="flex flex-row items-center sm:items-start gap-4 sm:gap-0 sm:flex-col shrink-0 border-b sm:border-b-0 border-slate-100 pb-5 sm:pb-0 sm:w-64">
                     <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" />
                     <div className="relative group shrink-0">
@@ -548,7 +542,7 @@ export default function EmployeesPage() {
                         </div>
                       )}
                       
-                      <div className="sm:col-span-2 grid grid-cols-2 gap-4 sm:gap-5 pb-4">
+                      <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 pb-4">
                         <div>
                             <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Access Level</label>
                             <select value={formData.access_level} onChange={(e) => setFormData({...formData, access_level: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-bold outline-none cursor-pointer">
@@ -558,8 +552,16 @@ export default function EmployeesPage() {
                             </select>
                         </div>
                         <div>
-                          <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1 truncate" title={`System Password ${selectedEmployee ? '(Optional Edit)' : '*'}`}>Sys Password {selectedEmployee ? '(Opt)' : '*'}</label>
-                          <input type="text" placeholder={selectedEmployee ? "Leave blank..." : "Set initial pwd"} value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 shadow-sm placeholder:truncate" />
+                          <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1 truncate" title={`System Password ${selectedEmployee ? '(Optional Edit)' : '*'}`}>
+                            Sys Password {selectedEmployee ? '(Opt)' : '*'}
+                          </label>
+                          <input 
+                            type="text" 
+                            placeholder={selectedEmployee ? "Leave blank..." : "Set initial pwd"} 
+                            value={formData.password} 
+                            onChange={(e) => setFormData({...formData, password: e.target.value})} 
+                            className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 shadow-sm placeholder:truncate" 
+                          />
                         </div>
                       </div>
                     </div>
@@ -581,7 +583,6 @@ export default function EmployeesPage() {
           )}
         </AnimatePresence>
 
-        {/* --- PAYMENT LEDGER MODAL (STRICT FADING MOTION BACKDROP) --- */}
         <AnimatePresence>
           {isLedgerOpen && ledgerEmployee && (
             <motion.div 
@@ -635,7 +636,6 @@ export default function EmployeesPage() {
                                     <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase block mb-1">Amount (₹) *</label>
                                     <input type="number" value={empPaymentForm.amount} onChange={e=>setEmpPaymentForm({...empPaymentForm, amount: e.target.value})} className="w-full h-10 sm:h-11 border border-emerald-200 rounded-xl px-3 outline-none focus:border-emerald-500 font-black text-emerald-700 bg-white" />
                                     
-                                    {/* --- LIVE DYNAMIC DUE INDICATION --- */}
                                     <AnimatePresence>
                                         {empPaymentForm.project_id && (
                                             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
@@ -678,7 +678,7 @@ export default function EmployeesPage() {
                                             let newAmount = empPaymentForm.amount;
                                             if (pid) {
                                                 const due = getProjectDue(ledgerEmployee.id, pid);
-                                                if (due > 0) newAmount = due.toString(); // Auto fetch current due
+                                                if (due > 0) newAmount = due.toString();
                                             }
                                             setEmpPaymentForm({...empPaymentForm, project_id: pid, amount: newAmount});
                                         }} 
