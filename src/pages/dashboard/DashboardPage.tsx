@@ -75,6 +75,12 @@ export default function DashboardPage() {
   const visibleAnnouncements = announcements.filter(a => !a.company_id || a.company_id === activeCompanyId);
   const safeAnnouncementIndex = activeAnnouncementIndex % (visibleAnnouncements.length || 1);
 
+  // --- FIRST NAME EXTRACTION ---
+  const currentEmployee = employees.find(e => e.id === employeeId);
+  const firstName = currentEmployee?.name 
+    ? currentEmployee.name.split(' ')[0] 
+    : (user?.email ? user.email.split('@')[0].toUpperCase() : 'USER');
+
   useEffect(() => {
     if (visibleAnnouncements && visibleAnnouncements.length > 1) {
       const timer = setInterval(() => {
@@ -692,7 +698,7 @@ export default function DashboardPage() {
           <div>
             <p className="text-[9px] sm:text-[11px] font-bold text-blue-600 uppercase tracking-[0.3em] mb-2 sm:mb-3 bg-blue-50 inline-block px-3 py-1 rounded-full">Employee Dashboard</p>
             <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-slate-900 mt-1 sm:mt-2 mb-1 sm:mb-2">
-              Welcome, {user?.email ? user.email.split('@')[0].toUpperCase() : 'USER'}
+              Welcome, {firstName}
             </h1>
             <p className="text-[13px] sm:text-[14px] font-medium text-slate-500">
               View your projects, tasks, and recent payouts.
