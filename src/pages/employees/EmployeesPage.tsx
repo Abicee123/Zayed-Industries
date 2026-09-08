@@ -207,16 +207,23 @@ export default function EmployeesPage() {
         if (error) throw error;
 
       } else {
-        // --- 2. UPDATE EXISTING USER ---
-        if (formData.password.trim()) {
-           // OVERWRITE PASSWORD USING THE SQL BYPASS FUNCTION
-           const { error: rpcError } = await supabase.rpc('admin_update_user_password', {
-              target_email: selectedEmployee.email,
-              new_password: formData.password
+        // --- 2. SECURE GOD-MODE UPDATE (EMAIL & PASSWORD) ---
+        const emailChanged = formData.email.trim().toLowerCase() !== selectedEmployee.email.trim().toLowerCase();
+        const passwordChanged = formData.password.trim().length > 0;
+
+        if (emailChanged || passwordChanged) {
+           const { data: rpcResult, error: rpcError } = await supabase.rpc('admin_update_user_credentials', {
+              old_email: selectedEmployee.email,
+              new_email: formData.email.trim(),
+              new_password: formData.password.trim() || null
            });
            
-           if (rpcError) throw new Error(`Failed to forcefully change password: ${rpcError.message}`);
-           payload.password = formData.password; // Keep plain text reference updated if needed
+           if (rpcError) throw new Error(`Failed to contact Auth Vault: ${rpcError.message}`);
+           if (rpcResult !== 'SUCCESS') throw new Error(`Auth Vault Error: ${rpcResult}`);
+           
+           if (passwordChanged) {
+              payload.password = formData.password; // Keep plain text reference updated if needed
+           }
         }
 
         const { error } = await supabase.from('employees').update(payload).eq('id', selectedEmployee.id);
@@ -552,7 +559,7 @@ export default function EmployeesPage() {
                             </select>
                         </div>
                         <div>
-                          <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1 truncate" title={`System Password ${selectedEmployee ? '(Optional Edit)' : '*'}`}>
+                          <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1 truncate" title={selectedEmployee ? 'System Access' : 'Sys Password *'}>
                             Sys Password {selectedEmployee ? '(Opt)' : '*'}
                           </label>
                           <input 
