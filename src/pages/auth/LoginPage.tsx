@@ -6,121 +6,60 @@ import { Button } from "../../components/ui/button";
 import { useAuthStore } from "../../store/authStore";
 import { supabase } from "../../supabase";
 
-// --- DYNAMIC WARDROBE ENGINE ---
-const COLOR_PALETTES = [
-  { body: "#0ea5e9", arm: "#38bdf8", legFront: "#64748b", legBack: "#475569" }, 
-  { body: "#10b981", arm: "#34d399", legFront: "#4b5563", legBack: "#374151" }, 
-  { body: "#f43f5e", arm: "#fb7185", legFront: "#334155", legBack: "#1e293b" }, 
-  { body: "#8b5cf6", arm: "#a78bfa", legFront: "#1e293b", legBack: "#0f172a" }, 
-  { body: "#f59e0b", arm: "#fbbf24", legFront: "#3f3f46", legBack: "#27272a" }, 
-  { body: "#14b8a6", arm: "#5eead4", legFront: "#1e3a8a", legBack: "#172554" }, 
-  { body: "#6366f1", arm: "#818cf8", legFront: "#4b5563", legBack: "#374151" }, 
-  { body: "#ec4899", arm: "#f472b6", legFront: "#1e293b", legBack: "#0f172a" }, 
-];
-
-const SKIN_TONES = ["#fdba74", "#fca5a5", "#fcd34d", "#d6d3d1", "#e7e5e4", "#fbcfe8"];
-const HAIR_COLORS = ["#1e293b", "#451a03", "#713f12", "#171717", "#fcd34d", "#94a3b8"];
-
-// --- MATHEMATICAL BACKGROUND GEOMETRY ---
-const BackgroundGeometry = () => (
-  <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 flex items-center justify-center">
-    <div 
-      className="absolute inset-0 opacity-[0.3]" 
-      style={{ 
-        backgroundImage: 'linear-gradient(#cbd5e1 1px, transparent 1px), linear-gradient(90deg, #cbd5e1 1px, transparent 1px)', 
-        backgroundSize: '40px 40px' 
-      }} 
-    />
-    <svg className="absolute w-full h-full opacity-40 hidden md:block" xmlns="http://www.w3.org/2000/svg">
-      <line x1="0" y1="100%" x2="100%" y2="0" stroke="#94a3b8" strokeWidth="0.5" />
-      <line x1="0" y1="0" x2="100%" y2="100%" stroke="#94a3b8" strokeWidth="0.5" />
-      <circle cx="50%" cy="50%" r="35%" fill="none" stroke="#94a3b8" strokeWidth="0.5" strokeDasharray="8 8" />
-      <circle cx="50%" cy="50%" r="20%" fill="none" stroke="#94a3b8" strokeWidth="0.5" />
-    </svg>
-  </div>
-);
-
-// --- FULL SCREEN ANIMATED WALKERS ---
-const BackgroundWalkers = ({ companies }: { companies: any[] }) => {
-  const walkers = useMemo(() => {
-    const sortedCompanies = [...companies].sort((a, b) => a.id - b.id);
-    const numCompanies = sortedCompanies.length;
-
-    return sortedCompanies.map((c, i) => {
-      const isRightToLeft = i % 2 !== 0; 
-      const topPosition = 15 + (i * (65 / Math.max(numCompanies - 1, 1)));
-      
-      return {
-        company: c,
-        id: c.id,
-        direction: isRightToLeft ? -1 : 1,
-        top: topPosition,
-        zIndex: Math.round(topPosition),
-        duration: 20 + (i % 4) * 4, 
-        delay: -(i * (40 / Math.max(numCompanies, 1))), 
-        colors: COLOR_PALETTES[i % COLOR_PALETTES.length],
-        skin: SKIN_TONES[i % SKIN_TONES.length],
-        hair: HAIR_COLORS[i % HAIR_COLORS.length]
-      };
-    });
-  }, [companies]);
-
+// --- CUSTOM 3D-STYLE ANIMATED GRAPHIC ---
+const AnimatedGraphic = () => {
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none hidden lg:block z-10">
-      {walkers.map((walker) => {
-        const isRightToLeft = walker.direction === -1;
+    <div className="relative w-[300px] h-[350px] flex items-center justify-center mt-10">
+      {/* Floor Shadow */}
+      <div className="absolute -bottom-4 w-64 h-16 bg-black/5 blur-xl rounded-[100%]" />
+      
+      {/* Yellow Cylinder Back */}
+      <motion.div 
+        animate={{ y: [0, -10, 0] }} 
+        transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }} 
+        className="absolute bottom-16 right-6 w-20 h-48 bg-amber-400 rounded-[2.5rem] shadow-[inset_-12px_-12px_20px_rgba(0,0,0,0.15)] z-0" 
+      />
+      
+      {/* Gray Cylinder Left */}
+      <motion.div 
+        animate={{ y: [0, -12, 0] }} 
+        transition={{ repeat: Infinity, duration: 4.5, delay: 0.5, ease: "easeInOut" }} 
+        className="absolute bottom-8 left-6 w-24 h-36 bg-slate-700 rounded-[3rem] shadow-[inset_-10px_-10px_20px_rgba(0,0,0,0.25)] z-10" 
+      />
+      
+      {/* Main Blue Cylinder Center */}
+      <motion.div 
+        animate={{ y: [0, -15, 0] }} 
+        transition={{ repeat: Infinity, duration: 5, delay: 1, ease: "easeInOut" }} 
+        className="absolute bottom-4 left-24 w-28 h-60 bg-blue-600 rounded-[3.5rem] shadow-[inset_-16px_-16px_24px_rgba(0,0,0,0.2),_15px_15px_30px_rgba(0,0,0,0.15)] z-20" 
+      />
+      
+      {/* Small Yellow Cylinder Front */}
+      <motion.div 
+        animate={{ y: [0, -8, 0] }} 
+        transition={{ repeat: Infinity, duration: 3.5, delay: 1.5, ease: "easeInOut" }} 
+        className="absolute -bottom-2 right-20 w-20 h-28 bg-amber-300 rounded-[2.5rem] shadow-[inset_-8px_-8px_16px_rgba(0,0,0,0.15),_8px_8px_16px_rgba(0,0,0,0.1)] z-30" 
+      />
 
-        return (
-          <motion.div
-            key={walker.id}
-            className="absolute drop-shadow-2xl"
-            style={{ 
-              top: `${walker.top}%`, 
-              left: isRightToLeft ? "100%" : "-250px",
-              zIndex: walker.zIndex 
-            }}
-            animate={{ x: isRightToLeft ? "-120vw" : "120vw" }}
-            transition={{ repeat: Infinity, duration: walker.duration, delay: walker.delay, ease: "linear" }}
-          >
-            <div style={{ transform: isRightToLeft ? "scaleX(-1)" : "scaleX(1)" }}>
-              <svg width="180" height="260" viewBox="0 0 160 260">
-                <ellipse cx="75" cy="245" rx="30" ry="5" fill="#94a3b8" opacity="0.4" />
-                <motion.rect x="68" y="70" width="10" height="50" rx="5" fill={walker.colors.arm} animate={{ rotate: [20, -20, 20] }} style={{ originX: 0.5, originY: 0 }} transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }} />
-                <motion.rect x="60" y="130" width="12" height="70" rx="6" fill={walker.colors.legBack} animate={{ rotate: [25, -25, 25] }} style={{ originX: 0.5, originY: 0 }} transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }} />
-                <rect x="55" y="60" width="34" height="75" rx="12" fill={walker.colors.body} />
-                <motion.rect x="75" y="130" width="12" height="70" rx="6" fill={walker.colors.legFront} animate={{ rotate: [-25, 25, -25] }} style={{ originX: 0.5, originY: 0 }} transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }} />
-                
-                <motion.g animate={{ rotate: [-15, 15, -15] }} style={{ originX: 0.5, originY: 0.2 }} transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}>
-                  <rect x="70" y="70" width="10" height="50" rx="5" fill={walker.colors.arm} />
-                  <g transform="translate(65, 110)">
-                    <rect width="52" height="36" rx="4" fill="#ffffff" stroke="#94a3b8" strokeWidth="2"/>
-                    <path d="M 18,0 L 18,-8 L 34,-8 L 34,0" fill="none" stroke="#64748b" strokeWidth="2.5"/>
-                    <foreignObject x="3" y="3" width="46" height="30">
-                      <div className="w-full h-full flex items-center justify-center bg-white rounded-sm overflow-hidden" style={{ transform: isRightToLeft ? "scaleX(-1)" : "scaleX(1)" }}>
-                        {walker.company.logo_url ? (
-                          <img src={walker.company.logo_url} className="w-full h-full object-contain p-0.5" alt="Logo" />
-                        ) : (
-                          <span className="text-[7px] font-bold text-slate-800 text-center leading-tight truncate px-1">
-                            {walker.company.name}
-                          </span>
-                        )}
-                      </div>
-                    </foreignObject>
-                  </g>
-                </motion.g>
-
-                <circle cx="72" cy="35" r="16" fill={walker.skin} />
-                <path d="M 54,35 Q 72,5 90,35 L 90,42 L 54,42 Z" fill={walker.hair} />
-              </svg>
+      {/* Floating Dark Screen/Phone Object */}
+      <motion.div 
+        animate={{ y: [0, -20, 0], rotateZ: [0, 2, -2, 0] }} 
+        transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }} 
+        className="absolute top-0 left-28 w-24 h-48 bg-slate-900 rounded-[1.5rem] border-[4px] border-slate-800 shadow-2xl flex items-center justify-center z-40 overflow-hidden"
+      >
+         <div className="w-full h-full relative">
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-8 h-1.5 bg-slate-700 rounded-full" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+              <span className="text-amber-400 font-black tracking-tighter text-xl mb-1">ZAYD</span>
+              <span className="text-blue-500 font-bold text-[8px] uppercase tracking-widest">Login</span>
             </div>
-          </motion.div>
-        );
-      })}
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-10 h-1 bg-slate-700 rounded-full" />
+         </div>
+      </motion.div>
     </div>
   );
 };
 
-// --- MAIN LOGIN PAGE ---
 export default function LoginPage() {
   const navigate = useNavigate();
 
@@ -130,7 +69,6 @@ export default function LoginPage() {
   const [companiesDb, setCompaniesDb] = useState<{id: number, name: string, logo_url: string | null}[]>([]);
   const [headUsers, setHeadUsers] = useState<{name: string, email: string}[]>([]);
   
-  // State to store the Master Admin's logo
   const [adminLogo, setAdminLogo] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
@@ -141,14 +79,11 @@ export default function LoginPage() {
   
   const signIn = useAuthStore((state) => state.signIn);
 
-  // Fetch Companies & Admin Profile Image (and update favicon!)
   useEffect(() => {
     const fetchInitialData = async () => {
-      // 1. Fetch Companies
       const { data: compData } = await supabase.from('companies').select('id, name, logo_url');
       if (compData) setCompaniesDb(compData);
 
-      // 2. Fetch Master Admin Logo
       const { data: adminData } = await supabase
         .from('employees')
         .select('profile_image_url')
@@ -164,7 +99,6 @@ export default function LoginPage() {
         currentFavicon = adminData.profile_image_url;
       }
 
-      // 3. Update the Tab Favicon Dynamically
       let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
       if (!link) {
         link = document.createElement('link');
@@ -242,211 +176,191 @@ export default function LoginPage() {
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
   return (
-    <div className="min-h-[100dvh] w-full bg-[#f4f7f9] flex flex-col relative overflow-hidden font-sans">
+    <div className="min-h-[100dvh] w-full bg-gradient-to-br from-[#eef2ff] via-[#f8fafc] to-[#e0e7ff] flex flex-col items-center justify-center relative font-sans overflow-hidden p-4 sm:p-8">
       
-      {/* Top Header Logo */}
-      <header className="absolute top-6 left-6 lg:top-10 lg:left-12 z-[110] flex items-center gap-3">
-        <div className="h-10 w-10 bg-blue-900 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md shadow-blue-900/20 overflow-hidden shrink-0">
-          {adminLogo ? (
-            <img src={adminLogo} alt="Admin Logo" className="h-full w-full object-cover" />
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" className="h-6 w-6">
-              <rect x="15" y="50" width="16" height="35" rx="4" fill="#60a5fa" />
-              <rect x="42" y="30" width="16" height="55" rx="4" fill="#3b82f6" />
-              <rect x="69" y="10" width="16" height="75" rx="4" fill="#bfdbfe" />
-            </svg>
-          )}
-        </div>
-        <span className="font-bold text-xl text-slate-800 tracking-tight">Zayd Industries</span>
-      </header>
-
-      {/* Background Orbs & Geometry */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-200/40 rounded-full blur-[100px] pointer-events-none z-0" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-200/40 rounded-full blur-[100px] pointer-events-none z-0" />
-      <BackgroundGeometry />
-
-      {/* Dynamic Background Walkers */}
-      <BackgroundWalkers companies={companiesDb} />
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex items-center justify-center p-4 relative z-[100]">
+      {/* Main Container */}
+      <div className="w-full max-w-[1100px] min-h-[600px] bg-[#f8fafc] rounded-[2rem] sm:rounded-[3rem] shadow-2xl flex flex-col md:flex-row overflow-hidden relative z-10 border border-white">
         
-        {/* The Card */}
-        <div className="w-full max-w-[460px] h-[520px] sm:h-[600px] bg-white/95 backdrop-blur-md rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] border border-white p-6 sm:p-10 flex flex-col relative">
+        {/* LEFT COLUMN - LOGIN LOGIC */}
+        <div className="w-full md:w-[45%] lg:w-[40%] p-8 sm:p-12 flex flex-col relative z-20 bg-white">
           
-          <div className="relative text-center mb-8 mt-2 shrink-0">
-            <AnimatePresence>
-              {step > 1 && (
-                <motion.button 
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  onClick={goBack} 
-                  className="absolute left-0 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 p-2 rounded-full transition-colors border border-transparent hover:border-slate-200"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </motion.button>
+          <div className="flex items-center gap-3 mb-12 shrink-0">
+            <div className="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md overflow-hidden shrink-0">
+              {adminLogo ? (
+                <img src={adminLogo} alt="Logo" className="h-full w-full object-cover" />
+              ) : (
+                <span className="tracking-tighter">Z</span>
               )}
-            </AnimatePresence>
-            
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-              {step === 1 && "Welcome Back."}
-              {step === 2 && "Locate Workspace."}
-              {step === 3 && selectedCompany ? selectedCompany : step === 3 ? "Secure Login." : ""}
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-2">
-              {step === 1 && "Please select your access tier to continue."}
-              {step === 2 && "Select your assigned subsidiary."}
-              {step === 3 && "Enter your credentials to access the portal."}
-            </p>
+            </div>
+            <span className="font-black text-xl text-slate-900 tracking-tight">Zayd Industries</span>
           </div>
 
-          <div className="flex-1 relative overflow-y-auto overflow-x-hidden max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-            <AnimatePresence mode="wait">
-              
-              {/* STEP 1: SELECT ROLE */}
-              {step === 1 && (
-                <motion.div key="step1" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }} className="absolute inset-0 pb-4">
-                  <div className="space-y-3 sm:space-y-4">
-                    <button onClick={() => handleRoleSelect("admin")} className="w-full flex items-center p-4 rounded-2xl border border-slate-100 bg-white hover:border-blue-200 hover:shadow-md group transition-all text-left">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors mr-4 shadow-sm"><Shield className="h-5 w-5" /></div>
-                      <div className="flex-1"><span className="block font-bold text-[14px] sm:text-[15px] text-slate-900">System Admin</span><span className="block text-[11px] sm:text-[12px] font-medium text-slate-500 mt-0.5">Full platform access</span></div>
-                      <CheckCircle2 className="h-5 w-5 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block" />
-                    </button>
+          <div className="flex-1 flex flex-col justify-center relative">
+            
+            <div className="mb-8 flex items-center relative">
+              <AnimatePresence>
+                {step > 1 && (
+                  <motion.button 
+                    initial={{ opacity: 0, scale: 0.8, x: -10 }}
+                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, x: -10 }}
+                    onClick={goBack} 
+                    className="absolute -left-2 text-slate-400 hover:text-blue-600 p-2 rounded-full transition-colors"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </motion.button>
+                )}
+              </AnimatePresence>
+              <h1 className={`text-4xl font-black text-slate-900 tracking-tight ${step > 1 ? 'ml-8' : ''}`}>
+                {step === 1 && "Select Role."}
+                {step === 2 && "Workspace."}
+                {step === 3 && selectedCompany ? selectedCompany : step === 3 ? "Secure Login." : ""}
+              </h1>
+            </div>
 
-                    <button onClick={() => handleRoleSelect("head")} className="w-full flex items-center p-4 rounded-2xl border border-slate-100 bg-white hover:border-blue-200 hover:shadow-md group transition-all text-left">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors mr-4 shadow-sm"><Briefcase className="h-5 w-5" /></div>
-                      <div className="flex-1"><span className="block font-bold text-[14px] sm:text-[15px] text-slate-900">Company Head</span><span className="block text-[11px] sm:text-[12px] font-medium text-slate-500 mt-0.5">Manage your subsidiary</span></div>
-                      <CheckCircle2 className="h-5 w-5 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block" />
-                    </button>
+            <div className="relative">
+              <AnimatePresence mode="wait">
+                
+                {/* STEP 1: SELECT ROLE */}
+                {step === 1 && (
+                  <motion.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                    <div className="space-y-4">
+                      <button onClick={() => handleRoleSelect("admin")} className="w-full flex items-center p-4 rounded-2xl border-2 border-slate-100 bg-white hover:border-blue-600 hover:shadow-lg group transition-all text-left">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors mr-4"><Shield className="h-5 w-5" /></div>
+                        <div className="flex-1"><span className="block font-bold text-[15px] text-slate-900">System Admin</span></div>
+                        <CheckCircle2 className="h-5 w-5 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block" />
+                      </button>
 
-                    <button onClick={() => handleRoleSelect("user")} className="w-full flex items-center p-4 rounded-2xl border border-slate-100 bg-white hover:border-blue-200 hover:shadow-md group transition-all text-left">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors mr-4 shadow-sm"><UserCircle className="h-5 w-5" /></div>
-                      <div className="flex-1"><span className="block font-bold text-[14px] sm:text-[15px] text-slate-900">Employee</span><span className="block text-[11px] sm:text-[12px] font-medium text-slate-500 mt-0.5">Access your workspace</span></div>
-                      <CheckCircle2 className="h-5 w-5 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block" />
-                    </button>
-                  </div>
-                </motion.div>
-              )}
+                      <button onClick={() => handleRoleSelect("head")} className="w-full flex items-center p-4 rounded-2xl border-2 border-slate-100 bg-white hover:border-blue-600 hover:shadow-lg group transition-all text-left">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-500 group-hover:bg-amber-400 group-hover:text-white transition-colors mr-4"><Briefcase className="h-5 w-5" /></div>
+                        <div className="flex-1"><span className="block font-bold text-[15px] text-slate-900">Company Head</span></div>
+                        <CheckCircle2 className="h-5 w-5 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block" />
+                      </button>
 
-              {/* STEP 2: SELECT COMPANY */}
-              {step === 2 && (
-                <motion.div key="step2" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }} className="absolute inset-0 pb-4">
-                  <form onSubmit={handleCompanySelect} className="space-y-6">
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-bold text-blue-600 uppercase tracking-widest pl-1">Subsidiary List</label>
-                      <div className="relative">
-                        <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                        <select required value={selectedCompany} onChange={(e) => setSelectedCompany(e.target.value)} className="w-full h-14 rounded-2xl border border-slate-200 bg-white px-4 pl-12 text-[14px] sm:text-[15px] outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none text-slate-800 font-semibold cursor-pointer shadow-sm">
-                          <option value="" disabled>Choose your company...</option>
-                          {companiesDb.map((company) => (
-                            <option key={company.id} value={company.name}>{company.name}</option>
-                          ))}
-                        </select>
+                      <button onClick={() => handleRoleSelect("user")} className="w-full flex items-center p-4 rounded-2xl border-2 border-slate-100 bg-white hover:border-blue-600 hover:shadow-lg group transition-all text-left">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-600 group-hover:bg-slate-700 group-hover:text-white transition-colors mr-4"><UserCircle className="h-5 w-5" /></div>
+                        <div className="flex-1"><span className="block font-bold text-[15px] text-slate-900">Employee</span></div>
+                        <CheckCircle2 className="h-5 w-5 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block" />
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* STEP 2: SELECT COMPANY */}
+                {step === 2 && (
+                  <motion.div key="step2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                    <form onSubmit={handleCompanySelect} className="space-y-6">
+                      <div className="space-y-2">
+                        <div className="relative">
+                          <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                          <select required value={selectedCompany} onChange={(e) => setSelectedCompany(e.target.value)} className="w-full h-14 rounded-xl border-2 border-slate-200 bg-white px-4 pl-12 text-[15px] outline-none focus:border-blue-600 transition-all appearance-none text-slate-800 font-bold cursor-pointer shadow-sm">
+                            <option value="" disabled>Choose your company...</option>
+                            {companiesDb.map((company) => (
+                              <option key={company.id} value={company.name}>{company.name}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
-                    </div>
-                    <Button type="submit" disabled={!selectedCompany} className="w-full h-[52px] rounded-xl text-[14px] font-bold shadow-md shadow-blue-600/20 hover:shadow-lg transition-all bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50">
-                      Next Step
-                    </Button>
-                  </form>
-                </motion.div>
-              )}
+                      <Button type="submit" disabled={!selectedCompany} className="w-full h-14 rounded-xl text-[15px] font-bold shadow-lg shadow-blue-600/30 hover:shadow-xl transition-all bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50">
+                        Continue
+                      </Button>
+                    </form>
+                  </motion.div>
+                )}
 
-              {/* STEP 3: CREDENTIALS */}
-              {step === 3 && (
-                <motion.div key="step3" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} transition={{ duration: 0.2 }} className="absolute inset-0 pb-4">
-                  
-                  {selectedCompany && (
-                    <div className="flex justify-center mb-6">
-                      <div className="h-16 w-16 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-center p-2 text-blue-600 font-bold text-2xl overflow-hidden">
-                        {activeCompanyObj?.logo_url ? <img src={activeCompanyObj.logo_url} alt="" className="h-full w-full object-contain"/> : getInitials(selectedCompany)}
-                      </div>
-                    </div>
-                  )}
-
-                  {error && (
-                    <div className="mb-6 rounded-xl bg-rose-50 p-3 text-[12px] font-bold text-rose-600 border border-rose-100 flex items-center gap-2">
-                      <Shield className="h-4 w-4 shrink-0" /> {error}
-                    </div>
-                  )}
-
-                  <form onSubmit={handleLogin} className="space-y-5">
+                {/* STEP 3: CREDENTIALS */}
+                {step === 3 && (
+                  <motion.div key="step3" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                     
-                    {/* AUTO-FETCH HEAD LOGIC */}
-                    {selectedRole === 'head' && headUsers.length > 0 ? (
-                      <div className="space-y-5">
-                        {headUsers.length > 1 ? (
-                          <div className="space-y-1.5">
-                            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest pl-1">Select Profile</label>
-                            <select required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-12 sm:h-14 rounded-xl border border-slate-200 bg-white px-4 text-[14px] outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none text-slate-800 font-semibold cursor-pointer shadow-sm">
+                    {selectedCompany && (
+                      <div className="flex justify-start mb-6">
+                        <div className="h-16 w-16 bg-white rounded-2xl border-2 border-slate-100 shadow-sm flex items-center justify-center p-2 text-blue-600 font-black text-2xl overflow-hidden">
+                          {activeCompanyObj?.logo_url ? <img src={activeCompanyObj.logo_url} alt="" className="h-full w-full object-contain"/> : getInitials(selectedCompany)}
+                        </div>
+                      </div>
+                    )}
+
+                    {error && (
+                      <div className="mb-6 rounded-xl bg-rose-50 p-4 text-[13px] font-bold text-rose-600 border border-rose-100 flex items-center gap-2">
+                        <Shield className="h-4 w-4 shrink-0" /> {error}
+                      </div>
+                    )}
+
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      {selectedRole === 'head' && headUsers.length > 0 ? (
+                        <div className="space-y-5">
+                          {headUsers.length > 1 ? (
+                            <select required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-14 rounded-xl border-2 border-slate-200 bg-white px-4 text-[15px] outline-none focus:border-blue-600 transition-all appearance-none text-slate-800 font-bold cursor-pointer">
                               <option value="" disabled>Choose your profile...</option>
                               {headUsers.map((head) => (
                                 <option key={head.email} value={head.email}>{head.name}</option>
                               ))}
                             </select>
-                          </div>
-                        ) : (
-                          <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm shrink-0">
-                              {headUsers[0].name.charAt(0)}
+                          ) : (
+                            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-4">
+                              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm shrink-0">
+                                {headUsers[0].name.charAt(0)}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[15px] font-bold text-slate-900 truncate">{headUsers[0].name}</p>
+                              </div>
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Active Profile</p>
-                              <p className="text-[14px] font-bold text-slate-900 mt-0.5 truncate">{headUsers[0].name}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest pl-1">Email ID</label>
-                        <div className="relative">
-                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" className="w-full h-12 sm:h-14 rounded-xl border border-slate-200 bg-white px-4 pl-11 text-[14px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm text-slate-900" />
+                          )}
                         </div>
-                      </div>
-                    )}
-                    
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest pl-1">Password</label>
+                      ) : (
+                        <div className="relative">
+                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email Address" className="w-full h-14 rounded-xl border-2 border-slate-200 bg-white px-4 pl-12 text-[15px] font-bold outline-none focus:border-blue-600 transition-all text-slate-900" />
+                        </div>
+                      )}
+                      
                       <div className="relative">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                         <input 
                           type={showPassword ? "text" : "password"} 
                           required 
                           value={password} 
                           onChange={(e) => setPassword(e.target.value)} 
-                          placeholder="••••••••" 
-                          className="w-full h-12 sm:h-14 rounded-xl border border-slate-200 bg-white px-4 pl-11 pr-10 text-[14px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm text-slate-900 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden" 
+                          placeholder="Password" 
+                          className="w-full h-14 rounded-xl border-2 border-slate-200 bg-white px-4 pl-12 pr-12 text-[15px] font-bold outline-none focus:border-blue-600 transition-all text-slate-900 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden" 
                         />
                         <button 
                           type="button" 
                           onClick={() => setShowPassword(!showPassword)} 
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors"
                         >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                         </button>
                       </div>
-                    </div>
 
-                    <Button type="submit" disabled={isLoggingIn} className="w-full h-[52px] mt-4 rounded-xl text-[14px] font-bold shadow-md shadow-blue-600/20 hover:shadow-lg transition-all bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50">
-                      {isLoggingIn ? "Logging in..." : "Login"}
-                    </Button>
-                  </form>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                      <Button type="submit" disabled={isLoggingIn} className="w-full h-14 mt-4 rounded-xl text-[15px] font-bold shadow-lg shadow-blue-600/30 hover:shadow-xl transition-all bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50">
+                        {isLoggingIn ? "Logging in..." : "Log in"}
+                      </Button>
+                    </form>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
-
-          {/* FOOTER */}
-          <div className="mt-auto shrink-0 pt-4 pb-1 text-center border-t border-transparent">
-            <p className="text-[11px] font-medium text-slate-400">
-              © 2026 Zayd Industries Pvt. Limited
-            </p>
-          </div>
-
         </div>
+
+        {/* RIGHT COLUMN - ANIMATED GRAPHIC */}
+        <div className="hidden md:flex flex-1 items-center justify-center relative bg-[#FAFCFF]">
+          <AnimatedGraphic />
+        </div>
+
       </div>
+
+      {/* FOOTER */}
+      <div className="absolute bottom-6 w-full flex flex-col items-center justify-center gap-1 z-0">
+        <p className="text-[12px] font-bold text-slate-400">
+          © {new Date().getFullYear()} Zayd Industries Pvt Ltd.
+        </p>
+        <p className="text-[11px] font-bold text-slate-400">
+          Developed by <a href="https://wa.me/917558957246" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 hover:underline transition-all">R</a>
+        </p>
+      </div>
+
     </div>
   );
 }
