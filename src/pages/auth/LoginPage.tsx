@@ -11,43 +11,37 @@ const THEMES = {
   morning: {
     bgClass: "from-rose-100 via-orange-50 to-sky-100",
     sun: "bg-orange-300 shadow-[0_0_80px_rgba(253,186,116,0.8)]",
-    building: "#7dd3fc", buildingDark: "#38bdf8", parent: "#0ea5e9",
-    hillsBack: "#93c5fd", hillsFront: "#60a5fa", bridge: "#1e40af", bridgeDark: "#1e3a8a", fg: "#1e3a8a",
+    building: "#7dd3fc", parent: "#38bdf8",
+    hillsBack: "#93c5fd", hillsFront: "#60a5fa", bridge: "#1e40af", fg: "#1e3a8a",
   },
   day: {
     bgClass: "from-amber-50 via-blue-50 to-blue-200",
     sun: "bg-amber-300 shadow-[0_0_80px_rgba(251,191,36,0.6)]",
-    building: "#93c5fd", buildingDark: "#60a5fa", parent: "#3b82f6",
-    hillsBack: "#60a5fa", hillsFront: "#3b82f6", bridge: "#1e40af", bridgeDark: "#172554", fg: "#0f172a",
+    building: "#93c5fd", parent: "#60a5fa",
+    hillsBack: "#3b82f6", hillsFront: "#2563eb", bridge: "#1e40af", fg: "#0f172a",
   },
   evening: {
     bgClass: "from-orange-200 via-rose-100 to-purple-200",
     sun: "bg-rose-400 shadow-[0_0_80px_rgba(251,113,133,0.8)]",
-    building: "#c084fc", buildingDark: "#a855f7", parent: "#9333ea",
-    hillsBack: "#a855f7", hillsFront: "#7e22ce", bridge: "#4c1d95", bridgeDark: "#2e1065", fg: "#2e1065",
+    building: "#c084fc", parent: "#a855f7",
+    hillsBack: "#9333ea", hillsFront: "#7e22ce", bridge: "#4c1d95", fg: "#2e1065",
   },
   night: {
     bgClass: "from-slate-900 via-indigo-950 to-blue-950",
     sun: "bg-slate-100 shadow-[0_0_60px_rgba(255,255,255,0.4)] w-24 h-24", 
-    building: "#312e81", buildingDark: "#1e1b4b", parent: "#3730a3",
-    hillsBack: "#1e3a8a", hillsFront: "#172554", bridge: "#0f172a", bridgeDark: "#020617", fg: "#020617",
+    building: "#312e81", parent: "#3730a3",
+    hillsBack: "#1e3a8a", hillsFront: "#172554", bridge: "#0f172a", fg: "#020617",
   }
 };
 
 const slowEase = [0.25, 0.1, 0.25, 1];
 
-// Congested Cityscape Data
 const subBuildings = [
-  { x: 10, y: 150, w: 40, h: 250, z: 0 }, { x: 30, y: 200, w: 70, h: 200, z: 1 }, { x: 80, y: 120, w: 50, h: 280, z: 0 },
-  { x: 120, y: 180, w: 60, h: 220, z: 1 }, { x: 160, y: 140, w: 80, h: 260, z: 0 }, { x: 220, y: 210, w: 50, h: 190, z: 1 },
-  { x: 260, y: 130, w: 70, h: 270, z: 0 }, { x: 310, y: 190, w: 60, h: 210, z: 1 }, { x: 360, y: 160, w: 55, h: 240, z: 0 },
-  { x: 400, y: 220, w: 80, h: 180, z: 1 }, { x: 460, y: 150, w: 45, h: 250, z: 0 }, { x: 490, y: 180, w: 65, h: 220, z: 1 },
-  { x: 540, y: 240, w: 70, h: 160, z: 0 }, { x: 590, y: 170, w: 50, h: 230, z: 1 }, 
-  { x: 820, y: 180, w: 60, h: 220, z: 0 }, { x: 860, y: 140, w: 50, h: 260, z: 1 }, { x: 900, y: 210, w: 75, h: 190, z: 0 },
-  { x: 950, y: 160, w: 85, h: 240, z: 1 }, { x: 1020, y: 230, w: 50, h: 170, z: 0 }, { x: 1060, y: 150, w: 60, h: 250, z: 1 },
-  { x: 1110, y: 190, w: 70, h: 210, z: 0 }, { x: 1170, y: 130, w: 55, h: 270, z: 1 }, { x: 1210, y: 220, w: 65, h: 180, z: 0 },
-  { x: 1260, y: 170, w: 80, h: 230, z: 1 }, { x: 1320, y: 240, w: 50, h: 160, z: 0 }, { x: 1360, y: 140, w: 75, h: 260, z: 1 },
-  { x: 1420, y: 190, w: 60, h: 210, z: 0 }, { x: 1470, y: 160, w: 80, h: 240, z: 1 }, { x: 1530, y: 210, w: 50, h: 190, z: 0 }
+  { x: 50, y: 200, w: 70, h: 200 }, { x: 150, y: 150, w: 60, h: 250 },
+  { x: 250, y: 220, w: 80, h: 180 }, { x: 400, y: 180, w: 60, h: 220 },
+  { x: 500, y: 240, w: 70, h: 160 }, { x: 850, y: 170, w: 60, h: 230 },
+  { x: 950, y: 210, w: 90, h: 190 }, { x: 1100, y: 140, w: 60, h: 260 },
+  { x: 1250, y: 230, w: 70, h: 170 }, { x: 1400, y: 190, w: 80, h: 210 }
 ];
 
 // --- THE CONNECTED SKYLINE PARALLAX ANIMATION ---
@@ -72,17 +66,8 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
   return (
     <>
       <style>{`
-        /* Full screen spanning animations to prevent edge popping */
-        @keyframes trainRight { 0% { transform: translate3d(-50vw, 0, 0); } 100% { transform: translate3d(150vw, 0, 0); } }
-        @keyframes trainLeft { 0% { transform: translate3d(150vw, 0, 0); } 100% { transform: translate3d(-50vw, 0, 0); } }
-        @keyframes boatRight { 0% { transform: translate3d(-30vw, 0, 0); } 100% { transform: translate3d(130vw, 0, 0); } }
-        @keyframes boatLeft { 0% { transform: translate3d(130vw, 0, 0); } 100% { transform: translate3d(-30vw, 0, 0); } }
-        
-        .anim-train-1 { animation: trainRight 16s linear infinite; }
-        .anim-train-2 { animation: trainLeft 22s linear infinite; }
-        .anim-train-3 { animation: trainRight 9s linear infinite; }
-        .anim-boat-1 { animation: boatRight 45s linear infinite; }
-        .anim-boat-2 { animation: boatLeft 35s linear infinite; }
+        @keyframes trainDrive { 0% { transform: translateX(-20vw); } 100% { transform: translateX(120vw); } }
+        .train-track { animation: trainDrive 8s linear infinite; }
       `}</style>
 
       <div className={`absolute inset-0 overflow-hidden bg-gradient-to-b ${t.bgClass} transition-colors duration-1000`}>
@@ -90,7 +75,7 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
         {timeTheme === 'night' && (
           <div className="absolute inset-0 z-0 opacity-40">
             <svg width="100%" height="100%">
-              {[...Array(40)].map((_, i) => (
+              {[...Array(30)].map((_, i) => (
                 <circle key={i} cx={`${Math.random() * 100}%`} cy={`${Math.random() * 60}%`} r={Math.random() * 1.5} fill="#fff" opacity={Math.random()} />
               ))}
             </svg>
@@ -103,7 +88,7 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
           <div className={`absolute top-[15%] right-[20%] w-32 h-32 md:w-48 md:h-48 rounded-full blur-[2px] transition-all duration-1000 ${t.sun}`} />
         </motion.div>
 
-        {/* LAYER 1: Highly Congested Skyline */}
+        {/* LAYER 1: The Skyline (Background Buildings) */}
         <motion.div 
           animate={{ scale: hasSelection ? 1.15 : 1 }}
           transition={{ duration: 3, ease: slowEase }}
@@ -115,16 +100,23 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
                 
                 {subBuildings.map((b, i) => {
                   const isActive = activeCompanyIndex === i;
-                  const isPrimary = i < 15; 
                   return (
-                    <motion.g key={i} animate={{ opacity: hasSelection && !isActive ? (b.z === 0 ? 0.15 : 0.25) : 1 }} transition={{ duration: 2.5, ease: slowEase }}>
-                      <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="3" fill={b.z === 0 ? t.buildingDark : t.building} style={{ transition: "fill 1s ease" }} />
+                    <motion.g key={i} animate={{ opacity: hasSelection && !isActive ? 0.25 : 1 }} transition={{ duration: 2.5, ease: slowEase }}>
+                      <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="4" fill={t.building} style={{ transition: "fill 1s ease" }} />
+                      
                       <AnimatePresence>
-                        {isActive && isPrimary && activeCompanyObj?.logo_url && (
+                        {isActive && activeCompanyObj?.logo_url && (
                           <motion.image 
                             key={`logo-${i}`}
-                            initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 1.5, delay: 1.2, ease: "easeOut" } }} exit={{ opacity: 0, transition: { duration: 0.8, ease: "easeIn" } }} 
-                            href={activeCompanyObj.logo_url} x={b.x + b.w/2 - 20} y={b.y + 15} width="40" height="40" preserveAspectRatio="xMidYMid meet" 
+                            initial={{ opacity: 0 }} 
+                            animate={{ opacity: 1, transition: { duration: 1.5, delay: 1.2, ease: "easeOut" } }} 
+                            exit={{ opacity: 0, transition: { duration: 0.8, ease: "easeIn" } }} 
+                            href={activeCompanyObj.logo_url} 
+                            x={b.x + b.w/2 - 20} 
+                            y={b.y + 15} 
+                            width="40" 
+                            height="40" 
+                            preserveAspectRatio="xMidYMid meet" 
                           />
                         )}
                       </AnimatePresence>
@@ -136,13 +128,6 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
                   <rect width="140" height="350" rx="8" fill={t.parent} style={{ transition: "fill 1s ease" }} />
                   <rect x="30" y="-30" width="80" height="50" rx="4" fill={t.parent} style={{ transition: "fill 1s ease" }} />
                   <circle cx="70" cy="-30" r="4" fill={timeTheme === 'night' ? '#ef4444' : '#fbbf24'} />
-                  {[...Array(6)].map((_, r) => (
-                    <g key={r} opacity="0.4">
-                      <rect x="20" y={20 + r*50} width="30" height="30" rx="2" fill={t.building} />
-                      <rect x="60" y={20 + r*50} width="30" height="30" rx="2" fill={t.building} />
-                      <rect x="100" y={20 + r*50} width="20" height="30" rx="2" fill={t.building} />
-                    </g>
-                  ))}
                 </motion.g>
               </svg>
             ))}
@@ -152,112 +137,58 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
         {/* LAYER 2 & 3: Depth of field blur wrapper */}
         <motion.div animate={{ opacity: hasSelection ? 0.6 : 1, filter: hasSelection ? "blur(3px)" : "blur(0px)" }} transition={{ duration: 3, ease: slowEase }} className="absolute inset-0 z-20 pointer-events-none">
           
-          <div className="absolute bottom-[10%] left-0 w-full h-[50%] z-20">
-            {/* The SVG Distant Hills & Bridges */}
+          <div className="absolute bottom-[10%] left-0 w-full h-[50%] z-20 pointer-events-auto">
             <motion.div className="flex h-full w-max flex-nowrap" style={{ willChange: "transform", WebkitTransform: "translateZ(0)" }} animate={{ x: ["0px", "-1600px"] }} transition={{ ease: "linear", duration: 30, repeat: Infinity }}>
               {[1, 2].map((key) => (
-                <svg key={key} width="1600" height="300" viewBox="0 0 1600 300" className="h-full w-[1600px] shrink-0 pointer-events-none" preserveAspectRatio="none">
-                  <path d="M0,100 C200,80 300,180 500,150 C700,120 800,200 1000,160 C1200,120 1400,180 1600,140 L1600,300 L0,300 Z" fill={t.hillsBack} opacity="0.6" style={{ transition: "fill 1s ease" }} />
+                <svg key={key} width="1600" height="300" viewBox="0 0 1600 300" className="h-full w-[1600px] shrink-0" preserveAspectRatio="none">
                   <path d="M0,150 C200,150 200,300 400,300 C600,300 600,150 800,150 C1000,150 1000,300 1200,300 C1400,300 1400,150 1600,150 L1600,300 L0,300 Z" fill={t.hillsBack} style={{ transition: "fill 1s ease" }} />
                   <path d="M0,200 C150,200 150,100 300,100 C450,100 450,200 600,200 C750,200 750,150 900,150 C1050,150 1050,250 1200,250 C1400,250 1400,200 1600,200 L1600,300 L0,300 Z" fill={t.hillsFront} opacity="0.85" style={{ transition: "fill 1s ease" }} />
-                  
-                  {/* Far Background Bridge (y=110, h=6 maps to top: calc(36.66%)) */}
-                  <g fill={t.bridgeDark} opacity="0.7">
-                    <rect x="0" y="110" width="1600" height="6" />
-                    <rect x="150" y="116" width="12" height="200" rx="2" />
-                    <rect x="550" y="116" width="12" height="200" rx="2" />
-                    <rect x="950" y="116" width="12" height="200" rx="2" />
-                    <rect x="1350" y="116" width="12" height="200" rx="2" />
-                  </g>
-
-                  {/* Main Midground Bridge (y=180, h=10 maps to top: calc(60%)) */}
                   <g fill={t.bridge} style={{ transition: "fill 1s ease" }}>
-                    <rect x="0" y="180" width="1600" height="10" />
-                    <rect x="200" y="190" width="20" height="160" rx="4" />
-                    <rect x="600" y="190" width="20" height="160" rx="4" />
-                    <rect x="1000" y="190" width="20" height="160" rx="4" />
-                    <rect x="1400" y="190" width="20" height="160" rx="4" />
-                    <path d="M210,180 Q400,230 590,180" fill="none" stroke={t.bridge} strokeWidth="6" />
-                    <path d="M610,180 Q800,230 990,180" fill="none" stroke={t.bridge} strokeWidth="6" />
-                    <path d="M1010,180 Q1200,230 1390,180" fill="none" stroke={t.bridge} strokeWidth="6" />
-                    <path d="M1410,180 Q1500,205 1600,180" fill="none" stroke={t.bridge} strokeWidth="6" />
-                    <path d="M0,180 Q100,205 190,180" fill="none" stroke={t.bridge} strokeWidth="6" />
+                    <rect x="0" y="120" width="1600" height="12" />
+                    <rect x="200" y="132" width="24" height="168" rx="8" />
+                    <rect x="600" y="132" width="24" height="168" rx="8" />
+                    <rect x="1000" y="132" width="24" height="168" rx="8" />
+                    <rect x="1400" y="132" width="24" height="168" rx="8" />
+                    <path d="M212,132 Q400,200 588,132" fill="none" stroke={t.bridge} strokeWidth="8" />
+                    <path d="M612,132 Q800,200 988,132" fill="none" stroke={t.bridge} strokeWidth="8" />
+                    <path d="M1012,132 Q1200,200 1388,132" fill="none" stroke={t.bridge} strokeWidth="8" />
+                    <path d="M1412,132 Q1500,165 1600,132" fill="none" stroke={t.bridge} strokeWidth="8" />
+                    <path d="M0,132 Q100,165 188,132" fill="none" stroke={t.bridge} strokeWidth="8" />
                   </g>
                 </svg>
               ))}
             </motion.div>
 
-            {/* FULL-SCREEN ABSOLUTE TRAINS (Bound perfectly to the rails above) */}
-            
-            {/* Train 2: Far Background (Moving Left) -> Bound to top: calc(36.66% - 14px) */}
-            <div className="absolute left-0 w-[140px] h-[14px] bg-slate-300 rounded-t-md rounded-b-none flex items-center px-1.5 shadow-sm z-10 anim-train-2 opacity-60 pointer-events-none" style={{ top: "calc(36.66% - 14px)", animationPlayState: isTrainStopped ? 'paused' : 'running' }}>
-              <div className="w-1.5 h-1.5 bg-amber-200 rounded-full shadow-[0_0_8px_#fbbf24] mr-auto" />
-              <div className="w-5 h-1.5 bg-slate-400 rounded-sm ml-1" />
-              <div className="w-5 h-1.5 bg-slate-400 rounded-sm ml-1" />
-              <div className="w-5 h-1.5 bg-slate-400 rounded-sm ml-1" />
-            </div>
-
-            {/* Train 1: Main Midground (Moving Right) -> Bound to top: calc(60% - 22px) */}
-            <div onClick={() => setIsTrainStopped(!isTrainStopped)} title="Click to Stop/Resume Trains" className="absolute left-0 w-[220px] h-[22px] bg-white rounded-t-xl rounded-b-none flex items-center px-2.5 shadow-lg z-20 cursor-pointer pointer-events-auto anim-train-1 hover:brightness-110 transition-all" style={{ top: "calc(60% - 22px)", animationPlayState: isTrainStopped ? 'paused' : 'running' }}>
-              <div className="w-7 h-2 bg-slate-200 rounded-sm mr-2" />
-              <div className="w-7 h-2 bg-slate-200 rounded-sm mr-2" />
-              <div className="w-7 h-2 bg-slate-200 rounded-sm mr-2" />
-              <div className="w-7 h-2 bg-slate-200 rounded-sm mr-auto" />
-              <div className={`w-2.5 h-2.5 rounded-full transition-colors ${isTrainStopped ? 'bg-rose-500 shadow-[0_0_10px_#ef4444]' : 'bg-amber-400 shadow-[0_0_10px_#fbbf24]'}`} />
+            <div 
+              onClick={() => setIsTrainStopped(!isTrainStopped)}
+              title="Click to Stop/Resume Train"
+              className="absolute top-[28%] md:top-[32%] w-56 h-6 bg-white rounded-full flex items-center px-3 shadow-[0_10px_30px_rgba(0,0,0,0.3)] z-20 cursor-pointer train-track hover:scale-105 transition-transform"
+              style={{ animationPlayState: isTrainStopped ? 'paused' : 'running', willChange: "transform" }}
+            >
+              <div className="w-8 h-2.5 bg-slate-200 rounded-sm mr-2" />
+              <div className="w-8 h-2.5 bg-slate-200 rounded-sm mr-2" />
+              <div className="w-8 h-2.5 bg-slate-200 rounded-sm mr-2" />
+              <div className="w-8 h-2.5 bg-slate-200 rounded-sm mr-auto" />
+              <div className={`w-3 h-3 rounded-full transition-colors ${isTrainStopped ? 'bg-rose-500 shadow-[0_0_12px_#ef4444]' : 'bg-amber-400 shadow-[0_0_12px_#fbbf24]'}`} />
             </div>
           </div>
 
-          {/* LAYER 3: Luxury Marina, Yachts & Foreground Track */}
-          <div className="absolute bottom-0 left-0 w-full h-[30%] z-30">
-            <motion.div className="flex h-full w-max flex-nowrap pointer-events-none" style={{ willChange: "transform", WebkitTransform: "translateZ(0)" }} animate={{ x: ["0px", "-1600px"] }} transition={{ ease: "linear", duration: 15, repeat: Infinity }}>
+          {/* LAYER 3: Foreground Nature */}
+          <div className="absolute bottom-0 left-0 w-full h-[30%] z-30 pointer-events-none">
+            <motion.div className="flex h-full w-max flex-nowrap" style={{ willChange: "transform", WebkitTransform: "translateZ(0)" }} animate={{ x: ["0px", "-1600px"] }} transition={{ ease: "linear", duration: 15, repeat: Infinity }}>
               {[1, 2].map((key) => (
                 <svg key={key} width="1600" height="200" viewBox="0 0 1600 200" className="h-full w-[1600px] shrink-0" preserveAspectRatio="none">
-                  
-                  {/* Distant Shoreline behind the water */}
-                  <path d="M0,120 C300,90 500,130 800,100 C1100,70 1300,120 1600,90 L1600,200 L0,200 Z" fill={t.hillsBack} style={{ transition: "fill 1s ease" }} opacity="0.4" />
-                  
-                  {/* Water Wave 1 (Deepest) */}
-                  <path d="M0,135 C 200,115 200,155 400,135 C 600,115 600,155 800,135 C 1000,115 1000,155 1200,135 C 1400,115 1400,155 1600,135 L1600,200 L0,200 Z" fill={t.bridgeDark} opacity="0.4" style={{ transition: "fill 1s ease" }} />
-                  
-                  {/* Water Wave 2 (Mid) */}
-                  <path d="M0,145 C 266,165 266,125 533,145 C 800,165 800,125 1066,145 C 1333,165 1333,125 1600,145 L1600,200 L0,200 Z" fill={t.hillsFront} opacity="0.5" style={{ transition: "fill 1s ease" }} />
-                  
-                  {/* Water Wave 3 (Front) */}
-                  <path d="M0,155 C 400,135 400,175 800,155 C 1200,135 1200,175 1600,155 L1600,200 L0,200 Z" fill={t.fg} opacity="0.8" style={{ transition: "fill 1s ease" }} />
-
-                  {/* Foreground Solid High-Speed Track (Causeway) - Maps to top: calc(80%) */}
-                  <rect x="0" y="160" width="1600" height="40" fill="#0f172a" />
-                  <rect x="0" y="160" width="1600" height="2" fill="#334155" />
+                  <path d="M0,100 C100,0 200,150 400,100 C600,50 800,150 1000,80 C1200,10 1400,150 1600,100 L1600,200 L0,200 Z" fill={t.hillsBack} style={{ transition: "fill 1s ease" }} opacity="0.6" />
+                  <g fill={t.fg} style={{ transition: "fill 1s ease" }}>
+                    <polygon points="150,40 135,120 165,120" /> <circle cx="150" cy="40" r="16" />
+                    <polygon points="400,60 385,140 415,140" /> <circle cx="400" cy="60" r="20" />
+                    <polygon points="850,20 835,100 865,100" /> <circle cx="850" cy="20" r="24" />
+                    <polygon points="1200,50 1185,130 1215,130" /> <circle cx="1200" cy="50" r="18" />
+                    <polygon points="1450,80 1435,160 1465,160" /> <circle cx="1450" cy="80" r="14" />
+                  </g>
                 </svg>
               ))}
             </motion.div>
-
-            {/* Luxury Yacht 1 (Sailing Right in Background Water) */}
-            <div className="absolute left-0 w-24 h-10 z-30 anim-boat-1 opacity-80 pointer-events-none" style={{ top: "calc(68% - 20px)" }}>
-              <svg viewBox="0 0 100 40" className="w-full h-full drop-shadow-md">
-                <path d="M 5 25 L 80 25 C 90 25 95 18 100 15 L 15 15 C 5 15 0 20 5 25 Z" fill="#f8fafc" />
-                <path d="M 25 15 L 35 5 L 65 5 L 75 15 Z" fill="#cbd5e1" />
-                <path d="M 36 7 L 64 7 L 70 13 L 29 13 Z" fill="#0f172a" opacity="0.5" />
-              </svg>
-            </div>
-
-            {/* Luxury Yacht 2 (Sailing Left in Foreground Water) */}
-            <div className="absolute left-0 w-32 h-12 z-30 anim-boat-2 pointer-events-none" style={{ top: "calc(74% - 24px)" }}>
-              <svg viewBox="0 0 100 40" className="w-full h-full drop-shadow-xl transform -scale-x-100">
-                <path d="M 5 25 L 80 25 C 90 25 95 18 100 15 L 15 15 C 5 15 0 20 5 25 Z" fill="#ffffff" />
-                <path d="M 25 15 L 35 5 L 65 5 L 75 15 Z" fill="#94a3b8" />
-                <path d="M 36 7 L 64 7 L 70 13 L 29 13 Z" fill="#0f172a" opacity="0.7" />
-              </svg>
-            </div>
-
-            {/* Train 3: High Speed Foreground (Moving Right) -> Bound to top: calc(80% - 30px) */}
-            <div onClick={() => setIsTrainStopped(!isTrainStopped)} title="Click to Stop/Resume Trains" className="absolute left-0 w-[300px] h-[30px] bg-slate-100 rounded-t-2xl rounded-b-none flex items-center px-4 shadow-xl z-30 cursor-pointer pointer-events-auto anim-train-3 hover:brightness-105 transition-all" style={{ top: "calc(80% - 30px)", animationPlayState: isTrainStopped ? 'paused' : 'running' }}>
-              <div className="w-12 h-3.5 bg-slate-300 rounded-sm mr-2.5" />
-              <div className="w-12 h-3.5 bg-slate-300 rounded-sm mr-2.5" />
-              <div className="w-12 h-3.5 bg-slate-300 rounded-sm mr-2.5" />
-              <div className="w-12 h-3.5 bg-slate-300 rounded-sm mr-auto" />
-              <div className={`w-3.5 h-3.5 rounded-full transition-colors ${isTrainStopped ? 'bg-rose-500 shadow-[0_0_15px_#ef4444]' : 'bg-sky-400 shadow-[0_0_15px_#38bdf8]'}`} />
-            </div>
           </div>
         </motion.div>
 
@@ -267,7 +198,7 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
 };
 
 
-// --- MAIN LOGIN PAGE (100% UNTOUCHED LAYOUT) ---
+// --- MAIN LOGIN PAGE ---
 export default function LoginPage() {
   const navigate = useNavigate();
   const mouseX = useMotionValue(0);
@@ -403,7 +334,7 @@ export default function LoginPage() {
         {/* Content Area */}
         <div className="flex-1 px-8 md:px-12 flex flex-col w-full relative z-40">
           
-          {/* Step Wrapper Height carefully adjusted */}
+          {/* Step Wrapper Height carefully adjusted for mobile vs desktop */}
           <div className="relative w-full h-[340px] md:h-[380px] shrink-0 mt-2 md:mt-4">
             <AnimatePresence mode="wait">
               
@@ -545,10 +476,10 @@ export default function LoginPage() {
                   href="https://wa.me/917558957246" 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="text-[9px] sm:text-[10px] font-bold text-slate-300 hover:text-blue-500 transition-colors select-none tracking-widest whitespace-nowrap"
+                  className="text-[9px] sm:text-[10px] font-bold text-slate-300 hover:text-blue-500 transition-colors select-none tracking-widest"
                   title="Developer"
                 >
-                  radix.
+                  R.
                 </a>
               </div>
             </div>
