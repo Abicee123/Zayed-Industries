@@ -6,12 +6,44 @@ import { Button } from "../../components/ui/button";
 import { useAuthStore } from "../../store/authStore";
 import { supabase } from "../../supabase";
 
-// --- CUSTOM 3D-STYLE ANIMATED GRAPHIC ---
-const AnimatedGraphic = () => {
+// --- MATHEMATICAL BACKGROUND GEOMETRY ---
+const BackgroundGeometry = () => (
+  <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 flex items-center justify-center">
+    <div 
+      className="absolute inset-0 opacity-[0.4]" 
+      style={{ 
+        backgroundImage: 'linear-gradient(#cbd5e1 1px, transparent 1px), linear-gradient(90deg, #cbd5e1 1px, transparent 1px)', 
+        backgroundSize: '40px 40px' 
+      }} 
+    />
+    <svg className="absolute w-full h-full opacity-30 hidden md:block" xmlns="http://www.w3.org/2000/svg">
+      <line x1="0" y1="100%" x2="100%" y2="0" stroke="#94a3b8" strokeWidth="0.5" />
+      <line x1="0" y1="0" x2="100%" y2="100%" stroke="#94a3b8" strokeWidth="0.5" />
+      <circle cx="50%" cy="50%" r="35%" fill="none" stroke="#94a3b8" strokeWidth="0.5" strokeDasharray="8 8" />
+      <circle cx="50%" cy="50%" r="20%" fill="none" stroke="#94a3b8" strokeWidth="0.5" />
+    </svg>
+  </div>
+);
+
+// --- CUSTOM 3D-STYLE ANIMATED GRAPHIC WITH SLIDESHOW ---
+const AnimatedGraphic = ({ companies }: { companies: any[] }) => {
+  const [logoIndex, setLogoIndex] = useState(0);
+  
+  // Filter only companies that have a logo
+  const validLogos = useMemo(() => companies.filter(c => c.logo_url), [companies]);
+
+  useEffect(() => {
+    if (validLogos.length <= 1) return;
+    const timer = setInterval(() => {
+      setLogoIndex((prev) => (prev + 1) % validLogos.length);
+    }, 3000); // Changes logo every 3 seconds
+    return () => clearInterval(timer);
+  }, [validLogos]);
+
   return (
-    <div className="relative w-[300px] h-[350px] flex items-center justify-center mt-10">
+    <div className="relative w-[300px] h-[350px] flex items-center justify-center mt-10 scale-110 lg:scale-125 transition-transform">
       {/* Floor Shadow */}
-      <div className="absolute -bottom-4 w-64 h-16 bg-black/5 blur-xl rounded-[100%]" />
+      <div className="absolute -bottom-4 w-64 h-16 bg-blue-900/10 blur-xl rounded-[100%]" />
       
       {/* Yellow Cylinder Back */}
       <motion.div 
@@ -41,19 +73,46 @@ const AnimatedGraphic = () => {
         className="absolute -bottom-2 right-20 w-20 h-28 bg-amber-300 rounded-[2.5rem] shadow-[inset_-8px_-8px_16px_rgba(0,0,0,0.15),_8px_8px_16px_rgba(0,0,0,0.1)] z-30" 
       />
 
-      {/* Floating Dark Screen/Phone Object */}
+      {/* Floating Mobile Phone Object */}
       <motion.div 
         animate={{ y: [0, -20, 0], rotateZ: [0, 2, -2, 0] }} 
         transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }} 
-        className="absolute top-0 left-28 w-24 h-48 bg-slate-900 rounded-[1.5rem] border-[4px] border-slate-800 shadow-2xl flex items-center justify-center z-40 overflow-hidden"
+        className="absolute top-0 left-[110px] w-28 h-[210px] bg-white rounded-[1.8rem] border-[6px] border-slate-900 shadow-2xl flex items-center justify-center z-40 overflow-hidden"
       >
-         <div className="w-full h-full relative">
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 w-8 h-1.5 bg-slate-700 rounded-full" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-              <span className="text-amber-400 font-black tracking-tighter text-xl mb-1">ZAYD</span>
-              <span className="text-blue-500 font-bold text-[8px] uppercase tracking-widest">Login</span>
+         <div className="w-full h-full relative flex flex-col items-center justify-center p-3 bg-white">
+            {/* Phone Notch */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-4 bg-slate-900 rounded-b-xl z-50 flex justify-center items-center">
+              <div className="w-2 h-2 rounded-full bg-slate-800 border border-slate-700/50" />
             </div>
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-10 h-1 bg-slate-700 rounded-full" />
+
+            {/* Dynamic Logo Slideshow */}
+            <div className="flex-1 w-full flex items-center justify-center mt-2 relative">
+              <AnimatePresence mode="wait">
+                {validLogos.length > 0 ? (
+                  <motion.img
+                    key={validLogos[logoIndex].id}
+                    src={validLogos[logoIndex].logo_url!}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.4 }}
+                    className="w-full max-h-16 object-contain drop-shadow-sm"
+                    alt="Company Logo"
+                  />
+                ) : (
+                  <motion.div 
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    className="flex flex-col items-center"
+                  >
+                    <span className="text-amber-400 font-black tracking-tighter text-2xl mb-1">ZAYD</span>
+                    <span className="text-blue-500 font-bold text-[8px] uppercase tracking-widest">Portal</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Home Indicator */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-10 h-1 bg-slate-300 rounded-full" />
          </div>
       </motion.div>
     </div>
@@ -176,189 +235,193 @@ export default function LoginPage() {
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
   return (
-    <div className="min-h-[100dvh] w-full bg-gradient-to-br from-[#eef2ff] via-[#f8fafc] to-[#e0e7ff] flex flex-col items-center justify-center relative font-sans overflow-hidden p-4 sm:p-8">
+    <div className="min-h-[100dvh] w-full flex flex-col md:flex-row overflow-hidden font-sans bg-white">
       
-      {/* Main Container */}
-      <div className="w-full max-w-[1100px] min-h-[600px] bg-[#f8fafc] rounded-[2rem] sm:rounded-[3rem] shadow-2xl flex flex-col md:flex-row overflow-hidden relative z-10 border border-white">
+      {/* LEFT COLUMN - LOGIN LOGIC */}
+      <div className="w-full md:w-1/2 lg:w-[45%] flex flex-col relative z-20 bg-white border-r border-slate-100 shadow-[20px_0_40px_-15px_rgba(0,0,0,0.05)] min-h-[100dvh]">
         
-        {/* LEFT COLUMN - LOGIN LOGIC */}
-        <div className="w-full md:w-[45%] lg:w-[40%] p-8 sm:p-12 flex flex-col relative z-20 bg-white">
-          
-          <div className="flex items-center gap-3 mb-12 shrink-0">
-            <div className="h-10 w-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md overflow-hidden shrink-0">
-              {adminLogo ? (
-                <img src={adminLogo} alt="Logo" className="h-full w-full object-cover" />
-              ) : (
+        {/* Header - Fixed Business Logo */}
+        <div className="p-8 sm:p-12 flex items-center gap-4 shrink-0">
+          <div className="h-10 w-10 sm:h-12 sm:w-12 flex items-center justify-center overflow-hidden shrink-0">
+            {adminLogo ? (
+              <img src={adminLogo} alt="Logo" className="h-full w-full object-contain" />
+            ) : (
+              <div className="h-full w-full bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md">
                 <span className="tracking-tighter">Z</span>
+              </div>
+            )}
+          </div>
+          <span className="font-black text-2xl sm:text-3xl text-slate-900 tracking-tight">Zayd Industries</span>
+        </div>
+
+        {/* Dynamic Login Steps */}
+        <div className="flex-1 flex flex-col justify-center px-8 sm:px-16 xl:px-24">
+          <div className="mb-8 flex items-center relative h-12">
+            <AnimatePresence>
+              {step > 1 && (
+                <motion.button 
+                  initial={{ opacity: 0, scale: 0.8, x: -10 }}
+                  animate={{ opacity: 1, scale: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.8, x: -10 }}
+                  onClick={goBack} 
+                  className="absolute left-0 text-slate-400 hover:text-blue-600 p-2 rounded-full transition-colors bg-slate-50 border border-slate-100"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </motion.button>
               )}
-            </div>
-            <span className="font-black text-xl text-slate-900 tracking-tight">Zayd Industries</span>
+            </AnimatePresence>
+            <h1 className={`text-4xl sm:text-5xl font-black text-slate-900 tracking-tight ${step > 1 ? 'ml-14' : ''}`}>
+              {step === 1 && "Select Role."}
+              {step === 2 && "Workspace."}
+              {step === 3 && selectedCompany ? selectedCompany : step === 3 ? "Secure Login." : ""}
+            </h1>
           </div>
 
-          <div className="flex-1 flex flex-col justify-center relative">
-            
-            <div className="mb-8 flex items-center relative">
-              <AnimatePresence>
-                {step > 1 && (
-                  <motion.button 
-                    initial={{ opacity: 0, scale: 0.8, x: -10 }}
-                    animate={{ opacity: 1, scale: 1, x: 0 }}
-                    exit={{ opacity: 0, scale: 0.8, x: -10 }}
-                    onClick={goBack} 
-                    className="absolute -left-2 text-slate-400 hover:text-blue-600 p-2 rounded-full transition-colors"
-                  >
-                    <ArrowLeft className="h-5 w-5" />
-                  </motion.button>
-                )}
-              </AnimatePresence>
-              <h1 className={`text-4xl font-black text-slate-900 tracking-tight ${step > 1 ? 'ml-8' : ''}`}>
-                {step === 1 && "Select Role."}
-                {step === 2 && "Workspace."}
-                {step === 3 && selectedCompany ? selectedCompany : step === 3 ? "Secure Login." : ""}
-              </h1>
-            </div>
+          <div className="relative">
+            <AnimatePresence mode="wait">
+              
+              {/* STEP 1: SELECT ROLE */}
+              {step === 1 && (
+                <motion.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                  <div className="space-y-4">
+                    <button onClick={() => handleRoleSelect("admin")} className="w-full flex items-center p-4 sm:p-5 rounded-[1.5rem] border-2 border-slate-100 bg-white hover:border-blue-600 hover:shadow-xl hover:shadow-blue-600/10 group transition-all text-left">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors mr-5"><Shield className="h-6 w-6" /></div>
+                      <div className="flex-1"><span className="block font-bold text-[16px] text-slate-900">System Admin</span></div>
+                      <CheckCircle2 className="h-6 w-6 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block" />
+                    </button>
 
-            <div className="relative">
-              <AnimatePresence mode="wait">
-                
-                {/* STEP 1: SELECT ROLE */}
-                {step === 1 && (
-                  <motion.div key="step1" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                    <div className="space-y-4">
-                      <button onClick={() => handleRoleSelect("admin")} className="w-full flex items-center p-4 rounded-2xl border-2 border-slate-100 bg-white hover:border-blue-600 hover:shadow-lg group transition-all text-left">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors mr-4"><Shield className="h-5 w-5" /></div>
-                        <div className="flex-1"><span className="block font-bold text-[15px] text-slate-900">System Admin</span></div>
-                        <CheckCircle2 className="h-5 w-5 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block" />
-                      </button>
+                    <button onClick={() => handleRoleSelect("head")} className="w-full flex items-center p-4 sm:p-5 rounded-[1.5rem] border-2 border-slate-100 bg-white hover:border-blue-600 hover:shadow-xl hover:shadow-blue-600/10 group transition-all text-left">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-50 text-amber-500 group-hover:bg-amber-400 group-hover:text-white transition-colors mr-5"><Briefcase className="h-6 w-6" /></div>
+                      <div className="flex-1"><span className="block font-bold text-[16px] text-slate-900">Company Head</span></div>
+                      <CheckCircle2 className="h-6 w-6 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block" />
+                    </button>
 
-                      <button onClick={() => handleRoleSelect("head")} className="w-full flex items-center p-4 rounded-2xl border-2 border-slate-100 bg-white hover:border-blue-600 hover:shadow-lg group transition-all text-left">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-500 group-hover:bg-amber-400 group-hover:text-white transition-colors mr-4"><Briefcase className="h-5 w-5" /></div>
-                        <div className="flex-1"><span className="block font-bold text-[15px] text-slate-900">Company Head</span></div>
-                        <CheckCircle2 className="h-5 w-5 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block" />
-                      </button>
+                    <button onClick={() => handleRoleSelect("user")} className="w-full flex items-center p-4 sm:p-5 rounded-[1.5rem] border-2 border-slate-100 bg-white hover:border-blue-600 hover:shadow-xl hover:shadow-blue-600/10 group transition-all text-left">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-slate-100 text-slate-600 group-hover:bg-slate-700 group-hover:text-white transition-colors mr-5"><UserCircle className="h-6 w-6" /></div>
+                      <div className="flex-1"><span className="block font-bold text-[16px] text-slate-900">Employee</span></div>
+                      <CheckCircle2 className="h-6 w-6 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block" />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
 
-                      <button onClick={() => handleRoleSelect("user")} className="w-full flex items-center p-4 rounded-2xl border-2 border-slate-100 bg-white hover:border-blue-600 hover:shadow-lg group transition-all text-left">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-600 group-hover:bg-slate-700 group-hover:text-white transition-colors mr-4"><UserCircle className="h-5 w-5" /></div>
-                        <div className="flex-1"><span className="block font-bold text-[15px] text-slate-900">Employee</span></div>
-                        <CheckCircle2 className="h-5 w-5 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block" />
-                      </button>
+              {/* STEP 2: SELECT COMPANY */}
+              {step === 2 && (
+                <motion.div key="step2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                  <form onSubmit={handleCompanySelect} className="space-y-6">
+                    <div className="relative">
+                      <Building2 className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <select required value={selectedCompany} onChange={(e) => setSelectedCompany(e.target.value)} className="w-full h-16 rounded-[1.25rem] border-2 border-slate-200 bg-white px-5 pl-14 text-[16px] outline-none focus:border-blue-600 transition-all appearance-none text-slate-800 font-bold cursor-pointer shadow-sm">
+                        <option value="" disabled>Choose your company...</option>
+                        {companiesDb.map((company) => (
+                          <option key={company.id} value={company.name}>{company.name}</option>
+                        ))}
+                      </select>
                     </div>
-                  </motion.div>
-                )}
+                    <Button type="submit" disabled={!selectedCompany} className="w-full h-16 rounded-[1.25rem] text-[16px] font-bold shadow-xl shadow-blue-600/20 hover:shadow-2xl hover:shadow-blue-600/30 transition-all bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50">
+                      Continue
+                    </Button>
+                  </form>
+                </motion.div>
+              )}
 
-                {/* STEP 2: SELECT COMPANY */}
-                {step === 2 && (
-                  <motion.div key="step2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                    <form onSubmit={handleCompanySelect} className="space-y-6">
-                      <div className="space-y-2">
-                        <div className="relative">
-                          <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                          <select required value={selectedCompany} onChange={(e) => setSelectedCompany(e.target.value)} className="w-full h-14 rounded-xl border-2 border-slate-200 bg-white px-4 pl-12 text-[15px] outline-none focus:border-blue-600 transition-all appearance-none text-slate-800 font-bold cursor-pointer shadow-sm">
-                            <option value="" disabled>Choose your company...</option>
-                            {companiesDb.map((company) => (
-                              <option key={company.id} value={company.name}>{company.name}</option>
+              {/* STEP 3: CREDENTIALS */}
+              {step === 3 && (
+                <motion.div key="step3" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                  
+                  {selectedCompany && (
+                    <div className="flex justify-start mb-6">
+                      <div className="h-20 w-20 bg-white rounded-2xl border-2 border-slate-100 shadow-sm flex items-center justify-center p-3 text-blue-600 font-black text-3xl overflow-hidden">
+                        {activeCompanyObj?.logo_url ? <img src={activeCompanyObj.logo_url} alt="" className="h-full w-full object-contain"/> : getInitials(selectedCompany)}
+                      </div>
+                    </div>
+                  )}
+
+                  {error && (
+                    <div className="mb-6 rounded-2xl bg-rose-50 p-4 text-[14px] font-bold text-rose-600 border border-rose-100 flex items-center gap-3">
+                      <Shield className="h-5 w-5 shrink-0" /> {error}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5">
+                    {selectedRole === 'head' && headUsers.length > 0 ? (
+                      <div className="space-y-5">
+                        {headUsers.length > 1 ? (
+                          <select required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-16 rounded-[1.25rem] border-2 border-slate-200 bg-white px-5 text-[16px] outline-none focus:border-blue-600 transition-all appearance-none text-slate-800 font-bold cursor-pointer shadow-sm">
+                            <option value="" disabled>Choose your profile...</option>
+                            {headUsers.map((head) => (
+                              <option key={head.email} value={head.email}>{head.name}</option>
                             ))}
                           </select>
-                        </div>
-                      </div>
-                      <Button type="submit" disabled={!selectedCompany} className="w-full h-14 rounded-xl text-[15px] font-bold shadow-lg shadow-blue-600/30 hover:shadow-xl transition-all bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50">
-                        Continue
-                      </Button>
-                    </form>
-                  </motion.div>
-                )}
-
-                {/* STEP 3: CREDENTIALS */}
-                {step === 3 && (
-                  <motion.div key="step3" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                    
-                    {selectedCompany && (
-                      <div className="flex justify-start mb-6">
-                        <div className="h-16 w-16 bg-white rounded-2xl border-2 border-slate-100 shadow-sm flex items-center justify-center p-2 text-blue-600 font-black text-2xl overflow-hidden">
-                          {activeCompanyObj?.logo_url ? <img src={activeCompanyObj.logo_url} alt="" className="h-full w-full object-contain"/> : getInitials(selectedCompany)}
-                        </div>
-                      </div>
-                    )}
-
-                    {error && (
-                      <div className="mb-6 rounded-xl bg-rose-50 p-4 text-[13px] font-bold text-rose-600 border border-rose-100 flex items-center gap-2">
-                        <Shield className="h-4 w-4 shrink-0" /> {error}
-                      </div>
-                    )}
-
-                    <form onSubmit={handleLogin} className="space-y-4">
-                      {selectedRole === 'head' && headUsers.length > 0 ? (
-                        <div className="space-y-5">
-                          {headUsers.length > 1 ? (
-                            <select required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-14 rounded-xl border-2 border-slate-200 bg-white px-4 text-[15px] outline-none focus:border-blue-600 transition-all appearance-none text-slate-800 font-bold cursor-pointer">
-                              <option value="" disabled>Choose your profile...</option>
-                              {headUsers.map((head) => (
-                                <option key={head.email} value={head.email}>{head.name}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-4">
-                              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm shrink-0">
-                                {headUsers[0].name.charAt(0)}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-[15px] font-bold text-slate-900 truncate">{headUsers[0].name}</p>
-                              </div>
+                        ) : (
+                          <div className="p-5 rounded-[1.25rem] bg-slate-50 border-2 border-slate-100 flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-black text-lg shrink-0">
+                              {headUsers[0].name.charAt(0)}
                             </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="relative">
-                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email Address" className="w-full h-14 rounded-xl border-2 border-slate-200 bg-white px-4 pl-12 text-[15px] font-bold outline-none focus:border-blue-600 transition-all text-slate-900" />
-                        </div>
-                      )}
-                      
-                      <div className="relative">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                        <input 
-                          type={showPassword ? "text" : "password"} 
-                          required 
-                          value={password} 
-                          onChange={(e) => setPassword(e.target.value)} 
-                          placeholder="Password" 
-                          className="w-full h-14 rounded-xl border-2 border-slate-200 bg-white px-4 pl-12 pr-12 text-[15px] font-bold outline-none focus:border-blue-600 transition-all text-slate-900 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden" 
-                        />
-                        <button 
-                          type="button" 
-                          onClick={() => setShowPassword(!showPassword)} 
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors"
-                        >
-                          {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                        </button>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[12px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Active Profile</p>
+                              <p className="text-[16px] font-bold text-slate-900 truncate">{headUsers[0].name}</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
+                    ) : (
+                      <div className="relative">
+                        <Mail className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email Address" className="w-full h-16 rounded-[1.25rem] border-2 border-slate-200 bg-white px-5 pl-14 text-[16px] font-bold outline-none focus:border-blue-600 transition-all text-slate-900 shadow-sm" />
+                      </div>
+                    )}
+                    
+                    <div className="relative">
+                      <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <input 
+                        type={showPassword ? "text" : "password"} 
+                        required 
+                        value={password} 
+                        onChange={(e) => setPassword(e.target.value)} 
+                        placeholder="Password" 
+                        className="w-full h-16 rounded-[1.25rem] border-2 border-slate-200 bg-white px-5 pl-14 pr-14 text-[16px] font-bold outline-none focus:border-blue-600 transition-all text-slate-900 shadow-sm [&::-ms-reveal]:hidden [&::-ms-clear]:hidden" 
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowPassword(!showPassword)} 
+                        className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors p-1"
+                      >
+                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    </div>
 
-                      <Button type="submit" disabled={isLoggingIn} className="w-full h-14 mt-4 rounded-xl text-[15px] font-bold shadow-lg shadow-blue-600/30 hover:shadow-xl transition-all bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50">
-                        {isLoggingIn ? "Logging in..." : "Log in"}
-                      </Button>
-                    </form>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                    <Button type="submit" disabled={isLoggingIn} className="w-full h-16 mt-6 rounded-[1.25rem] text-[16px] font-bold shadow-xl shadow-blue-600/30 hover:shadow-2xl hover:-translate-y-0.5 transition-all bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:hover:translate-y-0">
+                      {isLoggingIn ? "Authenticating..." : "Log in"}
+                    </Button>
+                  </form>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
-        {/* RIGHT COLUMN - ANIMATED GRAPHIC */}
-        <div className="hidden md:flex flex-1 items-center justify-center relative bg-[#FAFCFF]">
-          <AnimatedGraphic />
+        {/* Custom Interactive Footer */}
+        <div className="p-8 shrink-0 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-50 mt-auto bg-white">
+          <p className="text-[12px] font-bold text-slate-400">
+            © {new Date().getFullYear()} Zayd Industries Pvt Ltd.
+          </p>
+          <a href="https://wa.me/917558957246" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-50 hover:bg-blue-50 text-[11px] font-bold text-slate-500 hover:text-blue-600 transition-colors border border-slate-100 hover:border-blue-200 shadow-sm">
+            Developed by <span className="text-blue-600 font-black text-sm">R</span>
+          </a>
         </div>
-
       </div>
 
-      {/* FOOTER */}
-      <div className="absolute bottom-6 w-full flex flex-col items-center justify-center gap-1 z-0">
-        <p className="text-[12px] font-bold text-slate-400">
-          © {new Date().getFullYear()} Zayd Industries Pvt Ltd.
-        </p>
-        <p className="text-[11px] font-bold text-slate-400">
-          Developed by <a href="https://wa.me/917558957246" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 hover:underline transition-all">R</a>
-        </p>
+      {/* RIGHT COLUMN - ANIMATED GRAPHIC */}
+      <div className="hidden md:flex flex-1 flex-col items-center justify-center relative bg-gradient-to-br from-[#eef2ff] via-[#f8fafc] to-[#e0e7ff] overflow-hidden">
+        
+        {/* Soft Background Orbs */}
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-200/40 rounded-full blur-[100px] pointer-events-none z-0" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-amber-200/20 rounded-full blur-[100px] pointer-events-none z-0" />
+        <BackgroundGeometry />
+        
+        <AnimatedGraphic companies={companiesDb} />
+        
       </div>
 
     </div>
