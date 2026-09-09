@@ -34,10 +34,8 @@ const THEMES = {
   }
 };
 
-// Ultra-smooth, slow cinematic curve
 const slowEase = [0.25, 0.1, 0.25, 1];
 
-// Building Coordinates for the Skyline Layer
 const subBuildings = [
   { x: 50, y: 200, w: 70, h: 200 }, { x: 150, y: 150, w: 60, h: 250 },
   { x: 250, y: 220, w: 80, h: 180 }, { x: 400, y: 180, w: 60, h: 220 },
@@ -316,7 +314,7 @@ export default function LoginPage() {
         <ParallaxScene activeCompanyIndex={activeCompanyIndex} activeCompanyObj={activeCompanyObj} mouseX={mouseX} mouseY={mouseY} />
       </div>
 
-      {/* FIXED LOGIN CARD */}
+      {/* FIXED LOGIN CARD - overflow-hidden prevents scrollbars */}
       <div className="w-full md:w-[440px] lg:w-[480px] flex flex-col relative z-20 bg-white md:bg-white/95 md:backdrop-blur-xl md:absolute md:left-6 lg:left-10 md:top-6 lg:top-8 md:bottom-6 lg:bottom-8 rounded-t-[2.5rem] md:rounded-[2.5rem] -mt-8 md:mt-0 flex-1 md:flex-none shadow-[0_-10px_40px_rgba(0,0,0,0.05)] md:shadow-[0_30px_100px_-15px_rgba(0,0,0,0.3)] md:border border-white/60 overflow-hidden">
         
         {/* Header - Fixed Height */}
@@ -333,31 +331,32 @@ export default function LoginPage() {
           <span className="font-black text-2xl sm:text-3xl text-slate-900 tracking-tight">Zayd Industries</span>
         </div>
 
-        {/* Scrollable / Flexible Form Area */}
-        <div className="flex-1 px-8 md:px-12 flex flex-col overflow-y-auto min-h-0 py-2 w-full relative z-40">
+        {/* Content Area - Fixed Flex layout prevents Footer Jumping */}
+        <div className="flex-1 px-8 md:px-12 flex flex-col w-full relative z-40">
           
-          <div className="relative w-full flex-1 flex flex-col">
+          {/* Fixed Height Step Wrapper to eliminate scrollbar and anchor footer */}
+          <div className="relative w-full h-[380px] shrink-0 mt-2">
             <AnimatePresence mode="wait">
               
               {/* STEP 1: SELECT ROLE */}
               {step === 1 && (
-                <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.4, ease: slowEase }} className="w-full flex-col">
-                  <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight mb-8">Select Role.</h1>
-                  <div className="space-y-4">
-                    <button onClick={() => handleRoleSelect("admin")} className="w-full flex items-center p-4 sm:p-5 rounded-[1.5rem] border-2 border-slate-100 bg-white hover:border-blue-600 hover:shadow-xl hover:shadow-blue-600/10 group transition-all text-left">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors mr-5 shrink-0"><Shield className="h-6 w-6" /></div>
-                      <div className="flex-1"><span className="block font-bold text-[16px] text-slate-900">System Admin</span></div>
-                      <CheckCircle2 className="h-6 w-6 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block shrink-0" />
+                <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.4, ease: slowEase }} className="absolute inset-0 w-full flex flex-col">
+                  <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight mb-6">Select Role.</h1>
+                  <div className="space-y-3">
+                    <button onClick={() => handleRoleSelect("admin")} className="w-full flex items-center p-3 sm:p-4 rounded-[1.25rem] border-2 border-slate-100 bg-white hover:border-blue-600 hover:shadow-xl hover:shadow-blue-600/10 group transition-all text-left">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors mr-4 shrink-0"><Shield className="h-5 w-5" /></div>
+                      <div className="flex-1"><span className="block font-bold text-[15px] text-slate-900">System Admin</span></div>
+                      <CheckCircle2 className="h-5 w-5 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block shrink-0" />
                     </button>
-                    <button onClick={() => handleRoleSelect("head")} className="w-full flex items-center p-4 sm:p-5 rounded-[1.5rem] border-2 border-slate-100 bg-white hover:border-blue-600 hover:shadow-xl hover:shadow-blue-600/10 group transition-all text-left">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-50 text-amber-500 group-hover:bg-amber-400 group-hover:text-white transition-colors mr-5 shrink-0"><Briefcase className="h-6 w-6" /></div>
-                      <div className="flex-1"><span className="block font-bold text-[16px] text-slate-900">Company Head</span></div>
-                      <CheckCircle2 className="h-6 w-6 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block shrink-0" />
+                    <button onClick={() => handleRoleSelect("head")} className="w-full flex items-center p-3 sm:p-4 rounded-[1.25rem] border-2 border-slate-100 bg-white hover:border-blue-600 hover:shadow-xl hover:shadow-blue-600/10 group transition-all text-left">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-500 group-hover:bg-amber-400 group-hover:text-white transition-colors mr-4 shrink-0"><Briefcase className="h-5 w-5" /></div>
+                      <div className="flex-1"><span className="block font-bold text-[15px] text-slate-900">Company Head</span></div>
+                      <CheckCircle2 className="h-5 w-5 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block shrink-0" />
                     </button>
-                    <button onClick={() => handleRoleSelect("user")} className="w-full flex items-center p-4 sm:p-5 rounded-[1.5rem] border-2 border-slate-100 bg-white hover:border-blue-600 hover:shadow-xl hover:shadow-blue-600/10 group transition-all text-left">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-slate-100 text-slate-600 group-hover:bg-slate-700 group-hover:text-white transition-colors mr-5 shrink-0"><UserCircle className="h-6 w-6" /></div>
-                      <div className="flex-1"><span className="block font-bold text-[16px] text-slate-900">Employee</span></div>
-                      <CheckCircle2 className="h-6 w-6 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block shrink-0" />
+                    <button onClick={() => handleRoleSelect("user")} className="w-full flex items-center p-3 sm:p-4 rounded-[1.25rem] border-2 border-slate-100 bg-white hover:border-blue-600 hover:shadow-xl hover:shadow-blue-600/10 group transition-all text-left">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-600 group-hover:bg-slate-700 group-hover:text-white transition-colors mr-4 shrink-0"><UserCircle className="h-5 w-5" /></div>
+                      <div className="flex-1"><span className="block font-bold text-[15px] text-slate-900">Employee</span></div>
+                      <CheckCircle2 className="h-5 w-5 text-slate-200 group-hover:text-blue-600 transition-colors hidden sm:block shrink-0" />
                     </button>
                   </div>
                 </motion.div>
@@ -365,22 +364,22 @@ export default function LoginPage() {
 
               {/* STEP 2: SELECT WORKSPACE */}
               {step === 2 && (
-                <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.4, ease: slowEase }} className="w-full">
+                <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.4, ease: slowEase }} className="absolute inset-0 w-full flex flex-col">
                   <button onClick={goBack} className="flex items-center text-[10px] font-bold text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors mb-4 group w-max">
                     <ArrowLeft className="w-3.5 h-3.5 mr-1.5 group-hover:-translate-x-1 transition-transform" /> Go Back
                   </button>
-                  <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight mb-8">Workspace.</h1>
-                  <form onSubmit={handleCompanySelect} className="space-y-6">
+                  <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight mb-6">Workspace.</h1>
+                  <form onSubmit={handleCompanySelect} className="space-y-4">
                     <div className="relative">
                       <Building2 className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                      <select required value={selectedCompany} onChange={(e) => setSelectedCompany(e.target.value)} className="w-full h-16 rounded-[1.25rem] border-2 border-slate-200 bg-white px-5 pl-14 text-[16px] outline-none focus:border-blue-600 transition-all appearance-none text-slate-800 font-bold cursor-pointer shadow-sm">
+                      <select required value={selectedCompany} onChange={(e) => setSelectedCompany(e.target.value)} className="w-full h-14 rounded-[1.25rem] border-2 border-slate-200 bg-white px-5 pl-14 text-[15px] outline-none focus:border-blue-600 transition-all appearance-none text-slate-800 font-bold cursor-pointer shadow-sm">
                         <option value="" disabled>Choose your company...</option>
                         {companiesDb.map((company) => (
                           <option key={company.id} value={company.name}>{company.name}</option>
                         ))}
                       </select>
                     </div>
-                    <Button type="submit" disabled={!selectedCompany} className="w-full h-16 rounded-[1.25rem] text-[16px] font-bold shadow-xl shadow-blue-600/20 hover:shadow-2xl hover:shadow-blue-600/30 transition-all bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50">
+                    <Button type="submit" disabled={!selectedCompany} className="w-full h-14 rounded-[1.25rem] text-[15px] font-bold shadow-xl shadow-blue-600/20 hover:shadow-2xl hover:shadow-blue-600/30 transition-all bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50">
                       Continue
                     </Button>
                   </form>
@@ -389,43 +388,43 @@ export default function LoginPage() {
 
               {/* STEP 3: CREDENTIALS */}
               {step === 3 && (
-                <motion.div key="step3" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.4, ease: slowEase }} className="w-full flex flex-col pt-2">
+                <motion.div key="step3" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.4, ease: slowEase }} className="absolute inset-0 w-full flex flex-col">
                   
-                  <button onClick={goBack} className="flex items-center text-[10px] font-bold text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors mb-6 group w-max">
+                  <button onClick={goBack} className="flex items-center text-[10px] font-bold text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors mb-3 group w-max">
                     <ArrowLeft className="w-3.5 h-3.5 mr-1.5 group-hover:-translate-x-1 transition-transform" /> Go Back
                   </button>
 
-                  <div className="flex flex-col items-center text-center mb-8">
-                    <div className="h-24 w-24 rounded-[2rem] bg-gradient-to-tr from-blue-500 to-indigo-500 p-1 shadow-lg shadow-blue-500/30 mb-5 relative">
-                      <div className="absolute inset-0 bg-white/20 rounded-[2rem] blur-md pointer-events-none"></div>
-                      <div className="relative h-full w-full bg-white rounded-[1.75rem] flex items-center justify-center shadow-inner overflow-hidden p-3">
+                  <div className="flex flex-col items-center text-center mb-5">
+                    <div className="h-20 w-20 rounded-[1.75rem] bg-gradient-to-tr from-blue-500 to-indigo-500 p-1 shadow-md shadow-blue-500/20 mb-4 relative">
+                      <div className="absolute inset-0 bg-white/20 rounded-[1.75rem] blur-md pointer-events-none"></div>
+                      <div className="relative h-full w-full bg-white rounded-[1.5rem] flex items-center justify-center shadow-inner overflow-hidden p-3">
                         {selectedRole === 'admin' ? (
-                          adminLogo ? <img src={adminLogo} alt="Admin Logo" className="h-full w-full object-contain" /> : <Shield className="w-10 h-10 text-blue-600" />
+                          adminLogo ? <img src={adminLogo} alt="Admin Logo" className="h-full w-full object-contain" /> : <Shield className="w-8 h-8 text-blue-600" />
                         ) : (
-                          activeCompanyObj?.logo_url ? <img src={activeCompanyObj.logo_url} alt="Company Logo" className="h-full w-full object-contain" /> : <Building2 className="w-10 h-10 text-blue-600" />
+                          activeCompanyObj?.logo_url ? <img src={activeCompanyObj.logo_url} alt="Company Logo" className="h-full w-full object-contain" /> : <Building2 className="w-8 h-8 text-blue-600" />
                         )}
                       </div>
                     </div>
                     
-                    <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-none mb-1.5">
                       {selectedRole === 'admin' ? "System Admin" : selectedRole === 'user' ? "Employee Portal" : `Welcome, ${activeHeadUser?.name.split(' ')[0] || 'Head'}`}
                     </h2>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-2">
+                    <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-slate-400">
                       {selectedRole === 'admin' ? "Master Access" : `${selectedRole === 'head' ? 'Company Head' : 'Employee'} • ${selectedCompany}`}
                     </p>
                   </div>
 
                   {error && (
-                    <div className="mb-6 rounded-2xl bg-rose-50 p-4 text-[13px] font-bold text-rose-600 border border-rose-100 flex items-center gap-3">
-                      <Shield className="h-5 w-5 shrink-0" /> {error}
+                    <div className="mb-4 rounded-xl bg-rose-50 p-3 text-[12px] font-bold text-rose-600 border border-rose-100 flex items-center gap-2">
+                      <Shield className="h-4 w-4 shrink-0" /> {error}
                     </div>
                   )}
 
-                  <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5">
+                  <form onSubmit={handleLogin} className="space-y-3 sm:space-y-4 w-full">
                     {selectedRole === 'head' && headUsers.length > 1 ? (
                       <div className="relative">
-                        <UserCircle className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                        <select required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-16 rounded-[1.25rem] border-2 border-slate-200 bg-white px-5 pl-14 text-[16px] outline-none focus:border-blue-600 transition-all appearance-none text-slate-800 font-bold cursor-pointer shadow-sm">
+                        <UserCircle className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                        <select required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-14 rounded-2xl border-2 border-slate-200 bg-white px-4 pl-12 text-[15px] outline-none focus:border-blue-600 transition-all appearance-none text-slate-800 font-bold cursor-pointer shadow-sm">
                           <option value="" disabled>Choose your profile...</option>
                           {headUsers.map((head) => (
                             <option key={head.email} value={head.email}>{head.name}</option>
@@ -434,58 +433,58 @@ export default function LoginPage() {
                       </div>
                     ) : selectedRole !== 'head' ? (
                       <div className="relative">
-                        <Mail className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email Address" className="w-full h-16 rounded-[1.25rem] border-2 border-slate-200 bg-white px-5 pl-14 text-[16px] font-bold outline-none focus:border-blue-600 transition-all text-slate-900 shadow-sm" />
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email Address" className="w-full h-14 rounded-2xl border-2 border-slate-200 bg-white px-4 pl-12 text-[15px] font-bold outline-none focus:border-blue-600 transition-all text-slate-900 shadow-sm" />
                       </div>
                     ) : null}
                     
                     <div className="relative">
-                      <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                       <input 
                         type={showPassword ? "text" : "password"} required value={password} onChange={(e) => setPassword(e.target.value)} 
-                        placeholder="Password" className="w-full h-16 rounded-[1.25rem] border-2 border-slate-200 bg-white px-5 pl-14 pr-14 text-[16px] font-bold outline-none focus:border-blue-600 transition-all text-slate-900 shadow-sm [&::-ms-reveal]:hidden [&::-ms-clear]:hidden" 
+                        placeholder="Password" className="w-full h-14 rounded-2xl border-2 border-slate-200 bg-white px-4 pl-12 pr-12 text-[15px] font-bold outline-none focus:border-blue-600 transition-all text-slate-900 shadow-sm [&::-ms-reveal]:hidden [&::-ms-clear]:hidden" 
                       />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors p-1">
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors p-1">
                         {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                       </button>
                     </div>
 
-                    <Button type="submit" disabled={isLoggingIn} className="w-full h-16 mt-6 rounded-[1.25rem] text-[16px] font-bold shadow-xl shadow-blue-600/30 hover:shadow-2xl hover:-translate-y-0.5 transition-all bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:hover:translate-y-0">
+                    <Button type="submit" disabled={isLoggingIn} className="w-full h-14 mt-2 rounded-2xl text-[15px] font-bold shadow-lg shadow-blue-600/20 hover:shadow-xl hover:-translate-y-0.5 transition-all bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:hover:translate-y-0">
                       {isLoggingIn ? "Authenticating..." : "Log in"}
                     </Button>
                   </form>
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
 
-            {/* IN-FLOW COPYRIGHT / DEVELOPER FOOTER */}
-            <div className="mt-12 mb-4 w-full flex flex-col shrink-0">
-              <div className="w-full h-px bg-slate-100 mb-6" />
-              <div className="flex items-center justify-between relative px-2">
-                
-                <div className="flex-1 flex justify-start">
-                  <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">
-                    © {new Date().getFullYear()} Zayd
-                  </p>
-                </div>
-                
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-4 bg-slate-200" />
-                
-                <div className="flex-1 flex justify-end">
-                  <a 
-                    href="https://wa.me/917558957246" 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="text-[10px] font-bold text-slate-300 hover:text-blue-500 transition-colors select-none tracking-widest"
-                    title="Developer"
-                  >
-                    radix.
-                  </a>
-                </div>
+          {/* IN-FLOW COPYRIGHT / DEVELOPER FOOTER */}
+          <div className="mt-auto mb-6 w-full flex flex-col shrink-0">
+            <div className="w-full h-px bg-slate-100 mb-4" />
+            <div className="flex items-center justify-between relative px-2">
+              
+              <div className="flex-1 flex justify-start">
+                <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest text-left">
+                  © 2026 ZAYD INDUSTRIES PVT LTD.
+                </p>
+              </div>
+              
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-4 bg-slate-200" />
+              
+              <div className="flex-1 flex justify-end">
+                <a 
+                  href="https://wa.me/917558957246" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-[10px] font-bold text-slate-300 hover:text-blue-500 transition-colors select-none tracking-widest"
+                  title="Developer"
+                >
+                  R.
+                </a>
               </div>
             </div>
-
           </div>
+
         </div>
       </div>
     </div>
