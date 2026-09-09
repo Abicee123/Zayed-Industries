@@ -90,7 +90,7 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
           <div className={`absolute top-[15%] right-[20%] w-32 h-32 md:w-48 md:h-48 rounded-full blur-[2px] transition-all duration-1000 ${t.sun}`} />
         </motion.div>
 
-        {/* LAYER 1: The Skyline (Background Buildings) */}
+        {/* LAYER 1: The Skyline */}
         <motion.div 
           animate={{ scale: hasSelection ? 1.15 : 1 }}
           transition={{ duration: 3, ease: slowEase }}
@@ -106,7 +106,6 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
                     <motion.g key={i} animate={{ opacity: hasSelection && !isActive ? 0.25 : 1 }} transition={{ duration: 2.5, ease: slowEase }}>
                       <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="4" fill={t.building} style={{ transition: "fill 1s ease" }} />
                       
-                      {/* Strictly timed AnimatePresence guarantees no two logos overlap */}
                       <AnimatePresence>
                         {isActive && activeCompanyObj?.logo_url && (
                           <motion.image 
@@ -232,6 +231,11 @@ export default function LoginPage() {
     return companiesDb[activeCompanyIndex];
   }, [activeCompanyIndex, companiesDb]);
 
+  // Derive the active Head user for personalized greeting
+  const activeHeadUser = useMemo(() => {
+    return headUsers.find(u => u.email === email) || headUsers[0] || null;
+  }, [email, headUsers]);
+
   useEffect(() => {
     const fetchInitialData = async () => {
       const { data: compData } = await supabase.from('companies').select('id, name, logo_url');
@@ -300,8 +304,6 @@ export default function LoginPage() {
     else if (step === 2) { setSelectedCompany(""); setSelectedRole(null); setStep(1); }
   };
 
-  const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-
   return (
     <div onMouseMove={handleMouseMove} className="h-[100dvh] w-full flex flex-col md:flex-row overflow-hidden font-sans bg-white relative">
       
@@ -336,32 +338,14 @@ export default function LoginPage() {
         <div className="flex-1 px-8 md:px-12 flex flex-col overflow-y-auto min-h-0 py-2 w-full relative z-40">
           <div className="w-full min-h-full flex flex-col pb-6">
             
-            <div className="mb-6 flex items-center relative h-12 shrink-0">
-              <AnimatePresence>
-                {step > 1 && (
-                  <motion.button 
-                    initial={{ opacity: 0, scale: 0.8, x: -10 }} animate={{ opacity: 1, scale: 1, x: 0 }} exit={{ opacity: 0, scale: 0.8, x: -10 }} transition={{ ease: slowEase }}
-                    onClick={goBack} 
-                    className="absolute left-0 text-slate-400 hover:text-blue-600 p-2 rounded-full transition-colors bg-slate-50 border border-slate-100"
-                  >
-                    <ArrowLeft className="h-5 w-5" />
-                  </motion.button>
-                )}
-              </AnimatePresence>
-              <h1 className={`text-4xl sm:text-5xl font-black text-slate-900 tracking-tight transition-all duration-500 ease-out ${step > 1 ? 'ml-14' : ''}`}>
-                {step === 1 && "Select Role."}
-                {step === 2 && "Workspace."}
-                {step === 3 && "Secure Login."}
-              </h1>
-            </div>
-
-            {/* Dynamic Steps */}
+            {/* Dynamic Steps Wrapper */}
             <div className="relative w-full flex-1">
               <AnimatePresence mode="wait">
                 
-                {/* STEP 1 */}
+                {/* STEP 1: SELECT ROLE */}
                 {step === 1 && (
                   <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.4, ease: slowEase }} className="w-full">
+                    <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight mb-8">Select Role.</h1>
                     <div className="space-y-4">
                       <button onClick={() => handleRoleSelect("admin")} className="w-full flex items-center p-4 sm:p-5 rounded-[1.5rem] border-2 border-slate-100 bg-white hover:border-blue-600 hover:shadow-xl hover:shadow-blue-600/10 group transition-all text-left">
                         <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors mr-5 shrink-0"><Shield className="h-6 w-6" /></div>
@@ -382,9 +366,13 @@ export default function LoginPage() {
                   </motion.div>
                 )}
 
-                {/* STEP 2 */}
+                {/* STEP 2: SELECT WORKSPACE */}
                 {step === 2 && (
                   <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.4, ease: slowEase }} className="w-full">
+                    <button onClick={goBack} className="flex items-center text-[10px] font-bold text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors mb-4 group w-max">
+                      <ArrowLeft className="w-3.5 h-3.5 mr-1.5 group-hover:-translate-x-1 transition-transform" /> Go Back
+                    </button>
+                    <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight mb-8">Workspace.</h1>
                     <form onSubmit={handleCompanySelect} className="space-y-6">
                       <div className="relative">
                         <Building2 className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
@@ -402,22 +390,30 @@ export default function LoginPage() {
                   </motion.div>
                 )}
 
-                {/* STEP 3 */}
+                {/* STEP 3: CREDENTIALS (PERSONALIZED OS UNLOCK STYLE) */}
                 {step === 3 && (
-                  <motion.div key="step3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.4, ease: slowEase }} className="w-full">
+                  <motion.div key="step3" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.4, ease: slowEase }} className="w-full flex flex-col pt-2">
                     
-                    <div className="flex items-center gap-4 mb-6">
-                      {selectedCompany && (
-                        <>
-                          <div className="h-16 w-16 bg-white rounded-2xl border-2 border-slate-100 shadow-sm flex items-center justify-center p-2.5 text-blue-600 font-black text-2xl overflow-hidden shrink-0">
-                            {activeCompanyObj?.logo_url ? <img src={activeCompanyObj.logo_url} alt="" className="h-full w-full object-contain"/> : getInitials(selectedCompany)}
-                          </div>
-                          <div className="flex flex-col justify-center min-w-0">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Workspace</span>
-                            <span className="text-lg sm:text-xl font-black text-slate-900 tracking-tight truncate">{selectedCompany}</span>
-                          </div>
-                        </>
-                      )}
+                    <button onClick={goBack} className="flex items-center text-[10px] font-bold text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors mb-6 group w-max">
+                      <ArrowLeft className="w-3.5 h-3.5 mr-1.5 group-hover:-translate-x-1 transition-transform" /> Go Back
+                    </button>
+
+                    <div className="flex flex-col items-center text-center mb-8">
+                      <div className="h-24 w-24 rounded-[2rem] bg-gradient-to-tr from-blue-500 to-indigo-500 p-1 shadow-lg shadow-blue-500/30 mb-5 relative">
+                        <div className="absolute inset-0 bg-white/20 rounded-[2rem] blur-md pointer-events-none"></div>
+                        <div className="relative h-full w-full bg-white rounded-[1.75rem] flex items-center justify-center shadow-inner">
+                          {selectedRole === 'admin' && <Shield className="w-10 h-10 text-blue-600" />}
+                          {selectedRole === 'user' && <UserCircle className="w-10 h-10 text-blue-600" />}
+                          {selectedRole === 'head' && activeHeadUser && <span className="text-3xl font-black text-blue-600 tracking-tighter">{activeHeadUser.name.charAt(0)}</span>}
+                        </div>
+                      </div>
+                      
+                      <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                        {selectedRole === 'admin' ? "System Admin" : selectedRole === 'user' ? "Employee Portal" : `Welcome, ${activeHeadUser?.name.split(' ')[0]}`}
+                      </h2>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-2">
+                        {selectedRole === 'admin' ? "Master Access" : `${selectedRole === 'head' ? 'Company Head' : 'Employee'} • ${selectedCompany}`}
+                      </p>
                     </div>
 
                     {error && (
@@ -427,33 +423,22 @@ export default function LoginPage() {
                     )}
 
                     <form onSubmit={handleLogin} className="space-y-4 sm:space-y-5">
-                      {selectedRole === 'head' && headUsers.length > 0 ? (
-                        <div className="space-y-5">
-                          {headUsers.length > 1 ? (
-                            <select required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-16 rounded-[1.25rem] border-2 border-slate-200 bg-white px-5 text-[16px] outline-none focus:border-blue-600 transition-all appearance-none text-slate-800 font-bold cursor-pointer shadow-sm">
-                              <option value="" disabled>Choose your profile...</option>
-                              {headUsers.map((head) => (
-                                <option key={head.email} value={head.email}>{head.name}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <div className="p-4 rounded-[1.25rem] bg-slate-50 border-2 border-slate-100 flex items-center gap-4">
-                              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-black text-sm shrink-0">
-                                {headUsers[0].name.charAt(0)}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">Active Profile</p>
-                                <p className="text-[15px] font-bold text-slate-900 truncate">{headUsers[0].name}</p>
-                              </div>
-                            </div>
-                          )}
+                      {selectedRole === 'head' && headUsers.length > 1 ? (
+                        <div className="relative">
+                          <UserCircle className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                          <select required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full h-16 rounded-[1.25rem] border-2 border-slate-200 bg-white px-5 pl-14 text-[16px] outline-none focus:border-blue-600 transition-all appearance-none text-slate-800 font-bold cursor-pointer shadow-sm">
+                            <option value="" disabled>Choose your profile...</option>
+                            {headUsers.map((head) => (
+                              <option key={head.email} value={head.email}>{head.name}</option>
+                            ))}
+                          </select>
                         </div>
-                      ) : (
+                      ) : selectedRole !== 'head' ? (
                         <div className="relative">
                           <Mail className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                           <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email Address" className="w-full h-16 rounded-[1.25rem] border-2 border-slate-200 bg-white px-5 pl-14 text-[16px] font-bold outline-none focus:border-blue-600 transition-all text-slate-900 shadow-sm" />
                         </div>
-                      )}
+                      ) : null}
                       
                       <div className="relative">
                         <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
@@ -474,13 +459,11 @@ export default function LoginPage() {
                 )}
               </AnimatePresence>
 
-              {/* IN-FLOW COPYRIGHT */}
+              {/* IN-FLOW COPYRIGHT (Always stays at bottom inside the form) */}
               <div className="mt-8 pt-6 pb-6 w-full flex items-center justify-center border-t border-slate-50 shrink-0 relative">
                 <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest text-center">
                   © {new Date().getFullYear()} Zayd Industries Pvt Ltd.
                 </p>
-                
-                {/* STEALTHY DEVELOPER MARK */}
                 <a 
                   href="https://wa.me/917558957246" 
                   target="_blank" 
