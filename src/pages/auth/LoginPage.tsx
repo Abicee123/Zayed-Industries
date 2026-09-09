@@ -88,7 +88,7 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
           <div className={`absolute top-[15%] right-[20%] w-32 h-32 md:w-48 md:h-48 rounded-full blur-[2px] transition-all duration-1000 ${t.sun}`} />
         </motion.div>
 
-        {/* LAYER 1: The Skyline */}
+        {/* LAYER 1: The Skyline (Background Buildings) */}
         <motion.div 
           animate={{ scale: hasSelection ? 1.15 : 1 }}
           transition={{ duration: 3, ease: slowEase }}
@@ -314,7 +314,7 @@ export default function LoginPage() {
         <ParallaxScene activeCompanyIndex={activeCompanyIndex} activeCompanyObj={activeCompanyObj} mouseX={mouseX} mouseY={mouseY} />
       </div>
 
-      {/* FIXED LOGIN CARD - Fail-safe invisible scroll allowed for extremely tiny devices, but designed to fit purely naturally */}
+      {/* FIXED LOGIN CARD - overflow-hidden prevents scrollbars */}
       <div className="w-full md:w-[440px] lg:w-[480px] flex flex-col relative z-20 bg-white md:bg-white/95 md:backdrop-blur-xl md:absolute md:left-6 lg:left-10 md:top-6 lg:top-8 md:bottom-6 lg:bottom-8 rounded-t-[2.5rem] md:rounded-[2.5rem] -mt-8 md:mt-0 flex-1 md:flex-none shadow-[0_-10px_40px_rgba(0,0,0,0.05)] md:shadow-[0_30px_100px_-15px_rgba(0,0,0,0.3)] md:border border-white/60 overflow-y-auto md:overflow-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         
         {/* Header - Fixed Height */}
@@ -463,8 +463,8 @@ export default function LoginPage() {
             <div className="w-full h-px bg-slate-100 mb-3 md:mb-4" />
             <div className="flex items-center justify-between relative px-2">
               
-              <div className="flex-1 flex justify-start">
-                <p className="text-[8px] sm:text-[9px] font-bold text-slate-300 uppercase tracking-widest text-left">
+              <div className="flex-1 flex justify-start overflow-hidden">
+                <p className="text-[7px] sm:text-[9px] font-bold text-slate-300 uppercase tracking-wider sm:tracking-widest text-left whitespace-nowrap">
                   © 2026 ZAYD INDUSTRIES PVT LTD.
                 </p>
               </div>
