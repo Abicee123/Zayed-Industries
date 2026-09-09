@@ -36,7 +36,6 @@ const THEMES = {
 
 const slowEase = [0.25, 0.1, 0.25, 1];
 
-// Congested Cityscape Data
 const subBuildings = [
   { x: 10, y: 150, w: 40, h: 250, z: 0 }, { x: 30, y: 200, w: 70, h: 200, z: 1 }, { x: 80, y: 120, w: 50, h: 280, z: 0 },
   { x: 120, y: 180, w: 60, h: 220, z: 1 }, { x: 160, y: 140, w: 80, h: 260, z: 0 }, { x: 220, y: 210, w: 50, h: 190, z: 1 },
@@ -50,18 +49,21 @@ const subBuildings = [
   { x: 1420, y: 190, w: 60, h: 210, z: 0 }, { x: 1470, y: 160, w: 80, h: 240, z: 1 }, { x: 1530, y: 210, w: 50, h: 190, z: 0 }
 ];
 
-// Dense, organic, mixed-species forest generator
-const forestTrees = Array.from({ length: 120 }).map((_, i) => {
+// Clean Canopy Forest Generator (Bottoms will be cleanly hidden behind the foreground hill)
+const forestTrees = Array.from({ length: 90 }).map((_, i) => {
   const typeSeed = (i * 7) % 3;
   const types = ['pine', 'oak', 'cypress'];
-  const x = Math.random() * 1600;
-  const yOffset = Math.pow(Math.random(), 2) * 50; 
-  const type = types[typeSeed];
-  const scale = 0.5 + (yOffset / 50) * 0.7; 
-  const opacity = 0.5 + (yOffset / 50) * 0.5; 
-  
-  return { x, y: 120 + yOffset, type, scale, opacity };
+  const x = (i * 18) % 1600 + Math.random() * 10;
+  const yOffset = Math.random() * 25; 
+  return { 
+    x, 
+    y: 90 + yOffset, 
+    type: types[typeSeed], 
+    scale: 0.5 + Math.random() * 0.4, 
+    opacity: 0.6 + Math.random() * 0.4 
+  };
 }).sort((a, b) => a.y - b.y);
+
 
 // --- THE CONNECTED SKYLINE PARALLAX ANIMATION ---
 const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }: { activeCompanyIndex: number | null, activeCompanyObj: any, mouseX: any, mouseY: any }) => {
@@ -85,11 +87,12 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
   return (
     <>
       <style>{`
-        @keyframes moveRight { 0% { transform: translateX(-300px); } 100% { transform: translateX(1900px); } }
-        @keyframes moveLeft { 0% { transform: translateX(1900px); } 100% { transform: translateX(-300px); } }
-        .svg-train-1 { animation: moveRight 14s linear infinite; }
-        .svg-train-2 { animation: moveLeft 20s linear infinite; }
-        .svg-train-3 { animation: moveRight 8s linear infinite; }
+        /* Full screen spanning animations to prevent edge popping */
+        @keyframes trainRight { 0% { transform: translate3d(-50vw, 0, 0); } 100% { transform: translate3d(150vw, 0, 0); } }
+        @keyframes trainLeft { 0% { transform: translate3d(150vw, 0, 0); } 100% { transform: translate3d(-50vw, 0, 0); } }
+        .anim-train-1 { animation: trainRight 16s linear infinite; }
+        .anim-train-2 { animation: trainLeft 22s linear infinite; }
+        .anim-train-3 { animation: trainRight 9s linear infinite; }
       `}</style>
 
       <div className={`absolute inset-0 overflow-hidden bg-gradient-to-b ${t.bgClass} transition-colors duration-1000`}>
@@ -139,7 +142,6 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
                   );
                 })}
 
-                {/* Main Parent Hub */}
                 <motion.g transform="translate(650, 50)" animate={{ opacity: hasSelection ? 0.25 : 1 }} transition={{ duration: 2.5, ease: slowEase }}>
                   <rect width="140" height="350" rx="8" fill={t.parent} style={{ transition: "fill 1s ease" }} />
                   <rect x="30" y="-30" width="80" height="50" rx="4" fill={t.parent} style={{ transition: "fill 1s ease" }} />
@@ -160,117 +162,115 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
         {/* LAYER 2 & 3: Depth of field blur wrapper */}
         <motion.div animate={{ opacity: hasSelection ? 0.6 : 1, filter: hasSelection ? "blur(3px)" : "blur(0px)" }} transition={{ duration: 3, ease: slowEase }} className="absolute inset-0 z-20 pointer-events-none">
           
-          <div className="absolute bottom-[10%] left-0 w-full h-[50%] z-20 pointer-events-auto">
+          <div className="absolute bottom-[10%] left-0 w-full h-[50%] z-20">
+            {/* The SVG Hills & Bridges */}
             <motion.div className="flex h-full w-max flex-nowrap" style={{ willChange: "transform", WebkitTransform: "translateZ(0)" }} animate={{ x: ["0px", "-1600px"] }} transition={{ ease: "linear", duration: 30, repeat: Infinity }}>
               {[1, 2].map((key) => (
-                <svg key={key} width="1600" height="300" viewBox="0 0 1600 300" className="h-full w-[1600px] shrink-0" preserveAspectRatio="none">
-                  
-                  {/* Far Back Hills */}
+                <svg key={key} width="1600" height="300" viewBox="0 0 1600 300" className="h-full w-[1600px] shrink-0 pointer-events-none" preserveAspectRatio="none">
                   <path d="M0,100 C200,80 300,180 500,150 C700,120 800,200 1000,160 C1200,120 1400,180 1600,140 L1600,300 L0,300 Z" fill={t.hillsBack} opacity="0.6" style={{ transition: "fill 1s ease" }} />
                   <path d="M0,150 C200,150 200,300 400,300 C600,300 600,150 800,150 C1000,150 1000,300 1200,300 C1400,300 1400,150 1600,150 L1600,300 L0,300 Z" fill={t.hillsBack} style={{ transition: "fill 1s ease" }} />
                   <path d="M0,200 C150,200 150,100 300,100 C450,100 450,200 600,200 C750,200 750,150 900,150 C1050,150 1050,250 1200,250 C1400,250 1400,200 1600,200 L1600,300 L0,300 Z" fill={t.hillsFront} opacity="0.85" style={{ transition: "fill 1s ease" }} />
                   
-                  {/* Far Background Bridge & Train 2 */}
+                  {/* Far Background Bridge (y=110, h=6 maps to top: calc(36.66%)) */}
                   <g fill={t.bridgeDark} opacity="0.7">
-                    <rect x="0" y="108" width="1600" height="4" />
-                    <rect x="150" y="112" width="8" height="200" />
-                    <rect x="550" y="112" width="8" height="200" />
-                    <rect x="950" y="112" width="8" height="200" />
-                    <rect x="1350" y="112" width="8" height="200" />
-                  </g>
-                  
-                  <g className="svg-train-2" transform="translate(0, 96)" style={{ animationPlayState: isTrainStopped ? 'paused' : 'running' }}>
-                    <rect x="0" y="0" width="120" height="12" fill="#94a3b8" rx="4" />
-                    <circle cx="8" cy="6" r="3" fill="#fde047" /> {/* Left Headlight */}
-                    <rect x="20" y="3" width="20" height="6" fill="#cbd5e1" rx="1" />
-                    <rect x="50" y="3" width="20" height="6" fill="#cbd5e1" rx="1" />
-                    <rect x="80" y="3" width="20" height="6" fill="#cbd5e1" rx="1" />
+                    <rect x="0" y="110" width="1600" height="6" />
+                    <rect x="150" y="116" width="12" height="200" rx="2" />
+                    <rect x="550" y="116" width="12" height="200" rx="2" />
+                    <rect x="950" y="116" width="12" height="200" rx="2" />
+                    <rect x="1350" y="116" width="12" height="200" rx="2" />
                   </g>
 
-                  {/* Main Midground Bridge & Train 1 */}
+                  {/* Main Midground Bridge (y=180, h=10 maps to top: calc(60%)) */}
                   <g fill={t.bridge} style={{ transition: "fill 1s ease" }}>
-                    <rect x="0" y="170" width="1600" height="12" />
-                    <rect x="200" y="182" width="24" height="168" rx="8" />
-                    <rect x="600" y="182" width="24" height="168" rx="8" />
-                    <rect x="1000" y="182" width="24" height="168" rx="8" />
-                    <rect x="1400" y="182" width="24" height="168" rx="8" />
-                    <path d="M212,170 Q400,220 588,170" fill="none" stroke={t.bridge} strokeWidth="6" />
-                    <path d="M612,170 Q800,220 988,170" fill="none" stroke={t.bridge} strokeWidth="6" />
-                    <path d="M1012,170 Q1200,220 1388,170" fill="none" stroke={t.bridge} strokeWidth="6" />
-                    <path d="M1412,170 Q1500,195 1600,170" fill="none" stroke={t.bridge} strokeWidth="6" />
-                    <path d="M0,170 Q100,195 188,170" fill="none" stroke={t.bridge} strokeWidth="6" />
-                  </g>
-
-                  <g className="svg-train-1 cursor-pointer" transform="translate(0, 150)" onClick={() => setIsTrainStopped(!isTrainStopped)} style={{ animationPlayState: isTrainStopped ? 'paused' : 'running' }}>
-                    <rect x="0" y="0" width="180" height="20" fill="#f8fafc" rx="8" />
-                    <rect x="15" y="5" width="30" height="10" fill="#cbd5e1" rx="2" />
-                    <rect x="55" y="5" width="30" height="10" fill="#cbd5e1" rx="2" />
-                    <rect x="95" y="5" width="30" height="10" fill="#cbd5e1" rx="2" />
-                    <rect x="135" y="5" width="25" height="10" fill="#cbd5e1" rx="2" />
-                    <circle cx="170" cy="10" r="4" fill={isTrainStopped ? '#ef4444' : '#fbbf24'} /> {/* Right Headlight */}
+                    <rect x="0" y="180" width="1600" height="10" />
+                    <rect x="200" y="190" width="20" height="160" rx="4" />
+                    <rect x="600" y="190" width="20" height="160" rx="4" />
+                    <rect x="1000" y="190" width="20" height="160" rx="4" />
+                    <rect x="1400" y="190" width="20" height="160" rx="4" />
+                    <path d="M210,180 Q400,230 590,180" fill="none" stroke={t.bridge} strokeWidth="6" />
+                    <path d="M610,180 Q800,230 990,180" fill="none" stroke={t.bridge} strokeWidth="6" />
+                    <path d="M1010,180 Q1200,230 1390,180" fill="none" stroke={t.bridge} strokeWidth="6" />
+                    <path d="M1410,180 Q1500,205 1600,180" fill="none" stroke={t.bridge} strokeWidth="6" />
+                    <path d="M0,180 Q100,205 190,180" fill="none" stroke={t.bridge} strokeWidth="6" />
                   </g>
                 </svg>
               ))}
             </motion.div>
+
+            {/* FULL-SCREEN ABSOLUTE TRAINS (Bound perfectly to the rails above) */}
+            
+            {/* Train 2: Far Background (Moving Left) -> Bound to top: calc(36.66% - 14px) */}
+            <div className="absolute left-0 w-[140px] h-[14px] bg-slate-300 rounded-t-md rounded-b-none flex items-center px-1.5 shadow-sm z-10 anim-train-2 opacity-60" style={{ top: "calc(36.66% - 14px)", animationPlayState: isTrainStopped ? 'paused' : 'running' }}>
+              <div className="w-1.5 h-1.5 bg-amber-200 rounded-full shadow-[0_0_8px_#fbbf24] mr-auto" />
+              <div className="w-5 h-1.5 bg-slate-400 rounded-sm ml-1" />
+              <div className="w-5 h-1.5 bg-slate-400 rounded-sm ml-1" />
+              <div className="w-5 h-1.5 bg-slate-400 rounded-sm ml-1" />
+            </div>
+
+            {/* Train 1: Main Midground (Moving Right) -> Bound to top: calc(60% - 22px) */}
+            <div onClick={() => setIsTrainStopped(!isTrainStopped)} title="Click to Stop/Resume Trains" className="absolute left-0 w-[220px] h-[22px] bg-white rounded-t-xl rounded-b-none flex items-center px-2.5 shadow-lg z-20 cursor-pointer pointer-events-auto anim-train-1 hover:brightness-110 transition-all" style={{ top: "calc(60% - 22px)", animationPlayState: isTrainStopped ? 'paused' : 'running' }}>
+              <div className="w-7 h-2 bg-slate-200 rounded-sm mr-2" />
+              <div className="w-7 h-2 bg-slate-200 rounded-sm mr-2" />
+              <div className="w-7 h-2 bg-slate-200 rounded-sm mr-2" />
+              <div className="w-7 h-2 bg-slate-200 rounded-sm mr-auto" />
+              <div className={`w-2.5 h-2.5 rounded-full transition-colors ${isTrainStopped ? 'bg-rose-500 shadow-[0_0_10px_#ef4444]' : 'bg-amber-400 shadow-[0_0_10px_#fbbf24]'}`} />
+            </div>
           </div>
 
-          {/* LAYER 3: Dense Mixed Forest & High-Speed Train 3 */}
-          <div className="absolute bottom-0 left-0 w-full h-[30%] z-30 pointer-events-none">
-            <motion.div className="flex h-full w-max flex-nowrap" style={{ willChange: "transform", WebkitTransform: "translateZ(0)" }} animate={{ x: ["0px", "-1600px"] }} transition={{ ease: "linear", duration: 15, repeat: Infinity }}>
+          {/* LAYER 3: Clean Foreground Park & Track */}
+          <div className="absolute bottom-0 left-0 w-full h-[30%] z-30">
+            <motion.div className="flex h-full w-max flex-nowrap pointer-events-none" style={{ willChange: "transform", WebkitTransform: "translateZ(0)" }} animate={{ x: ["0px", "-1600px"] }} transition={{ ease: "linear", duration: 15, repeat: Infinity }}>
               {[1, 2].map((key) => (
-                <svg key={key} width="1600" height="200" viewBox="0 0 1600 200" className="h-full w-[1600px] shrink-0 pointer-events-auto" preserveAspectRatio="none">
+                <svg key={key} width="1600" height="200" viewBox="0 0 1600 200" className="h-full w-[1600px] shrink-0" preserveAspectRatio="none">
                   
-                  {/* Organic Forest Base */}
-                  <path d="M0,100 C100,0 200,150 400,100 C600,50 800,150 1000,80 C1200,10 1400,150 1600,100 L1600,200 L0,200 Z" fill={t.hillsBack} style={{ transition: "fill 1s ease" }} opacity="0.4" />
+                  {/* Distant Ground for Trees */}
+                  <path d="M0,120 C300,90 500,130 800,100 C1100,70 1300,120 1600,90 L1600,200 L0,200 Z" fill={t.hillsBack} style={{ transition: "fill 1s ease" }} opacity="0.4" />
                   
-                  {/* Complex Dense Forest Mapping */}
+                  {/* Clean Mixed Forest Canopy (Trunks hide below y=140) */}
                   {forestTrees.map((tree, i) => {
                     const { x, y, type, scale, opacity } = tree;
                     return (
                       <g key={`tree-${i}`} transform={`translate(${x}, ${y}) scale(${scale})`} fill={t.fg} opacity={opacity} style={{ transition: "fill 1s ease" }}>
                         {type === 'pine' && (
                           <>
-                            <rect x="-2" y="0" width="4" height="30" fill="#020617" opacity="0.7" />
-                            <polygon points="0,-35 -15,5 15,5" />
-                            <polygon points="0,-15 -20,15 20,15" />
-                            <polygon points="0,5 -25,25 25,25" />
+                            <polygon points="0,-45 -20,5 20,5" />
+                            <polygon points="0,-25 -25,15 25,15" />
+                            <polygon points="0,5 -30,30 30,30" />
                           </>
                         )}
                         {type === 'oak' && (
                           <>
-                            <rect x="-3" y="10" width="6" height="25" fill="#020617" opacity="0.7" />
-                            <circle cx="0" cy="-10" r="16" />
-                            <circle cx="-12" cy="5" r="14" />
-                            <circle cx="12" cy="5" r="14" />
-                            <circle cx="0" cy="12" r="16" />
+                            <circle cx="0" cy="-15" r="22" />
+                            <circle cx="-16" cy="5" r="18" />
+                            <circle cx="16" cy="5" r="18" />
+                            <circle cx="0" cy="15" r="22" />
                           </>
                         )}
                         {type === 'cypress' && (
-                          <>
-                            <rect x="-1" y="10" width="2" height="20" fill="#020617" opacity="0.7" />
-                            <ellipse cx="0" cy="0" rx="8" ry="28" />
-                          </>
+                          <ellipse cx="0" cy="0" rx="12" ry="35" />
                         )}
                       </g>
                     );
                   })}
                   
-                  {/* Foreground High-Speed Track (Train 3) */}
-                  <rect x="0" y="160" width="1600" height="15" fill="#0f172a" opacity="0.8" />
-                  <rect x="0" y="175" width="1600" height="25" fill={t.fg} style={{ transition: "fill 1s ease" }} /> {/* Ground overlap */}
-                  
-                  <g className="svg-train-3 cursor-pointer" transform="translate(0, 132)" onClick={() => setIsTrainStopped(!isTrainStopped)} style={{ animationPlayState: isTrainStopped ? 'paused' : 'running' }}>
-                    <rect x="0" y="0" width="260" height="28" fill="#ffffff" rx="14" />
-                    <rect x="20" y="18" width="220" height="3" fill="#38bdf8" opacity="0.5" />
-                    <rect x="30" y="5" width="45" height="12" fill="#e2e8f0" rx="3" />
-                    <rect x="85" y="5" width="45" height="12" fill="#e2e8f0" rx="3" />
-                    <rect x="140" y="5" width="45" height="12" fill="#e2e8f0" rx="3" />
-                    <rect x="195" y="5" width="30" height="12" fill="#e2e8f0" rx="3" />
-                    <circle cx="245" cy="14" r="5" fill={isTrainStopped ? '#ef4444' : '#38bdf8'} /> {/* Right Headlight */}
-                  </g>
+                  {/* Foreground Solid Hill - Beautifully covers the messy bottoms of the trees */}
+                  <path d="M0,150 C400,120 800,160 1200,130 C1400,115 1500,140 1600,120 L1600,200 L0,200 Z" fill={t.hillsFront} style={{ transition: "fill 1s ease" }} />
+
+                  {/* Foreground Solid High-Speed Track (y=160, h=16 maps to top: calc(80%)) */}
+                  <rect x="0" y="160" width="1600" height="16" fill="#0f172a" />
+                  <rect x="0" y="160" width="1600" height="2" fill="#334155" />
                 </svg>
               ))}
             </motion.div>
+
+            {/* Train 3: High Speed Foreground (Moving Right) -> Bound to top: calc(80% - 30px) */}
+            <div onClick={() => setIsTrainStopped(!isTrainStopped)} title="Click to Stop/Resume Trains" className="absolute left-0 w-[300px] h-[30px] bg-slate-100 rounded-t-2xl rounded-b-none flex items-center px-4 shadow-xl z-30 cursor-pointer pointer-events-auto anim-train-3 hover:brightness-105 transition-all" style={{ top: "calc(80% - 30px)", animationPlayState: isTrainStopped ? 'paused' : 'running' }}>
+              <div className="w-12 h-3.5 bg-slate-300 rounded-sm mr-2.5" />
+              <div className="w-12 h-3.5 bg-slate-300 rounded-sm mr-2.5" />
+              <div className="w-12 h-3.5 bg-slate-300 rounded-sm mr-2.5" />
+              <div className="w-12 h-3.5 bg-slate-300 rounded-sm mr-auto" />
+              <div className={`w-3.5 h-3.5 rounded-full transition-colors ${isTrainStopped ? 'bg-rose-500 shadow-[0_0_15px_#ef4444]' : 'bg-sky-400 shadow-[0_0_15px_#38bdf8]'}`} />
+            </div>
           </div>
         </motion.div>
 
@@ -386,7 +386,7 @@ export default function LoginPage() {
   return (
     <div onMouseMove={handleMouseMove} className="h-[100dvh] w-full flex flex-col md:flex-row overflow-hidden font-sans bg-white relative">
       
-      {/* MOBILE PARALLAX BANNER (Slightly shorter to guarantee footer space without scrolling) */}
+      {/* MOBILE PARALLAX BANNER */}
       <div className="md:hidden w-full h-[28vh] min-h-[200px] relative z-0 shrink-0">
         <ParallaxScene activeCompanyIndex={activeCompanyIndex} activeCompanyObj={activeCompanyObj} mouseX={mouseX} mouseY={mouseY} />
       </div>
@@ -396,7 +396,7 @@ export default function LoginPage() {
         <ParallaxScene activeCompanyIndex={activeCompanyIndex} activeCompanyObj={activeCompanyObj} mouseX={mouseX} mouseY={mouseY} />
       </div>
 
-      {/* FIXED LOGIN CARD - overflow-hidden prevents scrollbars */}
+      {/* FIXED LOGIN CARD */}
       <div className="w-full md:w-[440px] lg:w-[480px] flex flex-col relative z-20 bg-white md:bg-white/95 md:backdrop-blur-xl md:absolute md:left-6 lg:left-10 md:top-6 lg:top-8 md:bottom-6 lg:bottom-8 rounded-t-[2.5rem] md:rounded-[2.5rem] -mt-8 md:mt-0 flex-1 md:flex-none shadow-[0_-10px_40px_rgba(0,0,0,0.05)] md:shadow-[0_30px_100px_-15px_rgba(0,0,0,0.3)] md:border border-white/60 overflow-y-auto md:overflow-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         
         {/* Header - Fixed Height */}
@@ -416,7 +416,6 @@ export default function LoginPage() {
         {/* Content Area */}
         <div className="flex-1 px-8 md:px-12 flex flex-col w-full relative z-40">
           
-          {/* Step Wrapper Height carefully adjusted */}
           <div className="relative w-full h-[340px] md:h-[380px] shrink-0 mt-2 md:mt-4">
             <AnimatePresence mode="wait">
               
