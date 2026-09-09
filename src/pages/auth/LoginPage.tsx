@@ -88,7 +88,7 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
           <div className={`absolute top-[15%] right-[20%] w-32 h-32 md:w-48 md:h-48 rounded-full blur-[2px] transition-all duration-1000 ${t.sun}`} />
         </motion.div>
 
-        {/* LAYER 1: The Skyline (Background Buildings) */}
+        {/* LAYER 1: The Skyline */}
         <motion.div 
           animate={{ scale: hasSelection ? 1.15 : 1 }}
           transition={{ duration: 3, ease: slowEase }}
@@ -304,8 +304,8 @@ export default function LoginPage() {
   return (
     <div onMouseMove={handleMouseMove} className="h-[100dvh] w-full flex flex-col md:flex-row overflow-hidden font-sans bg-white relative">
       
-      {/* MOBILE PARALLAX BANNER */}
-      <div className="md:hidden w-full h-[35vh] relative z-0 shrink-0">
+      {/* MOBILE PARALLAX BANNER (Slightly shorter to guarantee footer space without scrolling) */}
+      <div className="md:hidden w-full h-[28vh] min-h-[200px] relative z-0 shrink-0">
         <ParallaxScene activeCompanyIndex={activeCompanyIndex} activeCompanyObj={activeCompanyObj} mouseX={mouseX} mouseY={mouseY} />
       </div>
 
@@ -314,11 +314,11 @@ export default function LoginPage() {
         <ParallaxScene activeCompanyIndex={activeCompanyIndex} activeCompanyObj={activeCompanyObj} mouseX={mouseX} mouseY={mouseY} />
       </div>
 
-      {/* FIXED LOGIN CARD - overflow-hidden prevents scrollbars */}
-      <div className="w-full md:w-[440px] lg:w-[480px] flex flex-col relative z-20 bg-white md:bg-white/95 md:backdrop-blur-xl md:absolute md:left-6 lg:left-10 md:top-6 lg:top-8 md:bottom-6 lg:bottom-8 rounded-t-[2.5rem] md:rounded-[2.5rem] -mt-8 md:mt-0 flex-1 md:flex-none shadow-[0_-10px_40px_rgba(0,0,0,0.05)] md:shadow-[0_30px_100px_-15px_rgba(0,0,0,0.3)] md:border border-white/60 overflow-hidden">
+      {/* FIXED LOGIN CARD - Fail-safe invisible scroll allowed for extremely tiny devices, but designed to fit purely naturally */}
+      <div className="w-full md:w-[440px] lg:w-[480px] flex flex-col relative z-20 bg-white md:bg-white/95 md:backdrop-blur-xl md:absolute md:left-6 lg:left-10 md:top-6 lg:top-8 md:bottom-6 lg:bottom-8 rounded-t-[2.5rem] md:rounded-[2.5rem] -mt-8 md:mt-0 flex-1 md:flex-none shadow-[0_-10px_40px_rgba(0,0,0,0.05)] md:shadow-[0_30px_100px_-15px_rgba(0,0,0,0.3)] md:border border-white/60 overflow-y-auto md:overflow-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         
         {/* Header - Fixed Height */}
-        <div className="h-24 px-8 md:px-12 flex items-center gap-4 shrink-0 relative z-50">
+        <div className="h-20 md:h-24 px-8 md:px-12 flex items-center gap-4 shrink-0 relative z-50">
           <div className="h-10 w-10 sm:h-12 sm:w-12 flex items-center justify-center overflow-hidden shrink-0">
             {adminLogo ? (
               <img src={adminLogo} alt="Logo" className="h-full w-full object-contain" />
@@ -331,11 +331,11 @@ export default function LoginPage() {
           <span className="font-black text-2xl sm:text-3xl text-slate-900 tracking-tight">Zayd Industries</span>
         </div>
 
-        {/* Content Area - Fixed Flex layout prevents Footer Jumping */}
+        {/* Content Area */}
         <div className="flex-1 px-8 md:px-12 flex flex-col w-full relative z-40">
           
-          {/* Fixed Height Step Wrapper to eliminate scrollbar and anchor footer */}
-          <div className="relative w-full h-[380px] shrink-0 mt-2">
+          {/* Step Wrapper Height carefully adjusted for mobile vs desktop */}
+          <div className="relative w-full h-[340px] md:h-[380px] shrink-0 mt-2 md:mt-4">
             <AnimatePresence mode="wait">
               
               {/* STEP 1: SELECT ROLE */}
@@ -390,23 +390,23 @@ export default function LoginPage() {
               {step === 3 && (
                 <motion.div key="step3" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.4, ease: slowEase }} className="absolute inset-0 w-full flex flex-col">
                   
-                  <button onClick={goBack} className="flex items-center text-[10px] font-bold text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors mb-3 group w-max">
+                  <button onClick={goBack} className="flex items-center text-[10px] font-bold text-slate-400 hover:text-blue-600 uppercase tracking-widest transition-colors mb-3 md:mb-5 group w-max">
                     <ArrowLeft className="w-3.5 h-3.5 mr-1.5 group-hover:-translate-x-1 transition-transform" /> Go Back
                   </button>
 
-                  <div className="flex flex-col items-center text-center mb-5">
-                    <div className="h-20 w-20 rounded-[1.75rem] bg-gradient-to-tr from-blue-500 to-indigo-500 p-1 shadow-md shadow-blue-500/20 mb-4 relative">
-                      <div className="absolute inset-0 bg-white/20 rounded-[1.75rem] blur-md pointer-events-none"></div>
-                      <div className="relative h-full w-full bg-white rounded-[1.5rem] flex items-center justify-center shadow-inner overflow-hidden p-3">
+                  <div className="flex flex-col items-center text-center mb-4 md:mb-5">
+                    <div className="h-16 w-16 md:h-20 md:w-20 rounded-[1.5rem] md:rounded-[1.75rem] bg-gradient-to-tr from-blue-500 to-indigo-500 p-1 shadow-md shadow-blue-500/20 mb-3 md:mb-4 relative">
+                      <div className="absolute inset-0 bg-white/20 rounded-[1.5rem] md:rounded-[1.75rem] blur-md pointer-events-none"></div>
+                      <div className="relative h-full w-full bg-white rounded-[1.25rem] md:rounded-[1.5rem] flex items-center justify-center shadow-inner overflow-hidden p-2.5 md:p-3">
                         {selectedRole === 'admin' ? (
-                          adminLogo ? <img src={adminLogo} alt="Admin Logo" className="h-full w-full object-contain" /> : <Shield className="w-8 h-8 text-blue-600" />
+                          adminLogo ? <img src={adminLogo} alt="Admin Logo" className="h-full w-full object-contain" /> : <Shield className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
                         ) : (
-                          activeCompanyObj?.logo_url ? <img src={activeCompanyObj.logo_url} alt="Company Logo" className="h-full w-full object-contain" /> : <Building2 className="w-8 h-8 text-blue-600" />
+                          activeCompanyObj?.logo_url ? <img src={activeCompanyObj.logo_url} alt="Company Logo" className="h-full w-full object-contain" /> : <Building2 className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
                         )}
                       </div>
                     </div>
                     
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-none mb-1.5">
+                    <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-none mb-1.5">
                       {selectedRole === 'admin' ? "System Admin" : selectedRole === 'user' ? "Employee Portal" : `Welcome, ${activeHeadUser?.name.split(' ')[0] || 'Head'}`}
                     </h2>
                     <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-slate-400">
@@ -415,12 +415,12 @@ export default function LoginPage() {
                   </div>
 
                   {error && (
-                    <div className="mb-4 rounded-xl bg-rose-50 p-3 text-[12px] font-bold text-rose-600 border border-rose-100 flex items-center gap-2">
+                    <div className="mb-3 rounded-xl bg-rose-50 p-2.5 text-[12px] font-bold text-rose-600 border border-rose-100 flex items-center gap-2">
                       <Shield className="h-4 w-4 shrink-0" /> {error}
                     </div>
                   )}
 
-                  <form onSubmit={handleLogin} className="space-y-3 sm:space-y-4 w-full">
+                  <form onSubmit={handleLogin} className="space-y-3 w-full">
                     {selectedRole === 'head' && headUsers.length > 1 ? (
                       <div className="relative">
                         <UserCircle className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
@@ -449,7 +449,7 @@ export default function LoginPage() {
                       </button>
                     </div>
 
-                    <Button type="submit" disabled={isLoggingIn} className="w-full h-14 mt-2 rounded-2xl text-[15px] font-bold shadow-lg shadow-blue-600/20 hover:shadow-xl hover:-translate-y-0.5 transition-all bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:hover:translate-y-0">
+                    <Button type="submit" disabled={isLoggingIn} className="w-full h-14 mt-1 rounded-2xl text-[15px] font-bold shadow-lg shadow-blue-600/20 hover:shadow-xl hover:-translate-y-0.5 transition-all bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:hover:translate-y-0">
                       {isLoggingIn ? "Authenticating..." : "Log in"}
                     </Button>
                   </form>
@@ -459,24 +459,24 @@ export default function LoginPage() {
           </div>
 
           {/* IN-FLOW COPYRIGHT / DEVELOPER FOOTER */}
-          <div className="mt-auto mb-6 w-full flex flex-col shrink-0">
-            <div className="w-full h-px bg-slate-100 mb-4" />
+          <div className="mt-auto mb-4 md:mb-6 w-full flex flex-col shrink-0">
+            <div className="w-full h-px bg-slate-100 mb-3 md:mb-4" />
             <div className="flex items-center justify-between relative px-2">
               
               <div className="flex-1 flex justify-start">
-                <p className="text-[9px] font-bold text-slate-300 uppercase tracking-widest text-left">
+                <p className="text-[8px] sm:text-[9px] font-bold text-slate-300 uppercase tracking-widest text-left">
                   © 2026 ZAYD INDUSTRIES PVT LTD.
                 </p>
               </div>
               
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-4 bg-slate-200" />
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-px h-3 md:h-4 bg-slate-200" />
               
               <div className="flex-1 flex justify-end">
                 <a 
                   href="https://wa.me/917558957246" 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="text-[10px] font-bold text-slate-300 hover:text-blue-500 transition-colors select-none tracking-widest"
+                  className="text-[9px] sm:text-[10px] font-bold text-slate-300 hover:text-blue-500 transition-colors select-none tracking-widest"
                   title="Developer"
                 >
                   R.
