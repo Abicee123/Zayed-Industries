@@ -11,38 +11,48 @@ const THEMES = {
   morning: {
     bgClass: "from-rose-100 via-orange-50 to-sky-100",
     sun: "bg-orange-300 shadow-[0_0_80px_rgba(253,186,116,0.8)]",
-    building: "#7dd3fc", parent: "#38bdf8",
-    hillsBack: "#93c5fd", hillsFront: "#60a5fa", bridge: "#1e40af", fg: "#1e3a8a",
+    building: "#7dd3fc", buildingDark: "#38bdf8", parent: "#0ea5e9",
+    hillsBack: "#93c5fd", hillsFront: "#60a5fa", bridge: "#1e40af", bridgeDark: "#1e3a8a", fg: "#1e3a8a",
   },
   day: {
     bgClass: "from-amber-50 via-blue-50 to-blue-200",
     sun: "bg-amber-300 shadow-[0_0_80px_rgba(251,191,36,0.6)]",
-    building: "#93c5fd", parent: "#60a5fa",
-    hillsBack: "#3b82f6", hillsFront: "#2563eb", bridge: "#1e40af", fg: "#0f172a",
+    building: "#93c5fd", buildingDark: "#60a5fa", parent: "#3b82f6",
+    hillsBack: "#60a5fa", hillsFront: "#3b82f6", bridge: "#1e40af", bridgeDark: "#172554", fg: "#0f172a",
   },
   evening: {
     bgClass: "from-orange-200 via-rose-100 to-purple-200",
     sun: "bg-rose-400 shadow-[0_0_80px_rgba(251,113,133,0.8)]",
-    building: "#c084fc", parent: "#a855f7",
-    hillsBack: "#9333ea", hillsFront: "#7e22ce", bridge: "#4c1d95", fg: "#2e1065",
+    building: "#c084fc", buildingDark: "#a855f7", parent: "#9333ea",
+    hillsBack: "#a855f7", hillsFront: "#7e22ce", bridge: "#4c1d95", bridgeDark: "#2e1065", fg: "#2e1065",
   },
   night: {
     bgClass: "from-slate-900 via-indigo-950 to-blue-950",
     sun: "bg-slate-100 shadow-[0_0_60px_rgba(255,255,255,0.4)] w-24 h-24", 
-    building: "#312e81", parent: "#3730a3",
-    hillsBack: "#1e3a8a", hillsFront: "#172554", bridge: "#0f172a", fg: "#020617",
+    building: "#312e81", buildingDark: "#1e1b4b", parent: "#3730a3",
+    hillsBack: "#1e3a8a", hillsFront: "#172554", bridge: "#0f172a", bridgeDark: "#020617", fg: "#020617",
   }
 };
 
 const slowEase = [0.25, 0.1, 0.25, 1];
 
+// Highly Dense Congested Cityscape Data
 const subBuildings = [
-  { x: 50, y: 200, w: 70, h: 200 }, { x: 150, y: 150, w: 60, h: 250 },
-  { x: 250, y: 220, w: 80, h: 180 }, { x: 400, y: 180, w: 60, h: 220 },
-  { x: 500, y: 240, w: 70, h: 160 }, { x: 850, y: 170, w: 60, h: 230 },
-  { x: 950, y: 210, w: 90, h: 190 }, { x: 1100, y: 140, w: 60, h: 260 },
-  { x: 1250, y: 230, w: 70, h: 170 }, { x: 1400, y: 190, w: 80, h: 210 }
+  { x: 10, y: 150, w: 40, h: 250, z: 0 }, { x: 30, y: 200, w: 70, h: 200, z: 1 }, { x: 80, y: 120, w: 50, h: 280, z: 0 },
+  { x: 120, y: 180, w: 60, h: 220, z: 1 }, { x: 160, y: 140, w: 80, h: 260, z: 0 }, { x: 220, y: 210, w: 50, h: 190, z: 1 },
+  { x: 260, y: 130, w: 70, h: 270, z: 0 }, { x: 310, y: 190, w: 60, h: 210, z: 1 }, { x: 360, y: 160, w: 55, h: 240, z: 0 },
+  { x: 400, y: 220, w: 80, h: 180, z: 1 }, { x: 460, y: 150, w: 45, h: 250, z: 0 }, { x: 490, y: 180, w: 65, h: 220, z: 1 },
+  { x: 540, y: 240, w: 70, h: 160, z: 0 }, { x: 590, y: 170, w: 50, h: 230, z: 1 }, 
+  // Gap for Parent Tower at 650
+  { x: 820, y: 180, w: 60, h: 220, z: 0 }, { x: 860, y: 140, w: 50, h: 260, z: 1 }, { x: 900, y: 210, w: 75, h: 190, z: 0 },
+  { x: 950, y: 160, w: 85, h: 240, z: 1 }, { x: 1020, y: 230, w: 50, h: 170, z: 0 }, { x: 1060, y: 150, w: 60, h: 250, z: 1 },
+  { x: 1110, y: 190, w: 70, h: 210, z: 0 }, { x: 1170, y: 130, w: 55, h: 270, z: 1 }, { x: 1210, y: 220, w: 65, h: 180, z: 0 },
+  { x: 1260, y: 170, w: 80, h: 230, z: 1 }, { x: 1320, y: 240, w: 50, h: 160, z: 0 }, { x: 1360, y: 140, w: 75, h: 260, z: 1 },
+  { x: 1420, y: 190, w: 60, h: 210, z: 0 }, { x: 1470, y: 160, w: 80, h: 240, z: 1 }, { x: 1530, y: 210, w: 50, h: 190, z: 0 }
 ];
+
+// Dense Forest Data
+const treePositions = Array.from({ length: 45 }, (_, i) => i * 35 + Math.random() * 15);
 
 // --- THE CONNECTED SKYLINE PARALLAX ANIMATION ---
 const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }: { activeCompanyIndex: number | null, activeCompanyObj: any, mouseX: any, mouseY: any }) => {
@@ -67,7 +77,10 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
     <>
       <style>{`
         @keyframes trainDrive { 0% { transform: translateX(-20vw); } 100% { transform: translateX(120vw); } }
-        .train-track { animation: trainDrive 8s linear infinite; }
+        @keyframes trainDriveRev { 0% { transform: translateX(120vw); } 100% { transform: translateX(-20vw); } }
+        .train-track-1 { animation: trainDrive 12s linear infinite; }
+        .train-track-2 { animation: trainDriveRev 18s linear infinite; }
+        .train-track-3 { animation: trainDrive 7s linear infinite; }
       `}</style>
 
       <div className={`absolute inset-0 overflow-hidden bg-gradient-to-b ${t.bgClass} transition-colors duration-1000`}>
@@ -75,7 +88,7 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
         {timeTheme === 'night' && (
           <div className="absolute inset-0 z-0 opacity-40">
             <svg width="100%" height="100%">
-              {[...Array(30)].map((_, i) => (
+              {[...Array(40)].map((_, i) => (
                 <circle key={i} cx={`${Math.random() * 100}%`} cy={`${Math.random() * 60}%`} r={Math.random() * 1.5} fill="#fff" opacity={Math.random()} />
               ))}
             </svg>
@@ -88,7 +101,7 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
           <div className={`absolute top-[15%] right-[20%] w-32 h-32 md:w-48 md:h-48 rounded-full blur-[2px] transition-all duration-1000 ${t.sun}`} />
         </motion.div>
 
-        {/* LAYER 1: The Skyline (Background Buildings) */}
+        {/* LAYER 1: Highly Congested Skyline */}
         <motion.div 
           animate={{ scale: hasSelection ? 1.15 : 1 }}
           transition={{ duration: 3, ease: slowEase }}
@@ -100,12 +113,14 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
                 
                 {subBuildings.map((b, i) => {
                   const isActive = activeCompanyIndex === i;
+                  // The primary buildings (first 10) are mapped to potential companies, the rest are pure congestion background.
+                  const isPrimary = i < 15; 
                   return (
-                    <motion.g key={i} animate={{ opacity: hasSelection && !isActive ? 0.25 : 1 }} transition={{ duration: 2.5, ease: slowEase }}>
-                      <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="4" fill={t.building} style={{ transition: "fill 1s ease" }} />
+                    <motion.g key={i} animate={{ opacity: hasSelection && !isActive ? (b.z === 0 ? 0.15 : 0.25) : 1 }} transition={{ duration: 2.5, ease: slowEase }}>
+                      <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="3" fill={b.z === 0 ? t.buildingDark : t.building} style={{ transition: "fill 1s ease" }} />
                       
                       <AnimatePresence>
-                        {isActive && activeCompanyObj?.logo_url && (
+                        {isActive && isPrimary && activeCompanyObj?.logo_url && (
                           <motion.image 
                             key={`logo-${i}`}
                             initial={{ opacity: 0 }} 
@@ -128,21 +143,44 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
                   <rect width="140" height="350" rx="8" fill={t.parent} style={{ transition: "fill 1s ease" }} />
                   <rect x="30" y="-30" width="80" height="50" rx="4" fill={t.parent} style={{ transition: "fill 1s ease" }} />
                   <circle cx="70" cy="-30" r="4" fill={timeTheme === 'night' ? '#ef4444' : '#fbbf24'} />
+                  
+                  {/* Dense Window Grid on Parent */}
+                  {[...Array(6)].map((_, r) => (
+                    <g key={r} opacity="0.5">
+                      <rect x="20" y={20 + r*50} width="30" height="30" rx="2" fill={t.building} />
+                      <rect x="60" y={20 + r*50} width="30" height="30" rx="2" fill={t.building} />
+                      <rect x="100" y={20 + r*50} width="20" height="30" rx="2" fill={t.building} />
+                    </g>
+                  ))}
                 </motion.g>
               </svg>
             ))}
           </motion.div>
         </motion.div>
 
-        {/* LAYER 2 & 3: Depth of field blur wrapper */}
+        {/* LAYER 2 & 3: Multiple Train Lines & Hills */}
         <motion.div animate={{ opacity: hasSelection ? 0.6 : 1, filter: hasSelection ? "blur(3px)" : "blur(0px)" }} transition={{ duration: 3, ease: slowEase }} className="absolute inset-0 z-20 pointer-events-none">
           
           <div className="absolute bottom-[10%] left-0 w-full h-[50%] z-20 pointer-events-auto">
             <motion.div className="flex h-full w-max flex-nowrap" style={{ willChange: "transform", WebkitTransform: "translateZ(0)" }} animate={{ x: ["0px", "-1600px"] }} transition={{ ease: "linear", duration: 30, repeat: Infinity }}>
               {[1, 2].map((key) => (
                 <svg key={key} width="1600" height="300" viewBox="0 0 1600 300" className="h-full w-[1600px] shrink-0" preserveAspectRatio="none">
+                  {/* Far Back Hills */}
+                  <path d="M0,100 C200,80 300,180 500,150 C700,120 800,200 1000,160 C1200,120 1400,180 1600,140 L1600,300 L0,300 Z" fill={t.hillsBack} opacity="0.6" style={{ transition: "fill 1s ease" }} />
                   <path d="M0,150 C200,150 200,300 400,300 C600,300 600,150 800,150 C1000,150 1000,300 1200,300 C1400,300 1400,150 1600,150 L1600,300 L0,300 Z" fill={t.hillsBack} style={{ transition: "fill 1s ease" }} />
                   <path d="M0,200 C150,200 150,100 300,100 C450,100 450,200 600,200 C750,200 750,150 900,150 C1050,150 1050,250 1200,250 C1400,250 1400,200 1600,200 L1600,300 L0,300 Z" fill={t.hillsFront} opacity="0.85" style={{ transition: "fill 1s ease" }} />
+                  
+                  {/* Far Background Bridge (Darker) */}
+                  <g fill={t.bridgeDark} opacity="0.7" transform="scale(0.85) translate(0, -30)">
+                    <rect x="0" y="100" width="1880" height="10" />
+                    <rect x="150" y="110" width="16" height="200" rx="4" />
+                    <rect x="550" y="110" width="16" height="200" rx="4" />
+                    <rect x="950" y="110" width="16" height="200" rx="4" />
+                    <rect x="1350" y="110" width="16" height="200" rx="4" />
+                    <rect x="1750" y="110" width="16" height="200" rx="4" />
+                  </g>
+
+                  {/* Main Midground Bridge */}
                   <g fill={t.bridge} style={{ transition: "fill 1s ease" }}>
                     <rect x="0" y="120" width="1600" height="12" />
                     <rect x="200" y="132" width="24" height="168" rx="8" />
@@ -159,33 +197,54 @@ const ParallaxScene = ({ activeCompanyIndex, activeCompanyObj, mouseX, mouseY }:
               ))}
             </motion.div>
 
-            <div 
-              onClick={() => setIsTrainStopped(!isTrainStopped)}
-              title="Click to Stop/Resume Train"
-              className="absolute top-[28%] md:top-[32%] w-56 h-6 bg-white rounded-full flex items-center px-3 shadow-[0_10px_30px_rgba(0,0,0,0.3)] z-20 cursor-pointer train-track hover:scale-105 transition-transform"
-              style={{ animationPlayState: isTrainStopped ? 'paused' : 'running', willChange: "transform" }}
-            >
+            {/* Train 1: Far Background (Moving Left) */}
+            <div className="absolute top-[18%] md:top-[22%] w-40 h-4 bg-slate-300 rounded-full flex items-center px-2 shadow-sm z-10 train-track-2 opacity-60" style={{ animationPlayState: isTrainStopped ? 'paused' : 'running', willChange: "transform" }}>
+              <div className="w-2 h-2 bg-amber-200 rounded-full shadow-[0_0_8px_#fbbf24] mr-auto" />
+              <div className="w-6 h-1.5 bg-slate-400 rounded-sm ml-1" />
+              <div className="w-6 h-1.5 bg-slate-400 rounded-sm ml-1" />
+              <div className="w-6 h-1.5 bg-slate-400 rounded-sm ml-1" />
+            </div>
+
+            {/* Train 2: Main Midground (Moving Right) */}
+            <div onClick={() => setIsTrainStopped(!isTrainStopped)} title="Click to Stop/Resume Trains" className="absolute top-[28%] md:top-[32%] w-56 h-6 bg-white rounded-full flex items-center px-3 shadow-[0_10px_30px_rgba(0,0,0,0.3)] z-20 cursor-pointer train-track-1 hover:scale-105 transition-transform" style={{ animationPlayState: isTrainStopped ? 'paused' : 'running', willChange: "transform" }}>
               <div className="w-8 h-2.5 bg-slate-200 rounded-sm mr-2" />
               <div className="w-8 h-2.5 bg-slate-200 rounded-sm mr-2" />
               <div className="w-8 h-2.5 bg-slate-200 rounded-sm mr-2" />
               <div className="w-8 h-2.5 bg-slate-200 rounded-sm mr-auto" />
               <div className={`w-3 h-3 rounded-full transition-colors ${isTrainStopped ? 'bg-rose-500 shadow-[0_0_12px_#ef4444]' : 'bg-amber-400 shadow-[0_0_12px_#fbbf24]'}`} />
             </div>
+            
+            {/* Train 3: High Speed Foreground (Moving Right) */}
+            <div className="absolute top-[45%] md:top-[50%] w-64 h-8 bg-slate-100 rounded-full flex items-center px-4 shadow-2xl z-30 train-track-3 scale-110 blur-[1px]" style={{ animationPlayState: isTrainStopped ? 'paused' : 'running', willChange: "transform" }}>
+              <div className="w-10 h-3 bg-slate-300 rounded-sm mr-2" />
+              <div className="w-10 h-3 bg-slate-300 rounded-sm mr-2" />
+              <div className="w-10 h-3 bg-slate-300 rounded-sm mr-2" />
+              <div className="w-10 h-3 bg-slate-300 rounded-sm mr-auto" />
+              <div className="w-4 h-4 bg-sky-400 rounded-full shadow-[0_0_15px_#38bdf8]" />
+            </div>
+
           </div>
 
-          {/* LAYER 3: Foreground Nature */}
+          {/* LAYER 3: Dense Pine Forest Foreground */}
           <div className="absolute bottom-0 left-0 w-full h-[30%] z-30 pointer-events-none">
             <motion.div className="flex h-full w-max flex-nowrap" style={{ willChange: "transform", WebkitTransform: "translateZ(0)" }} animate={{ x: ["0px", "-1600px"] }} transition={{ ease: "linear", duration: 15, repeat: Infinity }}>
               {[1, 2].map((key) => (
                 <svg key={key} width="1600" height="200" viewBox="0 0 1600 200" className="h-full w-[1600px] shrink-0" preserveAspectRatio="none">
                   <path d="M0,100 C100,0 200,150 400,100 C600,50 800,150 1000,80 C1200,10 1400,150 1600,100 L1600,200 L0,200 Z" fill={t.hillsBack} style={{ transition: "fill 1s ease" }} opacity="0.6" />
-                  <g fill={t.fg} style={{ transition: "fill 1s ease" }}>
-                    <polygon points="150,40 135,120 165,120" /> <circle cx="150" cy="40" r="16" />
-                    <polygon points="400,60 385,140 415,140" /> <circle cx="400" cy="60" r="20" />
-                    <polygon points="850,20 835,100 865,100" /> <circle cx="850" cy="20" r="24" />
-                    <polygon points="1200,50 1185,130 1215,130" /> <circle cx="1200" cy="50" r="18" />
-                    <polygon points="1450,80 1435,160 1465,160" /> <circle cx="1450" cy="80" r="14" />
-                  </g>
+                  
+                  {/* Realistic Dense Pine Trees */}
+                  {treePositions.map((x, i) => (
+                    <g key={`tree-${i}`} fill={t.fg} style={{ transition: "fill 1s ease" }}>
+                      <rect x={x + 13} y={150} width={4} height={50} fill="#020617" opacity="0.8" />
+                      {/* Top tier */}
+                      <path d={`M${x+15},70 L${x+5},110 L${x+11},110 L${x},150 L${x+30},150 L${x+19},110 L${x+25},110 Z`} />
+                      {/* Bottom tier overlapping to create thickness */}
+                      <path d={`M${x+15},100 L${x-5},160 L${x+35},160 Z`} opacity="0.9" />
+                    </g>
+                  ))}
+                  
+                  {/* Foreground overlay to blend roots */}
+                  <rect x="0" y="180" width="1600" height="20" fill={t.fg} style={{ transition: "fill 1s ease" }} />
                 </svg>
               ))}
             </motion.div>
@@ -304,7 +363,7 @@ export default function LoginPage() {
   return (
     <div onMouseMove={handleMouseMove} className="h-[100dvh] w-full flex flex-col md:flex-row overflow-hidden font-sans bg-white relative">
       
-      {/* MOBILE PARALLAX BANNER (Slightly shorter to guarantee footer space without scrolling) */}
+      {/* MOBILE PARALLAX BANNER */}
       <div className="md:hidden w-full h-[28vh] min-h-[200px] relative z-0 shrink-0">
         <ParallaxScene activeCompanyIndex={activeCompanyIndex} activeCompanyObj={activeCompanyObj} mouseX={mouseX} mouseY={mouseY} />
       </div>
@@ -314,7 +373,7 @@ export default function LoginPage() {
         <ParallaxScene activeCompanyIndex={activeCompanyIndex} activeCompanyObj={activeCompanyObj} mouseX={mouseX} mouseY={mouseY} />
       </div>
 
-      {/* FIXED LOGIN CARD - overflow-hidden prevents scrollbars */}
+      {/* FIXED LOGIN CARD */}
       <div className="w-full md:w-[440px] lg:w-[480px] flex flex-col relative z-20 bg-white md:bg-white/95 md:backdrop-blur-xl md:absolute md:left-6 lg:left-10 md:top-6 lg:top-8 md:bottom-6 lg:bottom-8 rounded-t-[2.5rem] md:rounded-[2.5rem] -mt-8 md:mt-0 flex-1 md:flex-none shadow-[0_-10px_40px_rgba(0,0,0,0.05)] md:shadow-[0_30px_100px_-15px_rgba(0,0,0,0.3)] md:border border-white/60 overflow-y-auto md:overflow-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         
         {/* Header - Fixed Height */}
@@ -334,7 +393,7 @@ export default function LoginPage() {
         {/* Content Area */}
         <div className="flex-1 px-8 md:px-12 flex flex-col w-full relative z-40">
           
-          {/* Step Wrapper Height carefully adjusted for mobile vs desktop */}
+          {/* Step Wrapper Height carefully adjusted */}
           <div className="relative w-full h-[340px] md:h-[380px] shrink-0 mt-2 md:mt-4">
             <AnimatePresence mode="wait">
               
@@ -476,7 +535,7 @@ export default function LoginPage() {
                   href="https://wa.me/917558957246" 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="text-[9px] sm:text-[10px] font-bold text-slate-300 hover:text-blue-500 transition-colors select-none tracking-widest"
+                  className="text-[9px] sm:text-[10px] font-bold text-slate-300 hover:text-blue-500 transition-colors select-none tracking-widest whitespace-nowrap"
                   title="Developer"
                 >
                   R.
