@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Outlet, NavLink, useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Briefcase, FileText, Settings, LogOut, ArrowLeft, Banknote, UserSquare2, Menu, X, MessageSquare, Send, ChevronLeft } from "lucide-react";
+import { LayoutDashboard, Users, Briefcase, FileText, Settings, LogOut, ArrowLeft, Banknote, UserSquare2, Menu, X, MessageSquare, Send, ChevronLeft, Layers, Lock, Loader2, Building2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "../store/authStore";
 import { useDataStore } from "../store/dataStore";
@@ -23,17 +23,14 @@ export default function AppLayout() {
   
   const prevMessageCount = useRef(messages.length);
 
-  // --- THE MAGIC: Find the Master Admin to use their profile as the Global Logo ---
   const masterAdmin = employees.find(e => e.access_level === 'admin');
 
   const activeCompany = activeWorkspace ? companies.find(c => c.id === activeWorkspace) : null;
   const currentDisplayCompany = (role !== 'admin' || activeWorkspace) ? companies.find(c => c.id === (activeWorkspace || companyId)) : null;
   const brandName = currentDisplayCompany?.name || "Zayd Industries";
   
-  // --- THE LOGO LOGIC: Use the company logo, OR fallback to the Master Admin's profile image! ---
   const brandLogo = currentDisplayCompany?.logo_url || masterAdmin?.profile_image_url || null;
   
-  // Route check for Chat Emblem visibility
   const isDashboard = location.pathname.includes('/dashboard');
 
   const handleExitWorkspace = async () => { setActiveWorkspace(null); await fetchAllData(); navigate("/dashboard"); };
@@ -80,15 +77,9 @@ export default function AppLayout() {
     prevMessageCount.current = messages.length;
   }, [messages, employeeId, activeContact, employees]);
 
-  // --- DYNAMIC FAVICON ENGINE ---
   useEffect(() => {
-    // NEW: Corporate Business/Growth Chart Symbol SVG Fallback
     const fallbackFavicon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%231e3a8a'/%3E%3Crect x='25' y='50' width='12' height='30' rx='2' fill='%2360a5fa'/%3E%3Crect x='44' y='35' width='12' height='45' rx='2' fill='%233b82f6'/%3E%3Crect x='63' y='20' width='12' height='60' rx='2' fill='%23bfdbfe'/%3E%3C/svg%3E";
-    
-    // Choose the admin profile picture, or the dynamic fallback
     const faviconUrl = masterAdmin?.profile_image_url || fallbackFavicon;
-
-    // Find existing favicon or create one
     let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
     if (!link) {
       link = document.createElement('link');
@@ -97,7 +88,6 @@ export default function AppLayout() {
     }
     link.href = faviconUrl;
   }, [masterAdmin?.profile_image_url]);
-  // ------------------------------
 
   const handleSelectContact = async (contact: any) => {
     setActiveContact(contact);
@@ -115,10 +105,118 @@ export default function AppLayout() {
   };
 
   const currentUser = employees.find(e => e.id == employeeId);
-
   const displayEmail = user?.email || 'User';
   const displayInitial = currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : displayEmail.charAt(0).toUpperCase();
   const displayName = currentUser?.name || displayEmail.split('@')[0];
+
+
+  // ============================================================================
+  // POLYMORPHIC ERP INTERCEPTOR LOGIC
+  // ============================================================================
+  const unclassifiedCompanies = companies.filter(c => c.business_type === null || c.business_type === undefined);
+  const [classifications, setClassifications] = useState<Record<number, string>>({});
+  const [isInitializing, setIsInitializing] = useState(false);
+
+  // Pre-fill classifications if unclassified companies are found
+  useEffect(() => {
+    if (unclassifiedCompanies.length > 0 && Object.keys(classifications).length === 0) {
+      const initial: Record<number, string> = {};
+      unclassifiedCompanies.forEach(c => initial[c.id] = 'normal');
+      setClassifications(initial);
+    }
+  }, [unclassifiedCompanies, classifications]);
+
+  const handleSaveClassifications = async () => {
+    setIsInitializing(true);
+    try {
+      for (const [cId, bType] of Object.entries(classifications)) {
+        // Explicitly extract and throw the error so it doesn't fail silently
+        const { error } = await supabase.from('companies').update({ business_type: bType }).eq('id', parseInt(cId));
+        if (error) throw error;
+      }
+      await fetchAllData();
+      // Force a hard reload to instantly drop the interceptor UI
+      window.location.reload();
+    } catch(e: any) {
+      alert("Error saving: " + e.message);
+    } finally {
+      setIsInitializing(false);
+    }
+  };
+
+  // 1. ADMIN WIZARD: Forces Admin to classify new companies before accessing platform
+  if (role === 'admin' && unclassifiedCompanies.length > 0) {
+    return (
+      <div className="fixed inset-0 z-[10000] bg-slate-900/60 backdrop-blur-2xl flex items-center justify-center p-4">
+        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col border border-slate-100">
+          <div className="bg-gradient-to-r from-blue-900 to-indigo-800 p-8 sm:p-10 text-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LCAyNTUsIDI1NSwgMC4wOCkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
+            <div className="h-16 w-16 bg-white/20 rounded-2xl mx-auto flex items-center justify-center mb-5 shadow-inner backdrop-blur-md relative z-10">
+              <Layers className="h-8 w-8 text-white" />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight relative z-10">Workspace Architecture Configuration</h2>
+            <p className="text-[13px] font-medium text-blue-100 mt-3 opacity-90 max-w-lg mx-auto relative z-10 leading-relaxed">
+              We have detected newly registered subsidiaries. To proceed, please assign an operational framework to each entity. This defines the custom UI and database structure they will experience.
+            </p>
+          </div>
+          <div className="p-8 sm:p-10 bg-[#FAFCFF]">
+             <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full">
+               {unclassifiedCompanies.map(c => (
+                 <div key={c.id} className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm hover:border-blue-200 transition-colors">
+                    <div className="flex items-center gap-3">
+                       <div className="h-10 w-10 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center shrink-0">
+                         <Building2 className="h-5 w-5 text-slate-400" />
+                       </div>
+                       <div>
+                         <p className="text-[14px] font-bold text-slate-900">{c.name}</p>
+                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">ID: {c.id}</p>
+                       </div>
+                    </div>
+                    <select 
+                      value={classifications[c.id] || 'normal'} 
+                      onChange={(e) => setClassifications({...classifications, [c.id]: e.target.value})}
+                      className="w-full sm:w-56 h-11 rounded-xl bg-slate-50 border border-slate-200 px-4 text-[12px] font-bold text-slate-700 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 cursor-pointer shadow-sm transition-all"
+                    >
+                      <option value="normal">Standard Corporate</option>
+                      <option value="academy">Academy & Education</option>
+                      <option value="construction">Construction & Site Mgmt</option>
+                      <option value="technical">Tech & Software Dev</option>
+                    </select>
+                 </div>
+               ))}
+             </div>
+             <button onClick={handleSaveClassifications} disabled={isInitializing} className="w-full mt-8 h-14 bg-slate-900 text-white hover:bg-slate-800 rounded-2xl text-[14px] font-bold shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2">
+               {isInitializing ? <><Loader2 className="h-5 w-5 animate-spin" /> Initializing Architectures...</> : "Deploy Configurations & Enter Platform"}
+             </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // 2. USER/HEAD LOCKOUT: Prevent access to broken workspaces while Admin configures them
+  const isUserLockedOut = role !== 'admin' && currentDisplayCompany && !currentDisplayCompany.business_type;
+  if (isUserLockedOut) {
+    return (
+      <div className="fixed inset-0 z-[10000] bg-slate-900 flex items-center justify-center p-4">
+         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LCAyNTUsIDI1NSwgMC4wOCkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
+         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center relative z-10 max-w-md">
+            <div className="h-20 w-20 bg-blue-500/10 rounded-full mx-auto flex items-center justify-center mb-6">
+               <Lock className="h-8 w-8 text-blue-400" />
+            </div>
+            <h1 className="text-3xl font-black text-white tracking-tight mb-4">System Updating</h1>
+            <p className="text-sm font-medium text-slate-400 leading-relaxed mb-8">
+              Your workspace architecture is currently being configured by the system administrator. Please check back shortly.
+            </p>
+            <button onClick={handleSignOut} className="px-8 py-3 rounded-full bg-white/10 text-white font-bold text-xs uppercase tracking-widest hover:bg-white/20 transition-colors">
+              Sign Out
+            </button>
+         </motion.div>
+      </div>
+    );
+  }
+  // ============================================================================
+
 
   return (
     <div ref={dragConstraintRef} className="flex h-[100dvh] w-full bg-[#F8F9FC] text-slate-800 overflow-hidden font-sans sm:p-4 lg:p-6 selection:bg-blue-900 selection:text-white relative print:p-0 print:bg-white print:block print:h-auto">
@@ -280,7 +378,6 @@ export default function AppLayout() {
 
         {/* --- MOBILE BOTTOM DOCK (Dynamic iOS-Style Centered Pill) --- */}
         <div className="sm:hidden fixed bottom-6 left-0 right-0 z-[60] flex justify-center pointer-events-none px-4 print:hidden">
-           {/* The pointer-events-auto puts the click ability ONLY on the dock, allowing you to scroll the page outside of it */}
            <div className="pointer-events-auto max-w-full bg-[#0f172a]/95 backdrop-blur-2xl rounded-[2rem] p-1.5 flex items-center justify-start shadow-[0_20px_40px_rgba(0,0,0,0.3)] border border-slate-800 overflow-x-auto [&::-webkit-scrollbar]:hidden gap-1">
               {visibleLinks.map((link) => (
                 <NavLink key={link.path} to={link.path} className={({ isActive }) => `flex flex-col items-center justify-center shrink-0 min-w-[72px] h-14 rounded-2xl transition-all ${isActive ? 'bg-blue-600/20 text-blue-400' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}>

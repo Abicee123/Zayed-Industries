@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Building2, Plus, ArrowRight, X, Globe, Trash2, Edit3, LogIn, Clock, CheckCircle2, Megaphone, Bell, Loader2, ImagePlus, Activity, Briefcase, Wallet, FileText } from "lucide-react";
+import { Building2, Plus, ArrowRight, X, Globe, Trash2, Edit3, LogIn, Clock, CheckCircle2, Megaphone, Bell, Loader2, ImagePlus, Activity, Briefcase, Wallet, FileText, Layers } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { useDataStore } from "../../store/dataStore";
 import { supabase } from "../../supabase";
@@ -57,6 +57,11 @@ export default function DashboardPage() {
   const [announcementForm, setAnnouncementForm] = useState({ title: "", content: "", company_id: "all" });
   const [activeAnnouncementIndex, setActiveAnnouncementIndex] = useState(0);
 
+  // --- DYNAMIC WORKSPACE TYPES STATE ---
+  const [businessTypes, setBusinessTypes] = useState<{slug: string, label: string}[]>([]);
+  const [showCustomTypeInput, setShowCustomTypeInput] = useState(false);
+  const [customTypeLabel, setCustomTypeLabel] = useState("");
+
   // --- PULSE ACTIVITY STATE ---
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
   const [activityFilterCompanyId, setActivityFilterCompanyId] = useState<string>("all");
@@ -69,17 +74,25 @@ export default function DashboardPage() {
   
   const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "compressing" | "uploading" | "saving">("idle");
-  const [companyFormData, setCompanyFormData] = useState({ name: "", area: "", head_name: "", phone: "", website_url: "", logo_url: "" });
+  const [companyFormData, setCompanyFormData] = useState({ name: "", area: "", head_name: "", phone: "", website_url: "", logo_url: "", business_type: "normal" });
 
   const activeCompanyId = activeWorkspace || companyId;
   const visibleAnnouncements = announcements.filter(a => !a.company_id || a.company_id === activeCompanyId);
   const safeAnnouncementIndex = activeAnnouncementIndex % (visibleAnnouncements.length || 1);
 
-  // --- FIRST NAME EXTRACTION ---
   const currentEmployee = employees.find(e => e.id === employeeId);
   const firstName = currentEmployee?.name 
     ? currentEmployee.name.split(' ')[0] 
     : (user?.email ? user.email.split('@')[0].toUpperCase() : 'USER');
+
+  // Fetch Business Types on Mount
+  useEffect(() => {
+    const fetchTypes = async () => {
+      const { data } = await supabase.from('business_types').select('*');
+      if (data) setBusinessTypes(data);
+    };
+    fetchTypes();
+  }, []);
 
   useEffect(() => {
     if (visibleAnnouncements && visibleAnnouncements.length > 1) {
@@ -93,7 +106,8 @@ export default function DashboardPage() {
   const openAddCompany = () => { 
     setCompanyModalMode("add"); setSelectedCompany(null); 
     setLogoFile(null); setLogoPreview(null); setRemoveLogo(false); setShowLogoMenu(false);
-    setCompanyFormData({ name: "", area: "", head_name: "", phone: "", website_url: "", logo_url: "" }); 
+    setShowCustomTypeInput(false); setCustomTypeLabel("");
+    setCompanyFormData({ name: "", area: "", head_name: "", phone: "", website_url: "", logo_url: "", business_type: "normal" }); 
     setIsCompanyModalOpen(true); 
   };
   
@@ -105,7 +119,16 @@ export default function DashboardPage() {
   const openEditCompany = () => { 
     setCompanyModalMode("edit"); 
     setLogoFile(null); setLogoPreview(null); setRemoveLogo(false); setShowLogoMenu(false);
-    setCompanyFormData({ name: selectedCompany.name || "", area: selectedCompany.area || "", head_name: selectedCompany.head_name || "", phone: selectedCompany.phone || "", website_url: selectedCompany.website_url || "", logo_url: selectedCompany.logo_url || "" }); 
+    setShowCustomTypeInput(false); setCustomTypeLabel("");
+    setCompanyFormData({ 
+      name: selectedCompany.name || "", 
+      area: selectedCompany.area || "", 
+      head_name: selectedCompany.head_name || "", 
+      phone: selectedCompany.phone || "", 
+      website_url: selectedCompany.website_url || "", 
+      logo_url: selectedCompany.logo_url || "",
+      business_type: selectedCompany.business_type || "normal"
+    }); 
   };
 
   const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => { 
@@ -139,18 +162,26 @@ export default function DashboardPage() {
     if (!companyFormData.name) return alert("Company Name is required.");
     setSaveStatus("saving");
     let finalLogoUrl = selectedCompany?.logo_url || null;
+    let finalBusinessType = companyFormData.business_type;
     
     try {
+      // 1. Process New Custom Type if requested
+      if (showCustomTypeInput && customTypeLabel.trim()) {
+         const newSlug = customTypeLabel.toLowerCase().replace(/[^a-z0-9]/g, '_');
+         const { error: typeError } = await supabase.from('business_types').insert([{ slug: newSlug, label: customTypeLabel.trim() }]);
+         if (typeError && typeError.code !== '23505') throw new Error(`Type Creation Error: ${typeError.message}`); // Ignore unique constraint errors
+         finalBusinessType = newSlug;
+         setBusinessTypes(prev => [...prev, { slug: newSlug, label: customTypeLabel.trim() }]);
+      }
+
+      // 2. Process Logo
       if (logoFile || removeLogo) {
-        if (selectedCompany?.logo_url) {
-          await deleteOldLogo(selectedCompany.logo_url);
-        }
+        if (selectedCompany?.logo_url) await deleteOldLogo(selectedCompany.logo_url);
       }
 
       if (logoFile) {
         setSaveStatus("compressing");
         const compressedFile = await compressImage(logoFile, 400, 0.8);
-        
         setSaveStatus("uploading");
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.jpg`;
         const { error: uploadError } = await supabase.storage.from('logos').upload(fileName, compressedFile);
@@ -160,15 +191,23 @@ export default function DashboardPage() {
           finalLogoUrl = data.publicUrl; 
         } else { 
           alert(`Logo Upload Error: ${uploadError.message}`); 
-          setSaveStatus("idle"); 
-          return; 
+          setSaveStatus("idle"); return; 
         }
       } else if (removeLogo) {
         finalLogoUrl = null;
       }
       
+      // 3. Save Company
       setSaveStatus("saving");
-      const payload = { name: companyFormData.name, area: companyFormData.area, head_name: companyFormData.head_name, phone: companyFormData.phone, website_url: companyFormData.website_url, logo_url: finalLogoUrl };
+      const payload = { 
+        name: companyFormData.name, 
+        area: companyFormData.area, 
+        head_name: companyFormData.head_name, 
+        phone: companyFormData.phone, 
+        website_url: companyFormData.website_url, 
+        logo_url: finalLogoUrl,
+        business_type: finalBusinessType
+      };
       
       if (companyModalMode === 'add') { 
         const { error } = await supabase.from('companies').insert([payload]); 
@@ -191,9 +230,7 @@ export default function DashboardPage() {
     if (!window.confirm(`Delete ${selectedCompany.name}?`)) return; 
     setSaveStatus("saving"); 
     try {
-      if (selectedCompany.logo_url) {
-        await deleteOldLogo(selectedCompany.logo_url);
-      }
+      if (selectedCompany.logo_url) await deleteOldLogo(selectedCompany.logo_url);
       await supabase.from('companies').delete().eq('id', selectedCompany.id); 
       await fetchAllData(); 
       setIsCompanyModalOpen(false); 
@@ -228,16 +265,11 @@ export default function DashboardPage() {
   const handleEnterWorkspace = async () => { setActiveWorkspace(selectedCompany.id); await fetchAllData(); setIsCompanyModalOpen(false); };
 
   const isImpersonating = role === 'admin' && activeWorkspace !== null;
-  const showHeadView = role === 'head' || isImpersonating;
   
   const myProjects = projects.filter(p => (p.assignee_ids || []).includes(employeeId));
   const globalPayroll = salaryPayments.reduce((sum, payment) => sum + (parseFloat(payment.amount) || 0), 0);
   
   const activeWorkspaceEmployees = employees.filter(e => e.company_id === activeCompanyId).map(e => e.id);
-  const workspacePayroll = salaryPayments
-    .filter(p => activeWorkspaceEmployees.includes(p.employee_id))
-    .reduce((sum, payment) => sum + (parseFloat(payment.amount) || 0), 0);
-
   const selectedCompanyEmployeeIds = selectedCompany ? employees.filter(e => e.company_id === selectedCompany.id).map(e => e.id) : [];
   const selectedCompanyPayroll = salaryPayments
     .filter(p => selectedCompanyEmployeeIds.includes(p.employee_id))
@@ -264,12 +296,7 @@ export default function DashboardPage() {
       if (role === 'user' && !(p.assignee_ids || []).includes(employeeId)) return;
       if (role !== 'user' && !isCompanyMatch(p.company_id)) return;
       const compName = companies.find(c => c.id === p.company_id)?.name || 'Subsidiary';
-      feed.push({
-        id: `proj_${p.id}`, type: 'Project', title: `Project Initiated: ${p.name}`,
-        desc: p.description || 'A new workflow was created.', date: p.created_at || todayStr,
-        companyName: compName,
-        icon: Briefcase, color: 'text-blue-500 bg-blue-50 border-blue-200'
-      });
+      feed.push({ id: `proj_${p.id}`, type: 'Project', title: `Project Initiated: ${p.name}`, desc: p.description || 'A new workflow was created.', date: p.created_at || todayStr, companyName: compName, icon: Briefcase, color: 'text-blue-500 bg-blue-50 border-blue-200' });
     });
 
     salaryPayments.forEach(p => {
@@ -278,13 +305,7 @@ export default function DashboardPage() {
       if (role !== 'user' && !isCompanyMatch(compId)) return;
       const emp = employees.find(e => e.id === p.employee_id);
       const compName = companies.find(c => c.id === compId)?.name || 'Subsidiary';
-      feed.push({
-        id: `pay_${p.id}`, type: 'Payment', title: `Payout Disbursed: ₹${parseFloat(p.amount || 0).toLocaleString()}`,
-        desc: role === 'user' ? `Your ${p.payment_type || 'payout'} payment was processed.` : `Transferred to ${emp?.name || 'Employee'} (${p.payment_type || 'Standard'})`,
-        date: p.created_at || p.payment_date || todayStr,
-        companyName: compName,
-        icon: Wallet, color: 'text-emerald-500 bg-emerald-50 border-emerald-200'
-      });
+      feed.push({ id: `pay_${p.id}`, type: 'Payment', title: `Payout Disbursed: ₹${parseFloat(p.amount || 0).toLocaleString()}`, desc: role === 'user' ? `Your ${p.payment_type || 'payout'} payment was processed.` : `Transferred to ${emp?.name || 'Employee'} (${p.payment_type || 'Standard'})`, date: p.created_at || p.payment_date || todayStr, companyName: compName, icon: Wallet, color: 'text-emerald-500 bg-emerald-50 border-emerald-200' });
     });
 
     announcements.forEach(a => {
@@ -292,25 +313,14 @@ export default function DashboardPage() {
       if (role === 'head' && a.company_id && a.company_id !== activeCompanyId) return;
       if (role === 'admin' && !isImpersonating && activityFilterCompanyId !== 'all' && a.company_id && a.company_id?.toString() !== activityFilterCompanyId) return;
       const compName = a.company_id ? (companies.find(c => c.id === a.company_id)?.name || 'Subsidiary') : 'Global';
-      feed.push({
-        id: `ann_${a.id}`, type: 'Announcement', title: `Broadcast: ${a.title}`,
-        desc: a.content, date: a.created_at || todayStr,
-        companyName: compName,
-        icon: Megaphone, color: 'text-indigo-500 bg-indigo-50 border-indigo-200'
-      });
+      feed.push({ id: `ann_${a.id}`, type: 'Announcement', title: `Broadcast: ${a.title}`, desc: a.content, date: a.created_at || todayStr, companyName: compName, icon: Megaphone, color: 'text-indigo-500 bg-indigo-50 border-indigo-200' });
     });
 
     if (role !== 'user') {
       (invoices || []).forEach(inv => {
         if (!isCompanyMatch(inv.company_id)) return;
         const compName = companies.find(c => c.id === inv.company_id)?.name || 'Subsidiary';
-        feed.push({
-          id: `inv_${inv.id}`, type: 'Invoice', title: `Invoice Generated: ${inv.invoice_number}`,
-          desc: `Total: ₹${parseFloat(inv.total_amount || 0).toLocaleString()} • Status: ${inv.status}`,
-          date: inv.created_at || inv.issue_date || todayStr,
-          companyName: compName,
-          icon: FileText, color: 'text-amber-500 bg-amber-50 border-amber-200'
-        });
+        feed.push({ id: `inv_${inv.id}`, type: 'Invoice', title: `Invoice Generated: ${inv.invoice_number}`, desc: `Total: ₹${parseFloat(inv.total_amount || 0).toLocaleString()} • Status: ${inv.status}`, date: inv.created_at || inv.issue_date || todayStr, companyName: compName, icon: FileText, color: 'text-amber-500 bg-amber-50 border-amber-200' });
       });
     }
 
@@ -432,7 +442,6 @@ export default function DashboardPage() {
                          <div className={`absolute -left-[17px] top-0 h-8 w-8 rounded-full border-4 border-slate-50 flex items-center justify-center shadow-sm transition-transform group-hover:scale-110 ${item.color}`}>
                             <item.icon className="h-3.5 w-3.5" />
                          </div>
-                         
                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1">
                            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                              {new Date(item.date).toLocaleString(undefined, {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}
@@ -443,7 +452,6 @@ export default function DashboardPage() {
                              {item.companyName}
                            </span>
                          </div>
-
                          <div className="bg-white border border-slate-100 shadow-sm rounded-xl p-3 sm:p-4 group-hover:border-blue-200 transition-colors">
                             <p className="text-[12px] sm:text-[14px] font-bold text-slate-800">{item.title}</p>
                             <p className="text-[11px] sm:text-[12px] font-medium text-slate-600 mt-1 leading-relaxed">{item.desc}</p>
@@ -569,6 +577,9 @@ export default function DashboardPage() {
                         <div>
                           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">{selectedCompany.name}</h2>
                           <p className="text-[12px] sm:text-[13px] font-medium text-slate-500 mt-1">{selectedCompany.area}</p>
+                          <span className="inline-block mt-2 px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[9px] font-bold uppercase tracking-widest border border-blue-100">
+                            {businessTypes.find(t => t.slug === selectedCompany.business_type)?.label || 'Standard Corporate'}
+                          </span>
                         </div>
                       </div>
                       
@@ -630,6 +641,54 @@ export default function DashboardPage() {
                           <label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Company Name</label>
                           <input type="text" value={companyFormData.name} onChange={(e) => setCompanyFormData({...companyFormData, name: e.target.value})} className="w-full h-12 sm:h-12 rounded-xl border border-slate-200 bg-white px-4 sm:px-4 text-[13px] sm:text-[14px] font-bold outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" />
                         </div>
+                      </div>
+
+                      {/* WORKSPACE ARCHITECTURE DROPDOWN */}
+                      <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 sm:p-5">
+                         <div className="flex items-start gap-3 mb-3">
+                            <div className="h-8 w-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center shrink-0"><Layers className="h-4 w-4" /></div>
+                            <div>
+                               <p className="text-[11px] sm:text-[12px] font-bold text-slate-900">Workspace Architecture</p>
+                               <p className="text-[10px] text-slate-500 leading-relaxed mt-0.5">Defines the custom UI and operational workflow for this subsidiary.</p>
+                            </div>
+                         </div>
+                         
+                         <select 
+                           value={showCustomTypeInput ? 'ADD_NEW' : companyFormData.business_type} 
+                           onChange={(e) => {
+                             if (e.target.value === 'ADD_NEW') {
+                               setShowCustomTypeInput(true);
+                             } else {
+                               setShowCustomTypeInput(false);
+                               setCompanyFormData({...companyFormData, business_type: e.target.value});
+                             }
+                           }}
+                           className="w-full h-11 rounded-xl border border-slate-200 bg-white px-4 text-[12px] sm:text-[13px] font-bold outline-none focus:border-blue-500 shadow-sm cursor-pointer"
+                         >
+                           {businessTypes.map(type => (
+                             <option key={type.slug} value={type.slug}>{type.label}</option>
+                           ))}
+                           <option value="ADD_NEW" className="font-bold text-blue-600">+ Add Custom Framework...</option>
+                         </select>
+
+                         {/* DYNAMIC CUSTOM TYPE INPUT */}
+                         <AnimatePresence>
+                           {showCustomTypeInput && (
+                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                               <div className="mt-3">
+                                 <input 
+                                   type="text" 
+                                   placeholder="e.g., Real Estate Agency" 
+                                   value={customTypeLabel} 
+                                   onChange={e => setCustomTypeLabel(e.target.value)} 
+                                   className="w-full h-11 rounded-xl border border-blue-300 bg-blue-50 px-4 text-[12px] sm:text-[13px] font-bold outline-none focus:border-blue-500 shadow-sm placeholder:font-medium text-blue-900" 
+                                   autoFocus
+                                 />
+                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-2 px-1">This will be permanently added to the global architecture list.</p>
+                               </div>
+                             </motion.div>
+                           )}
+                         </AnimatePresence>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4 sm:gap-5">
