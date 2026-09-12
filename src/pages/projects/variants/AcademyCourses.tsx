@@ -380,7 +380,11 @@ export default function AcademyCourses() {
 
   const courseInvoices = selectedCourse ? invoices.filter(i => i.project_id === selectedCourse.id) : [];
   const totalInvoiced = courseInvoices.reduce((sum, i) => sum + (parseFloat(i.total_amount) || 0), 0);
-  const totalPaid = courseInvoices.filter(i => i.status === 'Paid').reduce((sum, i) => sum + (parseFloat(i.total_amount) || 0), 0);
+  // Strictly calculate total paid including partial amounts
+  const totalPaid = courseInvoices.reduce((sum, i) => {
+    const paid = parseFloat(i.amount_paid) || (i.status === 'Paid' ? parseFloat(i.total_amount) : 0);
+    return sum + paid;
+  }, 0);
   const totalDue = totalInvoiced - totalPaid;
 
   const facultyAllocation = selectedCourse ? projectAllocations.find(pa => pa.project_id === selectedCourse.id && pa.employee_id === employeeId) : null;
@@ -399,7 +403,7 @@ export default function AcademyCourses() {
     <>
       <div className="max-w-[1200px] mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-700 pb-8 relative z-0 print:hidden">
         
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6 print:hidden">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6">
           <div>
             <p className="text-[9px] sm:text-[11px] font-bold text-purple-600 uppercase tracking-[0.2em] mb-1.5 sm:mb-2 bg-purple-50 inline-block px-3 py-1 rounded-full">Academy Operations</p>
             <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-slate-900 mt-1 sm:mt-2">Courses & Batches.</h1>
@@ -482,11 +486,12 @@ export default function AcademyCourses() {
       {/* --- INVOICE-STYLED PRINTABLE FACULTY PAYSLIP PORTAL --- */}
       {isPrintingPayslip && selectedCourse && isUserView && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[999999] bg-white print:block print:relative print:w-full print:h-auto overflow-visible p-12 font-sans text-slate-900 print:p-0 print:m-0" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+          
           {/* Header / Brand */}
           <div className="flex justify-between items-start pb-8 border-b-2 border-slate-900 mb-8 mt-4">
              <div className="flex items-center gap-4">
                 <div className="h-16 flex items-center justify-center">
-                   {currentCompany?.logo_url ? <img src={currentCompany.logo_url} alt="" className="h-16 max-w-[120px] object-contain" /> : <Building2 className="h-10 w-10 text-purple-900" />}
+                   {currentCompany?.logo_url ? <img src={currentCompany.logo_url} alt="" className="h-16 max-w-[140px] object-contain" /> : <Building2 className="h-10 w-10 text-purple-900" />}
                 </div>
                 <div>
                    <h2 className="text-2xl font-black tracking-tight text-slate-900">{currentCompany?.name || 'Academy Enterprise'}</h2>
@@ -524,6 +529,7 @@ export default function AcademyCourses() {
                 <span className="col-span-4 text-right font-black text-slate-900">₹{(facultyAllocation?.allocated_amount || 0).toLocaleString()}</span>
              </div>
              
+             {/* Only show bonus row if bonus is explicitly greater than 0 */}
              {(facultyAllocation?.incentive_amount || 0) > 0 && (
                 <div className="grid grid-cols-12 px-6 py-4 border-b border-slate-100 text-xs items-center bg-purple-50/30">
                    <span className="col-span-8 font-bold text-purple-900">Performance Incentive / Bonus</span>
@@ -560,7 +566,7 @@ export default function AcademyCourses() {
              </div>
           </div>
 
-          {/* Conditional Balance Summary Footer */}
+          {/* Conditional Balance Summary Footer (Hides if balance is 0) */}
           {facultyBalanceDue > 0 && (
              <div className="flex justify-end pt-6 border-t-2 border-slate-200">
                 <div className="w-64 bg-purple-900 text-white p-5 rounded-2xl text-right shadow-lg">
@@ -885,6 +891,9 @@ export default function AcademyCourses() {
                        <div className="space-y-2">
                           {courseInvoices.length === 0 ? <p className="text-xs italic text-slate-400">No students enrolled yet.</p> : courseInvoices.map(inv => {
                              const student = customers.find(c => c.id === inv.customer_id);
+                             const total = parseFloat(inv.total_amount) || 0;
+                             const paid = parseFloat(inv.amount_paid) || (inv.status === 'Paid' ? total : 0);
+
                              return (
                                <div key={inv.id} className="bg-white border border-slate-200 p-4 rounded-xl flex items-center justify-between shadow-sm">
                                   <div className="flex items-center gap-3">
@@ -899,9 +908,10 @@ export default function AcademyCourses() {
                                   </div>
                                   
                                   {isAdminView && (
-                                     <div className="text-right">
-                                        <p className="text-sm font-black text-emerald-600">₹{(parseFloat(inv.total_amount) || 0).toLocaleString()}</p>
-                                        <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border mt-1 ${inv.status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                                     <div className="text-right flex flex-col items-end">
+                                        <p className="text-sm font-black text-slate-900">₹{total.toLocaleString()}</p>
+                                        <p className="text-[10px] font-bold text-emerald-600 mt-0.5">Paid: ₹{paid.toLocaleString()}</p>
+                                        <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider border mt-1 ${inv.status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : inv.status?.toUpperCase().includes('PARTIAL') ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
                                            {inv.status}
                                         </span>
                                      </div>
@@ -934,22 +944,25 @@ export default function AcademyCourses() {
                     <div>
                        <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Individual Student Ledger</h4>
                        <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
-                          <div className="grid grid-cols-4 bg-slate-50 px-4 py-3 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                             <span>Student Name</span>
+                          <div className="grid grid-cols-5 bg-slate-50 px-4 py-3 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                             <span className="col-span-2">Student Name</span>
                              <span>Invoice Ref</span>
-                             <span>Due Date</span>
-                             <span className="text-right">Amount Status</span>
+                             <span className="text-right">Total Fee</span>
+                             <span className="text-right">Paid / Status</span>
                           </div>
                           {courseInvoices.length === 0 ? <p className="text-xs italic text-slate-400 p-4">No financial records generated.</p> : courseInvoices.map(inv => {
                              const student = customers.find(c => c.id === inv.customer_id);
+                             const total = parseFloat(inv.total_amount) || 0;
+                             const paid = parseFloat(inv.amount_paid) || (inv.status === 'Paid' ? total : 0);
+
                              return (
-                               <div key={inv.id} className="grid grid-cols-4 px-4 py-3.5 border-b border-slate-100 items-center text-xs last:border-none">
-                                  <span className="font-bold text-slate-800">{student?.name || 'Unknown'}</span>
+                               <div key={inv.id} className="grid grid-cols-5 px-4 py-3.5 border-b border-slate-100 items-center text-xs last:border-none">
+                                  <span className="col-span-2 font-bold text-slate-800">{student?.name || 'Unknown'}</span>
                                   <span className="text-slate-500 font-mono">{inv.invoice_number}</span>
-                                  <span className="text-slate-600">{new Date(inv.due_date).toLocaleDateString()}</span>
-                                  <div className="text-right">
-                                     <span className="font-black text-slate-900 mr-2">₹{(parseFloat(inv.total_amount) || 0).toLocaleString()}</span>
-                                     <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${inv.status === 'Paid' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>{inv.status}</span>
+                                  <span className="text-right font-black text-slate-900">₹{total.toLocaleString()}</span>
+                                  <div className="text-right flex flex-col items-end">
+                                     <span className="font-bold text-emerald-600">₹{paid.toLocaleString()}</span>
+                                     <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider mt-1 ${inv.status === 'Paid' ? 'bg-emerald-50 text-emerald-700' : inv.status?.toUpperCase().includes('PARTIAL') ? 'bg-blue-50 text-blue-700' : 'bg-rose-50 text-rose-700'}`}>{inv.status}</span>
                                   </div>
                                </div>
                              );
