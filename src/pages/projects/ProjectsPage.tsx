@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, FolderKanban, CheckCircle2, AlertCircle, X, Check, User, Trash2, Wallet, Star, Clock, Download, Loader2, ChevronDown } from "lucide-react";
+import { Plus, Search, FolderKanban, CheckCircle2, AlertCircle, X, Check, User, Trash2, Star, Clock, Download, Loader2, ChevronDown, ExternalLink, UploadCloud, Calendar, Info } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { useDataStore } from "../../store/dataStore";
 import { supabase } from "../../supabase";
@@ -25,18 +25,25 @@ export default function ProjectsPage() {
   // New UI states
   const [expandedFinanceEmpId, setExpandedFinanceEmpId] = useState<number | null>(null);
   const [showPayoutForm, setShowPayoutForm] = useState(false);
+  const [showDriveHelp, setShowDriveHelp] = useState(false);
+
+  // Upload Modal States
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [taskToUpload, setTaskToUpload] = useState<any>(null);
 
   const today = new Date().toISOString().split('T')[0];
 
   const [formData, setFormData] = useState({ 
     name: "", description: "", priority: "Medium", status: "Planning", expected_amount: 0, 
-    approval_date: today, due_date: "", company_id: "", customer_id: "", internal_company_id: "", assignee_ids: [] as number[] 
+    approval_date: today, due_date: "", company_id: "", customer_id: "", internal_company_id: "", 
+    drive_folder_url: "", assignee_ids: [] as number[] 
   });
   const [customerType, setCustomerType] = useState<"existing" | "new" | "in_house">("existing");
   const [newCustomer, setNewCustomer] = useState({ name: "", phone: "" });
 
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskAssignee, setNewTaskAssignee] = useState<number | "">("");
+  const [newTaskDeadline, setNewTaskDeadline] = useState("");
   const [pendingTasks, setPendingTasks] = useState<any[]>([]);
 
   const [myReportText, setMyReportText] = useState("");
@@ -66,13 +73,10 @@ export default function ProjectsPage() {
 
   const openNewProject = () => {
     setSelectedProject(null);
-    setFormData({ name: "", description: "", priority: "Medium", status: "Planning", expected_amount: 0, approval_date: today, due_date: "", company_id: currentCompanyId?.toString() || "", customer_id: "", internal_company_id: "", assignee_ids: [] });
-    setCustomerType("existing"); setNewCustomer({ name: "", phone: "" }); setPendingTasks([]); setNewTaskTitle(""); setNewTaskAssignee("");
-    setAllocationsForm({});
-    setExpandedFinanceEmpId(null);
-    setShowPayoutForm(false);
-    setModalTab("details");
-    setIsModalOpen(true);
+    setFormData({ name: "", description: "", priority: "Medium", status: "Planning", expected_amount: 0, approval_date: today, due_date: "", company_id: currentCompanyId?.toString() || "", customer_id: "", internal_company_id: "", drive_folder_url: "", assignee_ids: [] });
+    setCustomerType("existing"); setNewCustomer({ name: "", phone: "" }); setPendingTasks([]); setNewTaskTitle(""); setNewTaskAssignee(""); setNewTaskDeadline("");
+    setAllocationsForm({}); setExpandedFinanceEmpId(null); setShowPayoutForm(false); setShowDriveHelp(false);
+    setModalTab("details"); setIsModalOpen(true);
   };
 
   const openProjectDetails = (project: any) => {
@@ -81,21 +85,18 @@ export default function ProjectsPage() {
       name: project.name || "", description: project.description || "", priority: project.priority || "Medium", status: project.status || "Planning", 
       expected_amount: project.expected_amount || 0, approval_date: project.approval_date || today, due_date: project.due_date || "", 
       company_id: project.company_id?.toString() || "", customer_id: project.customer_id?.toString() || "", 
-      internal_company_id: project.internal_company_id?.toString() || "", assignee_ids: project.assignee_ids || []
+      internal_company_id: project.internal_company_id?.toString() || "", drive_folder_url: project.drive_folder_url || "", assignee_ids: project.assignee_ids || []
     });
     setCustomerType(project.internal_company_id ? "in_house" : project.customer_id ? "existing" : "in_house"); 
-    setNewCustomer({ name: "", phone: "" }); setPendingTasks([]); setNewTaskTitle(""); setNewTaskAssignee("");
-    setExpandedFinanceEmpId(null);
-    setShowPayoutForm(false);
+    setNewCustomer({ name: "", phone: "" }); setPendingTasks([]); setNewTaskTitle(""); setNewTaskAssignee(""); setNewTaskDeadline("");
+    setExpandedFinanceEmpId(null); setShowPayoutForm(false); setShowDriveHelp(false);
     
     const currentAlloc: any = {};
     project.assignee_ids?.forEach((id: number) => {
       const a = projectAllocations.find(pa => pa.project_id === project.id && pa.employee_id === id);
       currentAlloc[id] = { allocated: a?.allocated_amount || 0, incentive: a?.incentive_amount || 0 };
     });
-    setAllocationsForm(currentAlloc);
-    setModalTab("details");
-    setIsModalOpen(true);
+    setAllocationsForm(currentAlloc); setModalTab("details"); setIsModalOpen(true);
   };
 
   const handleSaveProject = async () => {
@@ -108,10 +109,7 @@ export default function ProjectsPage() {
     setIsSaving(true);
     try {
       if (customerType === 'new') {
-        if (!newCustomer.name.trim()) {
-          setModalTab('details');
-          throw new Error("New Customer Name is required.");
-        }
+        if (!newCustomer.name.trim()) { setModalTab('details'); throw new Error("New Customer Name is required."); }
         const { data: cData, error: cError } = await supabase.from('customers').insert([{ company_id: parseInt(formData.company_id), name: newCustomer.name, phone: newCustomer.phone }]).select().single();
         if (cError) throw cError;
         finalCustomerId = cData.id;
@@ -122,7 +120,7 @@ export default function ProjectsPage() {
 
       const payload = { 
         ...formData, company_id: parseInt(formData.company_id), customer_id: finalCustomerId, internal_company_id: finalInternalId, 
-        approval_date: formData.approval_date || null, due_date: formData.due_date || null 
+        approval_date: formData.approval_date || null, due_date: formData.due_date || null, drive_folder_url: formData.drive_folder_url || null
       };
       
       if (!selectedProject) {
@@ -131,34 +129,22 @@ export default function ProjectsPage() {
         
         if (payload.expected_amount >= 0) {
            const invPayload = {
-             company_id: payload.company_id, 
-             customer_id: finalCustomerId, 
-             project_id: data.id,
+             company_id: payload.company_id, customer_id: finalCustomerId, project_id: data.id,
              invoice_number: `INV-${Math.floor(10000 + Math.random() * 90000)}`,
-             issue_date: today, 
-             due_date: payload.due_date || today,
-             subtotal: payload.expected_amount, 
-             total_amount: payload.expected_amount, 
-             status: 'Pending'
+             issue_date: today, due_date: payload.due_date || today,
+             subtotal: payload.expected_amount, total_amount: payload.expected_amount, status: 'Pending'
            };
-           
            const { data: invData, error: invError } = await supabase.from('invoices').insert([invPayload]).select().single();
            if (invError) throw new Error(`Auto-Invoice Error: ${invError.message}`);
            
            if (invData) {
-             const { error: itemError } = await supabase.from('invoice_items').insert([{
-               invoice_id: invData.id,
-               description: `Project: ${payload.name}`,
-               quantity: 1,
-               rate: payload.expected_amount,
-               total: payload.expected_amount
-             }]);
+             const { error: itemError } = await supabase.from('invoice_items').insert([{ invoice_id: invData.id, description: `Project: ${payload.name}`, quantity: 1, rate: payload.expected_amount, total: payload.expected_amount }]);
              if (itemError) throw new Error(`Invoice Line Item Error: ${itemError.message}`);
            }
         }
 
         if (pendingTasks.length > 0) {
-          const tasksToInsert = pendingTasks.map(t => ({ project_id: data.id, title: t.title, assignee_id: t.assignee_id, is_completed: t.is_completed }));
+          const tasksToInsert = pendingTasks.map(t => ({ project_id: data.id, title: t.title, assignee_id: t.assignee_id, is_completed: t.is_completed, deadline: t.deadline }));
           await supabase.from('project_tasks').insert(tasksToInsert);
         }
 
@@ -167,13 +153,8 @@ export default function ProjectsPage() {
         if (error) throw new Error(`Project Update Error: ${error.message}`);
       }
       
-      await fetchAllData();
-      setIsModalOpen(false);
-    } catch (error: any) { 
-      alert(error.message); 
-    } finally { 
-      setIsSaving(false); 
-    }
+      await fetchAllData(); setIsModalOpen(false);
+    } catch (error: any) { alert(error.message); } finally { setIsSaving(false); }
   };
 
   const handleSaveAllocations = async () => {
@@ -182,9 +163,7 @@ export default function ProjectsPage() {
     try {
       for (const empId of Object.keys(allocationsForm)) {
         const alloc = allocationsForm[parseInt(empId)];
-        await supabase.from('project_allocations').upsert({
-          project_id: selectedProject.id, employee_id: parseInt(empId), allocated_amount: alloc.allocated, incentive_amount: alloc.incentive
-        }, { onConflict: 'project_id, employee_id' });
+        await supabase.from('project_allocations').upsert({ project_id: selectedProject.id, employee_id: parseInt(empId), allocated_amount: alloc.allocated, incentive_amount: alloc.incentive }, { onConflict: 'project_id, employee_id' });
       }
       alert("Allocations saved successfully.");
       await fetchAllData();
@@ -196,27 +175,16 @@ export default function ProjectsPage() {
     setIsSaving(true);
     try {
       const { error } = await supabase.from('salary_payments').insert([{
-        employee_id: parseInt(paymentForm.employee_id),
-        company_id: selectedProject.company_id,
-        project_id: selectedProject.id,
-        amount: paymentForm.amount,
-        payment_type: paymentForm.payment_type,
-        payment_date: today,
-        payment_month: today.substring(0, 7), 
-        notes: paymentForm.notes
+        employee_id: parseInt(paymentForm.employee_id), company_id: selectedProject.company_id, project_id: selectedProject.id,
+        amount: paymentForm.amount, payment_type: paymentForm.payment_type, payment_date: today, payment_month: today.substring(0, 7), notes: paymentForm.notes
       }]);
-      
       if (error) throw new Error(`Database Error: ${error.message}`);
 
       setPaymentForm({ employee_id: "", amount: 0, payment_type: "Advance", notes: "" });
-      setExpandedFinanceEmpId(parseInt(paymentForm.employee_id)); // Open expansion
-      setShowPayoutForm(false); // Close form on success
+      setExpandedFinanceEmpId(parseInt(paymentForm.employee_id)); 
+      setShowPayoutForm(false); 
       await fetchAllData();
-    } catch (error: any) { 
-      alert(error.message); 
-    } finally { 
-      setIsSaving(false); 
-    }
+    } catch (error: any) { alert(error.message); } finally { setIsSaving(false); }
   };
 
   const handleDeleteProjectPayment = async (paymentId: number) => {
@@ -233,13 +201,10 @@ export default function ProjectsPage() {
     if (!selectedProject || !myReportText.trim()) return;
     const existingReport = reports.find(r => r.project_id === selectedProject.id && r.employee_id === employeeId);
     const timestamp = new Date().toLocaleString();
-    const appendedText = existingReport?.report_text 
-      ? `${existingReport.report_text}\n\n[${timestamp}]\n${myReportText}`
-      : `[${timestamp}]\n${myReportText}`;
+    const appendedText = existingReport?.report_text ? `${existingReport.report_text}\n\n[${timestamp}]\n${myReportText}` : `[${timestamp}]\n${myReportText}`;
 
     await supabase.from('project_reports').upsert({ project_id: selectedProject.id, employee_id: employeeId, report_text: appendedText }, { onConflict: 'project_id, employee_id' });
-    setMyReportText("");
-    await fetchAllData();
+    setMyReportText(""); await fetchAllData();
   };
 
   const handleDeleteProject = async () => {
@@ -252,19 +217,31 @@ export default function ProjectsPage() {
   const handleAddTask = async () => {
     if (!newTaskTitle.trim()) return;
     if (selectedProject) {
-      await supabase.from('project_tasks').insert([{ project_id: selectedProject.id, title: newTaskTitle, assignee_id: newTaskAssignee || null }]);
+      await supabase.from('project_tasks').insert([{ project_id: selectedProject.id, title: newTaskTitle, assignee_id: newTaskAssignee || null, deadline: newTaskDeadline || null }]);
       await fetchAllData();
-    } else { setPendingTasks([...pendingTasks, { title: newTaskTitle, assignee_id: newTaskAssignee || null, is_completed: false }]); }
-    setNewTaskTitle(""); setNewTaskAssignee("");
+    } else { setPendingTasks([...pendingTasks, { title: newTaskTitle, assignee_id: newTaskAssignee || null, is_completed: false, deadline: newTaskDeadline || null }]); }
+    setNewTaskTitle(""); setNewTaskAssignee(""); setNewTaskDeadline("");
   };
 
-  const toggleTask = async (task: any, index?: number) => {
+  const handleAdminToggleTask = async (task: any, index?: number) => {
+    if (role === 'user') return; // Users must use the upload modal
     if (selectedProject) {
       await supabase.from('project_tasks').update({ is_completed: !task.is_completed }).eq('id', task.id);
       await fetchAllData();
     } else if (index !== undefined) {
       const updated = [...pendingTasks]; updated[index].is_completed = !updated[index].is_completed; setPendingTasks(updated);
     }
+  };
+
+  const handleEmployeeUploadComplete = async () => {
+    if (!taskToUpload || !selectedProject) return;
+    setIsSaving(true);
+    try {
+      await supabase.from('project_tasks').update({ is_completed: true }).eq('id', taskToUpload.id);
+      await fetchAllData();
+      setIsUploadModalOpen(false);
+      setTaskToUpload(null);
+    } catch (e: any) { alert(e.message); } finally { setIsSaving(false); }
   };
 
   const updateProjectStatus = async (project: any, newStatus: string) => {
@@ -278,11 +255,8 @@ export default function ProjectsPage() {
   };
 
   const handleApproval = async (project: any, approve: boolean) => {
-    if (approve) {
-      await supabase.from('projects').update({ status: project.pending_status, pending_status: null, status_requested_by: null }).eq('id', project.id);
-    } else {
-      await supabase.from('projects').update({ pending_status: null, status_requested_by: null }).eq('id', project.id);
-    }
+    if (approve) { await supabase.from('projects').update({ status: project.pending_status, pending_status: null, status_requested_by: null }).eq('id', project.id); } 
+    else { await supabase.from('projects').update({ pending_status: null, status_requested_by: null }).eq('id', project.id); }
     await fetchAllData();
   };
 
@@ -293,9 +267,7 @@ export default function ProjectsPage() {
 
   const getAvatar = (id: number) => employees.find(e => e.id === id);
   
-  const displayTasks = selectedProject 
-    ? tasks.filter(t => t.project_id === selectedProject.id).sort((a, b) => (a.id > b.id ? 1 : -1)) 
-    : pendingTasks;
+  const displayTasks = selectedProject ? tasks.filter(t => t.project_id === selectedProject.id).sort((a, b) => (a.id > b.id ? 1 : -1)) : pendingTasks;
 
   const getStatusStyle = (status: string) => {
     switch(status) {
@@ -314,9 +286,10 @@ export default function ProjectsPage() {
     const diffTime = due.getTime() - now.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    if (diffDays < 0) return { label: 'Overdue', style: 'text-rose-500 bg-rose-50 border-rose-200', icon: AlertCircle };
-    if (diffDays <= 7) return { label: `Due in ${diffDays} days`, style: 'text-amber-600 bg-amber-50 border-amber-200', icon: Clock };
-    return null;
+    if (diffDays < 0) return { label: 'Overdue', style: 'text-rose-500 bg-rose-50 border-rose-200', icon: AlertCircle, dot: 'bg-rose-500 shadow-[0_0_8px_#f43f5e]' };
+    if (diffDays === 0) return { label: 'Due Today', style: 'text-amber-600 bg-amber-50 border-amber-200', icon: Clock, dot: 'bg-amber-500 shadow-[0_0_8px_#f59e0b]' };
+    if (diffDays <= 7) return { label: `Due in ${diffDays}d`, style: 'text-emerald-600 bg-emerald-50 border-emerald-200', icon: Clock, dot: 'bg-emerald-500' };
+    return { label: `Due in ${diffDays}d`, style: 'text-slate-500 bg-slate-50 border-slate-200', icon: Calendar, dot: 'bg-slate-300' };
   };
 
   const userAllocation = selectedProject ? projectAllocations.find(pa => pa.project_id === selectedProject.id && pa.employee_id === employeeId) : null;
@@ -328,16 +301,13 @@ export default function ProjectsPage() {
   const hasAllocationChanges = selectedProject && (formData.assignee_ids || []).some(empId => {
     const formAlloc = allocationsForm[empId] || { allocated: 0, incentive: 0 };
     const originalAlloc = projectAllocations.find(pa => pa.project_id === selectedProject.id && pa.employee_id === empId);
-    const origAllocated = Number(originalAlloc?.allocated_amount || 0);
-    const origIncentive = Number(originalAlloc?.incentive_amount || 0);
-    return Number(formAlloc.allocated) !== origAllocated || Number(formAlloc.incentive) !== origIncentive;
+    return Number(formAlloc.allocated) !== Number(originalAlloc?.allocated_amount || 0) || Number(formAlloc.incentive) !== Number(originalAlloc?.incentive_amount || 0);
   });
 
   return (
     <>
       <div className="max-w-[1200px] mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-700 pb-8 relative z-0 print:p-0 print:m-0">
         
-        {/* Minimal Dotted Background Pattern */}
         <div className="absolute inset-0 pointer-events-none z-[-1] overflow-hidden print:hidden">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMTQ4LCAxNjMsIDE4NCwgMC4wOCkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
         </div>
@@ -554,6 +524,56 @@ export default function ProjectsPage() {
 
       </div>
 
+      {/* --- EMPLOYEE UPLOAD WORK MODAL (PHASE C) --- */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {isUploadModalOpen && taskToUpload && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+              <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+                <div className="bg-gradient-to-r from-blue-900 to-indigo-800 p-6 sm:p-8 text-center relative">
+                  <button onClick={() => setIsUploadModalOpen(false)} className="absolute top-4 right-4 h-8 w-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors"><X className="h-4 w-4" /></button>
+                  <div className="h-16 w-16 bg-white/20 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-inner backdrop-blur-md">
+                    <UploadCloud className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">Upload Work</h3>
+                  <p className="text-[11px] sm:text-xs font-medium text-blue-100 mt-2 opacity-90">{taskToUpload.title}</p>
+                </div>
+                
+                <div className="p-6 sm:p-8 space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="h-6 w-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">Open Secure Workspace</p>
+                        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">Click below to open the secure project drive. Drag and drop your completed files into the folder.</p>
+                        <a href={selectedProject?.drive_folder_url || "#"} target="_blank" rel="noopener noreferrer" className={`mt-3 w-full flex items-center justify-center gap-2 h-11 rounded-xl text-xs font-bold transition-all ${selectedProject?.drive_folder_url ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200' : 'bg-slate-50 text-slate-400 border border-slate-200 cursor-not-allowed'}`}>
+                          {selectedProject?.drive_folder_url ? <><ExternalLink className="h-4 w-4" /> Open Project Drive</> : "No Drive Link Provided"}
+                        </a>
+                      </div>
+                    </div>
+                    
+                    <div className="w-full h-px bg-slate-100" />
+
+                    <div className="flex items-start gap-3">
+                      <div className="h-6 w-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">Confirm Upload</p>
+                        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">Once your files are uploaded to the drive, confirm below to notify your administrator.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button onClick={handleEmployeeUploadComplete} disabled={isSaving || !selectedProject?.drive_folder_url} className="w-full h-12 bg-slate-900 text-white hover:bg-slate-800 rounded-xl text-[13px] font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center disabled:opacity-50">
+                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "I Have Uploaded My Files"}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
       {/* --- MAIN PROJECT MODAL --- */}
       {typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
@@ -590,7 +610,7 @@ export default function ProjectsPage() {
                   </div>
                 </div>
 
-                {/* TAB 1: DETAILS */}
+                {/* TAB 1: DETAILS (INCLUDES PHASE A DRIVE FLOW) */}
                 {modalTab === 'details' && (
                   <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-5 sm:p-8 flex flex-col sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-300 sm:[&::-webkit-scrollbar-thumb]:rounded-full sm:[&::-webkit-scrollbar-track]:bg-transparent max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
                     <div className="flex-1 space-y-5 sm:space-y-6">
@@ -643,6 +663,29 @@ export default function ProjectsPage() {
                         </div>
                       </div>
 
+                      {/* PHASE A: SECURE DRIVE LINK INJECTION */}
+                      <div className="bg-blue-50/50 border border-blue-100 rounded-2xl sm:rounded-3xl p-4 sm:p-6">
+                        <label className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1 flex items-center gap-1.5"><UploadCloud className="h-3.5 w-3.5" /> Secure Workspace Link (Google Drive)</label>
+                        <input type="url" placeholder="https://drive.google.com/drive/folders/..." value={formData.drive_folder_url} onChange={(e) => setFormData({...formData, drive_folder_url: e.target.value})} disabled={role === 'user'} className="w-full h-10 sm:h-12 rounded-xl border border-blue-200 bg-white px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 shadow-sm disabled:bg-slate-50" />
+                        
+                        {(role === 'admin' || role === 'head') && (
+                          <div className="mt-3">
+                            <button type="button" onClick={() => setShowDriveHelp(!showDriveHelp)} className="text-[10px] font-bold text-slate-500 hover:text-blue-600 uppercase tracking-wider flex items-center gap-1 transition-colors"><Info className="h-3.5 w-3.5" /> {showDriveHelp ? 'Hide Setup Guide' : 'How to set up the secure drive?'}</button>
+                            <AnimatePresence>
+                              {showDriveHelp && (
+                                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                                  <div className="mt-3 p-4 bg-white rounded-xl border border-blue-100 shadow-sm space-y-2 text-[11px] sm:text-xs text-slate-600 font-medium">
+                                    <p><strong className="text-slate-800">Step 1:</strong> Create a new folder in your Google Drive named after this project.</p>
+                                    <p><strong className="text-slate-800">Step 2:</strong> Right-click the folder → Share → General Access → Change to <strong>'Anyone with the link'</strong> (Set as Editor if they need to upload).</p>
+                                    <p><strong className="text-slate-800">Step 3:</strong> Copy the link and paste it into the field above.</p>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        )}
+                      </div>
+
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-5">
                         <div className="md:col-span-3">
                           <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1 whitespace-nowrap truncate">Project Name</label>
@@ -679,16 +722,18 @@ export default function ProjectsPage() {
                   </div>
                 )}
 
-                {/* TAB 2: TASKS PANEL */}
+                {/* TAB 2: TASKS PANEL (INCLUDES PHASE B & C WORKFLOWS) */}
                 {modalTab === 'tasks' && (
                   <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-5 sm:p-8 flex flex-col sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-300 sm:[&::-webkit-scrollbar-thumb]:rounded-full sm:[&::-webkit-scrollbar-track]:bg-transparent max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
                     <div className="w-full flex flex-col h-full gap-5 sm:gap-6">
                       
+                      {/* PHASE B: TASK DEADLINE INPUT */}
                       {(role === 'admin' || role === 'head') && (
-                        <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+                        <div className="flex flex-col xl:flex-row gap-3 shrink-0">
                           <input type="text" placeholder="New task title..." value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddTask()} className="flex-1 h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-[13px] font-medium outline-none focus:border-blue-500 shadow-sm bg-white" />
-                          <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
-                            <select value={newTaskAssignee} onChange={(e) => setNewTaskAssignee(parseInt(e.target.value) || "")} className="flex-1 sm:w-48 h-10 sm:h-12 rounded-xl border border-slate-200 px-2 sm:px-3 text-[11px] sm:text-[13px] font-medium outline-none bg-white shadow-sm cursor-pointer">
+                          <div className="flex gap-2 sm:gap-3 w-full xl:w-auto">
+                            <input type="date" title="Task Deadline" value={newTaskDeadline} onChange={(e) => setNewTaskDeadline(e.target.value)} className="w-full sm:w-36 h-10 sm:h-12 rounded-xl border border-slate-200 px-2 sm:px-3 text-[11px] sm:text-[13px] font-medium outline-none shadow-sm bg-white" />
+                            <select value={newTaskAssignee} onChange={(e) => setNewTaskAssignee(parseInt(e.target.value) || "")} className="w-full sm:w-40 h-10 sm:h-12 rounded-xl border border-slate-200 px-2 sm:px-3 text-[11px] sm:text-[13px] font-medium outline-none bg-white shadow-sm cursor-pointer">
                               <option value="">Anyone</option>
                               {(formData.assignee_ids || []).map(id => <option key={id} value={id}>{getAvatar(id)?.name || 'Unknown'}</option>)}
                             </select>
@@ -705,17 +750,39 @@ export default function ProjectsPage() {
                             <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">No tasks added</p>
                           </div>
                         ) : (
-                          displayTasks.map((task, index) => (
-                            <div key={task.id || index} onClick={() => toggleTask(task, index)} className={`flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all cursor-pointer ${task.is_completed ? 'bg-slate-50 border-slate-100' : 'bg-white border-slate-200 hover:border-blue-200 shadow-sm'}`}>
-                              <div className={`mt-0.5 h-4 w-4 sm:h-5 sm:w-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${task.is_completed ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300'}`}>
-                                {task.is_completed && <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white" />}
+                          displayTasks.map((task, index) => {
+                            const deadlineStat = !task.is_completed ? getDueDateStatus(task.deadline) : null;
+                            const isMyTask = task.assignee_id === employeeId || !task.assignee_id;
+                            
+                            return (
+                              <div key={task.id || index} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all ${task.is_completed ? 'bg-slate-50 border-slate-100' : 'bg-white border-slate-200 hover:border-blue-200 shadow-sm'}`}>
+                                <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1">
+                                  <div onClick={() => handleAdminToggleTask(task, index)} className={`mt-0.5 h-4 w-4 sm:h-5 sm:w-5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${role === 'admin' || role === 'head' ? 'cursor-pointer' : ''} ${task.is_completed ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300'}`}>
+                                    {task.is_completed && <Check className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white" />}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`text-[12px] sm:text-[13px] font-bold leading-relaxed break-words ${task.is_completed ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{task.title}</p>
+                                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5">
+                                      {task.assignee_id && <span className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-wider truncate">{getAvatar(task.assignee_id)?.name}</span>}
+                                      {/* PHASE C: GLOWING DEADLINE BADGES */}
+                                      {deadlineStat && (
+                                        <span className={`flex items-center gap-1 text-[8px] sm:text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md border ${deadlineStat.style}`}>
+                                          <div className={`h-1.5 w-1.5 rounded-full ${deadlineStat.dot}`} /> {deadlineStat.label}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* PHASE C: UPLOAD WORK BUTTON FOR EMPLOYEES */}
+                                {role === 'user' && !task.is_completed && isMyTask && (
+                                  <button onClick={() => { setTaskToUpload(task); setIsUploadModalOpen(true); }} className="shrink-0 w-full sm:w-auto h-9 sm:h-10 bg-slate-900 text-white rounded-lg px-4 flex items-center justify-center gap-2 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider shadow-sm hover:bg-slate-800 transition-colors">
+                                    <UploadCloud className="h-3.5 w-3.5" /> Upload Work
+                                  </button>
+                                )}
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-[12px] sm:text-[13px] font-bold leading-relaxed break-words ${task.is_completed ? 'text-slate-400' : 'text-slate-700'}`}>{task.title}</p>
-                                {task.assignee_id && <p className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-wider mt-1 sm:mt-1.5 truncate">{getAvatar(task.assignee_id)?.name}</p>}
-                              </div>
-                            </div>
-                          ))
+                            )
+                          })
                         )}
                       </div>
 
@@ -849,7 +916,6 @@ export default function ProjectsPage() {
 
                             <div className="bg-white border border-slate-100 shadow-sm rounded-2xl sm:rounded-3xl overflow-hidden flex flex-col flex-1 min-h-0 relative">
                                <div className="w-full h-full overflow-y-auto sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-300 sm:[&::-webkit-scrollbar-thumb]:rounded-full sm:[&::-webkit-scrollbar-track]:bg-transparent max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
-                                 {/* Perfect 12 Column Grid ensuring no horizontal overflow */}
                                  <div className="grid grid-cols-12 gap-2 sm:gap-4 bg-slate-50 px-3 sm:px-6 py-3 border-b border-slate-100 text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center sticky top-0 z-10">
                                     <div className="col-span-2 text-left">Team Member</div>
                                     <div className="col-span-2 text-emerald-600">Paid (₹)</div>
@@ -865,13 +931,10 @@ export default function ProjectsPage() {
                                     {(formData.assignee_ids || []).map(empId => {
                                        const emp = getAvatar(empId);
                                        const alloc = allocationsForm[empId] || {allocated: 0, incentive: 0};
-                                       
                                        const empPaid = salaryPayments.filter(sp => sp.project_id === selectedProject.id && sp.employee_id === empId).reduce((sum, sp) => sum + parseFloat(sp.amount || 0), 0);
                                        const empPaymentsList = salaryPayments.filter(sp => sp.project_id === selectedProject.id && sp.employee_id === empId);
-                                       
                                        const lineTotal = alloc.allocated + alloc.incentive;
                                        const empBalance = lineTotal - empPaid;
-                                       
                                        const isExpanded = expandedFinanceEmpId === empId;
 
                                        return (
@@ -907,7 +970,6 @@ export default function ProjectsPage() {
                                               </div>
                                            </div>
 
-                                           {/* INLINE EXPANDABLE TRANSACTION HISTORY */}
                                            <AnimatePresence>
                                               {isExpanded && (
                                                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-slate-50/50">
@@ -945,7 +1007,6 @@ export default function ProjectsPage() {
                                  </div>
                                </div>
 
-                               {/* DYNAMIC SAVE BUTTON (ONLY SHOWS ON CHANGE) */}
                                {hasAllocationChanges && (
                                  <div className="absolute bottom-0 left-0 right-0 bg-slate-50/90 backdrop-blur-md px-4 sm:px-6 py-3 border-t border-slate-200 flex justify-end shrink-0 animate-in fade-in slide-in-from-bottom-2 duration-200">
                                     <button onClick={handleSaveAllocations} disabled={isSaving} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white hover:shadow-lg hover:-translate-y-0.5 rounded-lg sm:rounded-xl h-9 sm:h-10 px-4 sm:px-6 text-[11px] sm:text-xs font-bold shadow-sm transition-all flex items-center">
@@ -969,7 +1030,6 @@ export default function ProjectsPage() {
                   
                   {(role === 'admin' || role === 'head') && (
                     <>
-                      {/* NEW PROJECT CREATION FLOW */}
                       {!selectedProject && modalTab === 'details' && (
                         <button onClick={() => setModalTab('tasks')} className="bg-slate-900 text-white hover:bg-slate-800 rounded-xl h-10 sm:h-12 px-6 sm:px-10 font-bold text-[12px] sm:text-sm shadow-md transition-all flex-1 sm:flex-none flex items-center justify-center">
                           Next: Action Items
@@ -980,8 +1040,6 @@ export default function ProjectsPage() {
                           {isSaving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : "Create Project"}
                         </button>
                       )}
-
-                      {/* EDITING EXISTING PROJECT FLOW */}
                       {selectedProject && modalTab === 'details' && (
                         <button onClick={handleSaveProject} disabled={isSaving} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-10 sm:h-12 px-6 sm:px-10 font-bold text-[12px] sm:text-sm shadow-md shadow-blue-900/20 hover:shadow-lg hover:-translate-y-0.5 transition-all flex-1 sm:flex-none flex items-center justify-center">
                           {isSaving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : "Save Details"}
