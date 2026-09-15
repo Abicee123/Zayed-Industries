@@ -73,18 +73,18 @@ const FloatingBackground = () => {
 const pageVariants = {
   initial: (direction: number) => ({
     opacity: 0,
-    x: direction > 0 ? 40 : -40, // Enter from right if going forward, left if backward
+    x: direction > 0 ? 40 : -40,
     scale: 0.96,
   }),
   animate: {
     opacity: 1,
     x: 0,
     scale: 1,
-    transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } // Ultra-smooth cubic bezier
+    transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } 
   },
   exit: (direction: number) => ({
     opacity: 0,
-    x: direction > 0 ? -40 : 40, // Exit to left if going forward, right if backward
+    x: direction > 0 ? -40 : 40,
     scale: 0.96,
     transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] }
   }),
@@ -95,7 +95,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [direction, setDirection] = useState(1); // 1 for forward, -1 for backward
+  const [direction, setDirection] = useState(1);
   const [selectedRole, setSelectedRole] = useState<"admin" | "head" | "user" | null>(null);
   const [selectedCompany, setSelectedCompany] = useState("");
   const [companiesDb, setCompaniesDb] = useState<{id: number, name: string, logo_url: string | null}[]>([]);
@@ -159,7 +159,7 @@ export default function LoginPage() {
     setSelectedCompany(""); 
     setEmail(""); 
     setPassword(""); 
-    setDirection(1); // Moving forward
+    setDirection(1);
     setStep(role === "admin" ? 3 : 2);
   };
 
@@ -177,7 +177,7 @@ export default function LoginPage() {
         } else setHeadUsers([]); 
       }
     }
-    setDirection(1); // Moving forward
+    setDirection(1);
     setStep(3);
   };
 
@@ -190,7 +190,7 @@ export default function LoginPage() {
 
   const goBack = () => {
     setError(""); setEmail(""); setPassword(""); setHeadUsers([]);
-    setDirection(-1); // Reversing direction for smooth slide-back
+    setDirection(-1);
     
     if (step === 3 && selectedRole !== "admin") setStep(2);
     else if (step === 3 && selectedRole === "admin") { setSelectedCompany(""); setSelectedRole(null); setStep(1); } 
@@ -211,10 +211,10 @@ export default function LoginPage() {
 
         {/* LEFT COLUMN: BRANDING & WELCOME MESSAGE */}
         <div className="w-full md:w-1/2 flex flex-col justify-center px-8 md:pl-24 lg:pl-32 pt-16 md:pt-0 z-10">
-          <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, ease: "easeOut" }} className="max-w-lg">
+          <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, ease: "easeOut" }} className="max-w-lg w-full md:h-[540px] flex flex-col justify-start">
             
-            {/* Master Admin Logo */}
-            <div className="h-16 w-16 md:h-20 md:w-20 rounded-[1.25rem] overflow-hidden shadow-sm bg-white border border-slate-200 flex items-center justify-center mb-8 md:mb-12">
+            {/* Master Admin Logo - perfectly aligned with the top of the login box */}
+            <div className="h-16 w-16 md:h-20 md:w-20 rounded-[1.25rem] overflow-hidden shadow-sm bg-white border border-slate-200 flex items-center justify-center mb-10 md:mb-16 shrink-0">
               {adminLogo ? (
                 <img src={adminLogo} alt="Corporate Identity" className="h-full w-full object-cover" />
               ) : (
@@ -223,8 +223,8 @@ export default function LoginPage() {
             </div>
 
             <h1 className="text-[2.5rem] md:text-[3.5rem] leading-[1.1] font-black text-slate-900 tracking-tight mb-6">
-              Welcome<br />
-              to The Zayd Industries
+              Welcome to<br />
+              The Zayd Industries
             </h1>
             
             <p className="text-[15px] text-slate-500 font-semibold leading-relaxed max-w-sm">
@@ -235,7 +235,7 @@ export default function LoginPage() {
 
         {/* RIGHT COLUMN: FIXED SIZE LOGIN CARD */}
         <div className="w-full md:w-1/2 flex justify-center items-center p-6 sm:p-12 z-10 mt-8 md:mt-0 pb-24 md:pb-0">
-          {/* Card is forced to a strict height (540px) so it never resizes during step changes */}
+          {/* Card is forced to a strict height (540px) matching the left side so it never resizes during step changes */}
           <div className="bg-white/80 backdrop-blur-xl rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-white w-full max-w-[480px] h-[540px] relative overflow-hidden">
             
             <AnimatePresence mode="wait" custom={direction}>
@@ -388,7 +388,7 @@ export default function LoginPage() {
                       </button>
                     </div>
 
-                    <Button type="submit" disabled={isLoggingIn} className="w-full h-[68px] mt-4 rounded-[1.25rem] text-[16px] font-black tracking-wide shadow-xl shadow-blue-600/20 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:hover:translate-y-0">
+                    <Button type="submit" disabled={isLoggingIn} className="w-full h-[68px] mt-6 rounded-[1.25rem] text-[16px] font-black tracking-wide shadow-xl shadow-blue-600/20 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:hover:translate-y-0">
                       {isLoggingIn ? "Authenticating Identity..." : "Authorize Access"}
                     </Button>
                   </form>
