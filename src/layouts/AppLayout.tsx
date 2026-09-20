@@ -13,7 +13,7 @@ export default function AppLayout() {
   const location = useLocation();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false); // NEW: Mobile Side Drawer State
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   
   const [activeContact, setActiveContact] = useState<any>(null);
@@ -56,13 +56,17 @@ export default function AppLayout() {
   const allNavLinks = [
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", allowedRoles: ['admin', 'head', 'user'] },
     { path: "/projects", icon: Briefcase, label: isAcademy ? "Courses" : "Projects", allowedRoles: ['admin', 'head', 'user'] },
-    { path: "/finance", icon: Banknote, label: "Finance", allowedRoles: ['admin', 'head'] },
-    { path: "/employees", icon: Users, label: "Personnel", allowedRoles: ['admin', 'head'] },
     { path: "/customers", icon: UserSquare2, label: isAcademy ? "Students" : "Customers", allowedRoles: ['admin', 'head'] },
+    { path: "/finance", icon: Banknote, label: "Finance", allowedRoles: ['admin', 'head'] },
     { path: "/invoices", icon: FileText, label: "Invoices", allowedRoles: ['admin', 'head'] },
+    { path: "/employees", icon: Users, label: "Personnel", allowedRoles: ['admin', 'head'] },
     { path: "/settings", icon: Settings, label: "Settings", allowedRoles: ['admin', 'head', 'user'] },
   ];
+  
   const visibleLinks = allNavLinks.filter(link => link.allowedRoles.includes(role || 'user'));
+  
+  // For eCommerce-style Mobile Bottom Dock (Max 4 main links + Menu)
+  const primaryMobileLinks = visibleLinks.slice(0, 4); 
 
   const allowedContacts = employees.filter(emp => {
     if (emp.id == employeeId) return false; 
@@ -211,7 +215,7 @@ export default function AppLayout() {
   return (
     <div className="flex h-[100dvh] w-full bg-[#F8F9FC] text-slate-800 overflow-hidden font-sans sm:p-4 lg:p-6 selection:bg-blue-900 selection:text-white relative print:p-0 print:bg-white print:block print:h-auto">
       
-      {/* --- DESKTOP SIDEBAR --- */}
+      {/* --- DESKTOP SIDEBAR (UNCHANGED) --- */}
       <AnimatePresence mode="wait">
         {isSidebarOpen && (
           <motion.aside initial={{ width: 0, opacity: 0 }} animate={{ width: 280, opacity: 1 }} exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }} 
@@ -274,7 +278,7 @@ export default function AppLayout() {
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMTQ4LCAxNjMsIDE4NCwgMC4wOCkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
         </div>
 
-        {/* --- DESKTOP HEADER --- */}
+        {/* --- DESKTOP HEADER (UNCHANGED) --- */}
         <header className="absolute top-6 left-0 right-0 hidden sm:flex items-start justify-between px-6 lg:px-10 z-20 pointer-events-none print:hidden">
           <div className="pointer-events-auto">
             {!isSidebarOpen && (
@@ -297,18 +301,45 @@ export default function AppLayout() {
           </div>
         </header>
 
-        {/* --- MOBILE ENTERPRISE TOP APP BAR --- */}
-        <div className="sm:hidden fixed top-0 left-0 right-0 h-16 bg-white/95 backdrop-blur-xl border-b border-slate-200 flex items-center justify-between px-4 z-40 shadow-sm print:hidden">
-           <button onClick={() => setIsMobileDrawerOpen(true)} className="p-2 -ml-2 text-slate-500 hover:text-blue-900 transition-colors">
-              <Menu className="h-6 w-6" />
-           </button>
-           <div className="flex items-center gap-2 flex-1 justify-center min-w-0 px-2">
-             {brandLogo && <img src={brandLogo} alt="Logo" className="h-7 w-auto max-w-[80px] object-contain shrink-0" />}
-             <span className="font-bold text-slate-900 text-[15px] truncate">{brandName}</span>
+        {/* --- MOBILE ECOMMERCE TOP APP BAR --- */}
+        <div className="sm:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-slate-100 flex items-center justify-between px-4 z-40 shadow-sm print:hidden">
+           {/* Left: Logo and Name */}
+           <div className="flex items-center gap-2 min-w-0">
+              {brandLogo ? (
+                 <img src={brandLogo} alt="Logo" className="h-6 w-auto max-w-[100px] object-contain shrink-0" />
+              ) : (
+                 <div className="h-6 w-6 rounded-md bg-gradient-to-br from-slate-900 to-blue-900 flex items-center justify-center text-white text-[10px] font-black shrink-0">
+                   {brandName.charAt(0).toUpperCase()}
+                 </div>
+              )}
+              <span className="font-black text-slate-900 text-[15px] tracking-tight truncate">{brandName}</span>
            </div>
-           <button onClick={() => setIsChatOpen(true)} className="p-2 -mr-2 relative text-slate-500 hover:text-blue-900 transition-colors">
-              <MessageSquare className="h-6 w-6" />
-              {totalUnread > 0 && <span className="absolute top-1 right-1 h-3 w-3 border-2 border-white bg-rose-500 rounded-full"></span>}
+           
+           {/* Right: Global Chat */}
+           <div className="flex items-center gap-3 shrink-0">
+              <button onClick={() => setIsChatOpen(true)} className="relative text-slate-400 hover:text-blue-600 transition-colors">
+                <MessageSquare className="h-[22px] w-[22px]" />
+                {totalUnread > 0 && <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 border-2 border-white bg-rose-500 rounded-full"></span>}
+              </button>
+           </div>
+        </div>
+
+        {/* --- ECOMMERCE MOBILE BOTTOM NAV DOCK --- */}
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 z-40 pb-[env(safe-area-inset-bottom)] print:hidden flex justify-around items-center h-[68px] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2">
+           {primaryMobileLinks.map(link => (
+             <NavLink key={link.path} to={link.path} className={({isActive}) => `flex flex-col items-center justify-center w-full h-full space-y-1 rounded-xl transition-all ${isActive ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>
+               {({ isActive }) => (
+                 <>
+                   <link.icon className={`h-[22px] w-[22px] transition-colors ${isActive ? 'fill-blue-600/10' : ''}`} />
+                   <span className="text-[9px] font-bold tracking-wide">{link.label}</span>
+                 </>
+               )}
+             </NavLink>
+           ))}
+           {/* 5th Button: Menu Drawer Trigger */}
+           <button onClick={() => setIsMobileDrawerOpen(true)} className="flex flex-col items-center justify-center w-full h-full space-y-1 text-slate-400 hover:text-slate-600 transition-colors rounded-xl">
+             <Menu className="h-[22px] w-[22px]" />
+             <span className="text-[9px] font-bold tracking-wide">Menu</span>
            </button>
         </div>
 
@@ -318,12 +349,12 @@ export default function AppLayout() {
               <>
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsMobileDrawerOpen(false)} className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[80] sm:hidden print:hidden" />
                 <motion.div 
-                  initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                  className="fixed top-0 left-0 bottom-0 w-[80%] max-w-[320px] bg-white z-[90] shadow-2xl flex flex-col sm:hidden print:hidden"
+                  initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                  className="fixed top-0 right-0 bottom-0 w-[80%] max-w-[320px] bg-white z-[90] shadow-2xl flex flex-col sm:hidden print:hidden rounded-l-[2rem] overflow-hidden"
                 >
                   <div className="p-6 border-b border-slate-100 bg-slate-50 flex flex-col relative shrink-0">
                      <button onClick={() => setIsMobileDrawerOpen(false)} className="absolute top-4 right-4 p-2 text-slate-400"><X className="h-5 w-5" /></button>
-                     <div className="h-16 w-16 rounded-full bg-white border border-slate-200 flex items-center justify-center overflow-hidden shadow-sm mb-4">
+                     <div className="h-16 w-16 rounded-full bg-white border border-slate-200 flex items-center justify-center overflow-hidden shadow-sm mb-4 mt-2">
                        {currentUser?.profile_image_url ? (
                          <img src={currentUser.profile_image_url} alt="" className="h-full w-full object-cover"/>
                        ) : (
@@ -343,7 +374,8 @@ export default function AppLayout() {
                   </div>
 
                   <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1">
-                    {visibleLinks.map((link) => (
+                    {/* Only show links that are NOT in the bottom dock */}
+                    {visibleLinks.slice(4).map((link) => (
                       <NavLink key={link.path} to={link.path} onClick={() => setIsMobileDrawerOpen(false)} className={({ isActive }) => `flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all text-[15px] font-bold ${isActive ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}>
                         {({ isActive }) => (
                           <>
@@ -355,7 +387,7 @@ export default function AppLayout() {
                     ))}
                   </nav>
 
-                  <div className="p-4 border-t border-slate-100 bg-[#FAFCFF] shrink-0">
+                  <div className="p-4 border-t border-slate-100 bg-[#FAFCFF] shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
                      <button onClick={handleSignOut} className="w-full py-3.5 rounded-xl bg-white border border-slate-200 text-[14px] font-bold text-rose-600 flex items-center justify-center gap-2 shadow-sm">
                         <LogOut className="h-4 w-4" /> Sign Out Session
                      </button>
@@ -366,7 +398,7 @@ export default function AppLayout() {
         </AnimatePresence>
 
         <main className={`flex-1 overflow-y-auto transition-all duration-300 relative z-10 print:p-0 print:pt-0 print:overflow-visible
-           max-sm:px-4 max-sm:pt-[88px] max-sm:pb-8
+           max-sm:px-4 max-sm:pt-[76px] max-sm:pb-24
            sm:pt-10 sm:pb-10
            ${!isSidebarOpen ? 'sm:pl-20 lg:pl-28' : 'sm:pl-6 lg:pl-10'} 
            ${activeWorkspace && role === 'admin' ? 'sm:pr-6 lg:pr-64' : 'sm:pr-6 lg:pr-10'}
