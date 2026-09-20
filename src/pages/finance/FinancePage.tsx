@@ -24,6 +24,10 @@ export default function FinancePage() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Completion Modal State
+  const [completingExpense, setCompletingExpense] = useState<any>(null);
+  const [completionDate, setCompletionDate] = useState(today);
+
   // Report Filters
   const [reportConfig, setReportConfig] = useState({
     companyId: filterCompanyId,
@@ -60,16 +64,48 @@ export default function FinancePage() {
     if (!expenseForm.company_id || expenseForm.amount <= 0 || !expenseForm.description) return alert("Fill required fields.");
     setIsSaving(true);
     try {
-      await supabase.from('expenses').insert([{
+      const payload = {
         company_id: parseInt(expenseForm.company_id),
         project_id: expenseForm.project_id ? parseInt(expenseForm.project_id) : null,
-        category: expenseForm.category, description: expenseForm.description, amount: expenseForm.amount, 
-        expense_date: expenseForm.expense_date, status: expenseForm.status, due_date: expenseForm.due_date || null
-      }]);
+        category: expenseForm.category, 
+        description: expenseForm.description, 
+        amount: expenseForm.amount, 
+        expense_date: expenseForm.expense_date, 
+        status: expenseForm.status, 
+        due_date: expenseForm.due_date || null
+      };
+
+      const { error } = await supabase.from('expenses').insert([payload]);
+      if (error) throw error;
+      
       await fetchAllData(); 
       setIsExpenseModalOpen(false);
       setExpenseForm({ company_id: currentCompanyId?.toString() || "", project_id: "", category: "Software", description: "", amount: 0, expense_date: today, status: "Completed", due_date: "" });
-    } catch (error: any) { alert(error.message); } finally { setIsSaving(false); }
+    } catch (error: any) { 
+      alert(`Error saving expense: ${error.message}\nMake sure 'status' and 'due_date' columns exist in your Supabase table.`); 
+    } finally { 
+      setIsSaving(false); 
+    }
+  };
+
+  const handleMarkCompleted = async () => {
+    if (!completionDate) return alert("Completion date is required.");
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from('expenses').update({
+        status: 'Completed',
+        expense_date: completionDate // Override original date with actual completion date
+      }).eq('id', completingExpense.id);
+      
+      if (error) throw error;
+      
+      await fetchAllData();
+      setCompletingExpense(null);
+    } catch (error: any) { 
+      alert(error.message); 
+    } finally { 
+      setIsSaving(false); 
+    }
   };
 
   const visibleProjects = globalProjects.filter(p => p.name?.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -313,12 +349,19 @@ export default function FinancePage() {
                             <span className="text-[10px] text-slate-500 font-medium">{exp.project_id ? projects.find(p=>p.id===exp.project_id)?.name : 'General'}</span>
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider 
-                              ${exp.status?.toLowerCase() === 'completed' ? 'bg-emerald-100 text-emerald-700' 
-                                : exp.status?.toLowerCase() === 'due' ? 'bg-rose-100 text-rose-700' 
-                                : 'bg-amber-100 text-amber-700'}`}>
-                              {exp.status || 'Completed'}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider 
+                                ${exp.status?.toLowerCase() === 'completed' ? 'bg-emerald-100 text-emerald-700' 
+                                  : exp.status?.toLowerCase() === 'due' ? 'bg-rose-100 text-rose-700' 
+                                  : 'bg-amber-100 text-amber-700'}`}>
+                                {exp.status || 'Completed'}
+                              </span>
+                              {exp.status?.toLowerCase() !== 'completed' && (
+                                <button onClick={() => { setCompletingExpense(exp); setCompletionDate(today); }} className="text-[9px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-bold transition-colors">
+                                  Mark Paid
+                                </button>
+                              )}
+                            </div>
                             {exp.due_date && <p className="text-[9px] font-bold text-slate-400 mt-1 flex items-center gap-1"><Clock className="h-3 w-3"/> Due: {new Date(exp.due_date).toLocaleDateString()}</p>}
                           </td>
                           <td className="px-4 py-3 text-right font-black text-slate-900 text-[13px] sm:text-base">
@@ -333,6 +376,36 @@ export default function FinancePage() {
           </div>
         )}
       </div>
+
+      {/* MARK EXPENSE COMPLETE MODAL */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {completingExpense && (
+            <div className="fixed inset-0 z-[10000] flex flex-col items-center justify-center sm:p-4 bg-slate-900/40 backdrop-blur-sm print:hidden">
+              <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border border-slate-100">
+                <div className="px-6 py-5 border-b border-slate-100 bg-[#FAFCFF] flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-slate-900 tracking-tight">Mark as Completed</h3>
+                  <button onClick={() => setCompletingExpense(null)} className="h-8 w-8 bg-white border border-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 shadow-sm"><X className="h-4 w-4" /></button>
+                </div>
+                
+                <div className="p-6 space-y-4">
+                   <p className="text-sm text-slate-600">Please provide the exact date this expense was cleared.</p>
+                   <div>
+                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Completion Date *</label>
+                     <input type="date" value={completionDate} onChange={e => setCompletionDate(e.target.value)} className="w-full h-11 rounded-xl border border-slate-200 px-3 text-sm font-medium outline-none focus:border-emerald-500" />
+                   </div>
+                </div>
+
+                <div className="p-6 border-t border-slate-100 bg-[#FAFCFF] flex justify-end gap-3 shrink-0">
+                   <button onClick={() => setCompletingExpense(null)} className="rounded-xl border border-slate-200 bg-white h-11 px-6 font-bold text-sm text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
+                   <button onClick={handleMarkCompleted} disabled={isSaving || !completionDate} className="bg-emerald-600 text-white rounded-xl h-11 px-8 font-bold text-sm shadow-md hover:bg-emerald-700 transition-all disabled:opacity-50">{isSaving ? "Saving..." : "Confirm"}</button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* PROJECT FINANCIAL DETAILS MODAL (PORTALED) */}
       {typeof document !== 'undefined' && createPortal(

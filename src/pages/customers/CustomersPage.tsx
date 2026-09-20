@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Plus, X, Building2, Phone, Briefcase, FileText, Trash2, UserSquare2, AlertCircle, Edit3, ImagePlus, Loader2, CheckCircle2, Camera } from "lucide-react";
+import { Search, Plus, X, Building2, Phone, Briefcase, FileText, Trash2, UserSquare2, AlertCircle, Edit3, ImagePlus, Loader2, CheckCircle2, ArrowLeft, Calendar } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { useDataStore } from "../../store/dataStore";
 import { supabase } from "../../supabase";
@@ -54,10 +54,12 @@ export default function CustomersPage() {
   const [modalTab, setModalTab] = useState<"profile" | "projects" | "finance">("profile");
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   
+  // NEW: State for nested project view inside the modal
+  const [expandedProject, setExpandedProject] = useState<any>(null);
+  
   const [saveStatus, setSaveStatus] = useState<"idle" | "compressing" | "uploading" | "saving">("idle");
   const [isSuccess, setIsSuccess] = useState(false);
 
-  // Image Upload State
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -75,7 +77,6 @@ export default function CustomersPage() {
     address: ""
   });
 
-  // Track Unsaved Changes for Smart Footer
   const hasUnsavedChanges = 
     formData.name.trim() !== (selectedCustomer?.name || "").trim() ||
     formData.contact_person.trim() !== (selectedCustomer?.contact_person || "").trim() ||
@@ -102,6 +103,7 @@ export default function CustomersPage() {
       name: "", contact_person: "", email: "", phone: "", address: "" 
     });
     setImageFile(null); setImagePreview(null); setRemoveImage(false); setShowPhotoMenu(false);
+    setExpandedProject(null);
     setModalTab("profile");
     setIsModalOpen(true);
   };
@@ -117,6 +119,7 @@ export default function CustomersPage() {
       address: customer.address || ""
     });
     setImageFile(null); setImagePreview(customer.profile_image_url || null); setRemoveImage(false); setShowPhotoMenu(false);
+    setExpandedProject(null);
     setModalTab("profile");
     setIsModalOpen(true);
   };
@@ -137,7 +140,6 @@ export default function CustomersPage() {
     setShowPhotoMenu(false);
   };
 
-  // --- GARBAGE COLLECTION UTILITY ---
   const deleteOldAvatar = async (url: string | null) => {
     if (!url) return;
     try {
@@ -201,7 +203,6 @@ export default function CustomersPage() {
       
       await fetchAllData();
       
-      // Reset image states so dirty state disappears
       setImageFile(null);
       setRemoveImage(false);
       
@@ -209,7 +210,7 @@ export default function CustomersPage() {
       setIsSuccess(true); 
       setTimeout(() => setIsSuccess(false), 3000);
       
-      if (!selectedCustomer) setIsModalOpen(false); // Close modal if it was a new creation
+      if (!selectedCustomer) setIsModalOpen(false); 
 
     } catch (error: any) { 
       alert(error.message); 
@@ -251,12 +252,10 @@ export default function CustomersPage() {
     <>
       <div className="max-w-[1200px] mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-700 pb-8 relative z-0">
         
-        {/* Minimal Dotted Background Pattern */}
         <div className="absolute inset-0 pointer-events-none z-[-1] overflow-hidden print:hidden">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMTQ4LCAxNjMsIDE4NCwgMC4wOCkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
         </div>
 
-        {/* HEADER */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6">
           <div>
             <p className="text-[9px] sm:text-[11px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-1.5 sm:mb-2 bg-blue-50 inline-block px-3 py-1 rounded-full">Client Management</p>
@@ -269,14 +268,11 @@ export default function CustomersPage() {
           )}
         </div>
 
-        {/* SEARCH BAR AND COMPANY FILTER */}
         <div className="bg-white p-2 rounded-xl sm:rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-slate-400" />
             <input type="text" placeholder="Search clients..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full h-10 sm:h-11 pl-9 sm:pl-11 pr-4 rounded-lg sm:rounded-xl border-none text-[13px] sm:text-sm font-medium outline-none bg-transparent focus:ring-0 placeholder:text-slate-400" />
           </div>
-
-          {/* Master Admin Company Filter Dropdown */}
           {role === 'admin' && !activeWorkspace && (
             <div className="sm:w-64 shrink-0 border-t sm:border-t-0 sm:border-l border-slate-100 pt-2 sm:pt-0 sm:pl-2">
               <select
@@ -292,7 +288,6 @@ export default function CustomersPage() {
           )}
         </div>
 
-        {/* CLIENT GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
           {visibleCustomers.length === 0 ? (
             <div className="col-span-full h-48 sm:h-64 border border-slate-200 border-dashed rounded-2xl sm:rounded-3xl flex flex-col items-center justify-center text-slate-400 bg-slate-50/50">
@@ -306,9 +301,7 @@ export default function CustomersPage() {
               
               return (
                 <motion.div key={client.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={() => openCustomerDossier(client)} className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all flex flex-col relative overflow-hidden group cursor-pointer">
-                  
-                  {/* Status Badge */}
-                  {financials.totalPending > 0 && (
+                  {role === 'admin' && financials.totalPending > 0 && (
                     <div className="absolute top-3 right-3 sm:top-5 sm:right-5 z-10">
                       <span className="bg-amber-50 text-amber-600 border border-amber-100 text-[8px] sm:text-[9px] font-bold uppercase tracking-widest px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg flex items-center gap-1 shadow-sm">
                         <AlertCircle className="h-2 w-2 sm:h-3 sm:w-3"/> Due
@@ -316,7 +309,6 @@ export default function CustomersPage() {
                     </div>
                   )}
 
-                  {/* Horizontal Layout on Mobile, Vertical on Desktop */}
                   <div className="p-4 sm:p-6 pb-4 sm:pb-5 border-b border-slate-50 flex flex-row sm:flex-col items-center sm:items-start text-left relative">
                     <div className="h-12 w-12 sm:h-16 sm:w-16 shrink-0 mr-3 sm:mr-0 sm:mb-4 rounded-[1rem] sm:rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 shadow-sm overflow-hidden group-hover:scale-105 transition-transform">
                        {client.profile_image_url ? (
@@ -343,19 +335,19 @@ export default function CustomersPage() {
                        <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Projects</p>
                        <p className="text-[12px] sm:text-sm font-bold text-slate-800 flex items-center gap-1 sm:gap-1.5"><Briefcase className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-500" /> {clientProjects}</p>
                      </div>
-                     <div className="text-right">
-                       <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Total Billed</p>
-                       <p className="text-[14px] sm:text-lg font-black text-emerald-600 tracking-tight">₹{financials.totalBilled.toLocaleString()}</p>
-                     </div>
+                     {role === 'admin' && (
+                       <div className="text-right">
+                         <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Total Billed</p>
+                         <p className="text-[14px] sm:text-lg font-black text-emerald-600 tracking-tight">₹{financials.totalBilled.toLocaleString()}</p>
+                       </div>
+                     )}
                   </div>
-
                 </motion.div>
               )
             })
           )}
         </div>
 
-        {/* --- CLIENT PROFILE MODAL (FIXED NATIVE OS SIZE + VERTICALLY CENTERED TABS) --- */}
         <AnimatePresence>
           {isModalOpen && (
             <motion.div 
@@ -370,7 +362,6 @@ export default function CustomersPage() {
                 animate={{ opacity: 1, y: 0, scale: 1 }} 
                 exit={{ opacity: 0, y: 40, scale: 0.95 }} 
                 onClick={(e) => e.stopPropagation()}
-                // 1. LOCKED THE HEIGHT TO AVOID LAYOUT SHIFTS
                 className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-4xl h-full sm:h-[700px] sm:max-h-[85svh] flex flex-col overflow-hidden border border-slate-100 mt-auto sm:mt-0"
               >
                 
@@ -384,47 +375,34 @@ export default function CustomersPage() {
                   </div>
                   
                   <div className="flex gap-4 sm:gap-8 overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                    {/* FIXED: Added outline-none to remove browser focus ring */}
-                    <button onClick={() => setModalTab('profile')} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${modalTab === 'profile' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>1. Profile & Details</button>
-                    <button onClick={() => setModalTab('projects')} disabled={!selectedCustomer} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'projects' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>2. Project History</button>
-                    <button onClick={() => setModalTab('finance')} disabled={!selectedCustomer} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'finance' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>3. Billing & Payouts</button>
+                    <button onClick={() => { setModalTab('profile'); setExpandedProject(null); }} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${modalTab === 'profile' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>1. Profile & Details</button>
+                    <button onClick={() => { setModalTab('projects'); setExpandedProject(null); }} disabled={!selectedCustomer} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'projects' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>2. Project History</button>
+                    {role === 'admin' && (
+                      <button onClick={() => { setModalTab('finance'); setExpandedProject(null); }} disabled={!selectedCustomer} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'finance' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>3. Billing & Payouts</button>
+                    )}
                   </div>
                 </div>
 
-                {/* CONTENT WRAPPER */}
                 <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 bg-white flex flex-col max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
                   
-                  {/* TAB 1: PROFILE & DETAILS */}
+                  {/* TAB 1: PROFILE */}
                   {modalTab === 'profile' && (
                     <div className="flex-1 flex flex-col justify-center w-full max-w-3xl mx-auto">
                       <div className="space-y-5 sm:space-y-6 flex flex-col md:flex-row gap-6 sm:gap-8">
-                        
-                        {/* Avatar Upload Column */}
                         <div className="shrink-0 flex flex-col items-center">
                           <div className="relative mb-2">
                             <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" />
                             <div className="h-24 w-24 sm:h-32 sm:w-32 rounded-[1.5rem] bg-slate-50 border-[3px] border-white shadow-md flex items-center justify-center text-slate-300 overflow-hidden relative ring-4 ring-slate-50">
                               {displayImage ? <img src={displayImage} alt="Client" className="h-full w-full object-cover" /> : <Building2 className="h-10 w-10 sm:h-12 sm:w-12 opacity-50" />}
                             </div>
-                            
-                            <button 
-                              onClick={() => setShowPhotoMenu(!showPhotoMenu)} 
-                              className="absolute -bottom-2 -right-2 h-8 w-8 sm:h-10 sm:w-10 bg-blue-600 border-2 border-white rounded-full flex items-center justify-center text-white hover:bg-blue-700 shadow-md transition-all active:scale-95 z-10"
-                            >
+                            <button onClick={() => setShowPhotoMenu(!showPhotoMenu)} className="absolute -bottom-2 -right-2 h-8 w-8 sm:h-10 sm:w-10 bg-blue-600 border-2 border-white rounded-full flex items-center justify-center text-white hover:bg-blue-700 shadow-md transition-all active:scale-95 z-10">
                               <Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </button>
-
                             <AnimatePresence>
                               {showPhotoMenu && (
                                 <>
                                   <div className="fixed inset-0 z-[10]" onClick={() => setShowPhotoMenu(false)}></div>
-                                  <motion.div 
-                                    initial={{ opacity: 0, y: 5, scale: 0.95 }} 
-                                    animate={{ opacity: 1, y: 0, scale: 1 }} 
-                                    exit={{ opacity: 0, y: 5, scale: 0.95 }} 
-                                    transition={{ duration: 0.15 }}
-                                    className="absolute top-full mt-3 left-1/2 -translate-x-1/2 w-44 sm:w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-[20] py-1"
-                                  >
+                                  <motion.div initial={{ opacity: 0, y: 5, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 5, scale: 0.95 }} transition={{ duration: 0.15 }} className="absolute top-full mt-3 left-1/2 -translate-x-1/2 w-44 sm:w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-[20] py-1">
                                     <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center gap-2 px-4 py-2.5 sm:py-3 text-[12px] sm:text-sm font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
                                       <ImagePlus className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Upload Image
                                     </button>
@@ -440,7 +418,6 @@ export default function CustomersPage() {
                           </div>
                         </div>
 
-                        {/* Main Form Fields */}
                         <div className="flex-1 space-y-5 sm:space-y-6">
                           {role === 'admin' && !activeWorkspace && (
                             <div className="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100">
@@ -451,7 +428,6 @@ export default function CustomersPage() {
                               </select>
                             </div>
                           )}
-
                           <div className="bg-slate-50 border border-slate-100 rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-4 sm:space-y-5">
                             <h4 className="text-[12px] sm:text-sm font-bold text-slate-800 uppercase tracking-widest border-b border-slate-200 pb-2 sm:pb-3 mb-3 sm:mb-4 flex items-center gap-2"><Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400"/> Company Details</h4>
                             <div>
@@ -478,7 +454,6 @@ export default function CustomersPage() {
                             </div>
                           </div>
                         </div>
-
                       </div>
                     </div>
                   )}
@@ -486,39 +461,134 @@ export default function CustomersPage() {
                   {/* TAB 2: PROJECTS HISTORY */}
                   {modalTab === 'projects' && selectedCustomer && (
                     <div className="flex-1 flex flex-col space-y-5 sm:space-y-6 py-2">
-                      {/* FIXED: Removed redundant heading, removed vertical centering from wrapper */}
-                      {projects.filter(p => p.customer_id === selectedCustomer.id).length === 0 ? (
-                        <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-10">No projects linked to this client yet.</p>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                          {projects.filter(p => p.customer_id === selectedCustomer.id).map(proj => (
-                            <div key={proj.id} className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-4 sm:p-5 hover:bg-blue-50/50 transition-colors cursor-default">
-                               <div className="flex justify-between items-start mb-2 sm:mb-3">
-                                 <p className="font-bold text-slate-900 text-[13px] sm:text-[15px] pr-2">{proj.name}</p>
-                                 <span className={`px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-bold uppercase tracking-widest shrink-0 ${proj.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{proj.status}</span>
-                               </div>
-                               <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed mb-3 sm:mb-4">{proj.description || 'No description provided.'}</p>
-                               <div className="flex justify-between items-end border-t border-slate-200 pt-2.5 sm:pt-3">
-                                 <div>
-                                   <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Expected Value</p>
-                                   <p className="text-[12px] sm:text-sm font-black text-slate-800">₹{(proj.expected_amount || 0).toLocaleString()}</p>
-                                 </div>
-                                 <div className="text-right">
-                                   <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Due Date</p>
-                                   <p className="text-[11px] sm:text-xs font-bold text-slate-600">{proj.due_date ? new Date(proj.due_date).toLocaleDateString() : 'Unscheduled'}</p>
-                                 </div>
-                               </div>
+                      
+                      {/* SUB-VIEW: EXPANDED PROJECT DETAILS */}
+                      {expandedProject ? (
+                        <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                          <button onClick={() => setExpandedProject(null)} className="text-[12px] font-bold text-slate-500 hover:text-blue-600 flex items-center transition-colors">
+                            <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Project List
+                          </button>
+                          
+                          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 shadow-sm">
+                            <div className="flex justify-between items-start mb-4">
+                              <div>
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${expandedProject.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{expandedProject.status}</span>
+                                <h2 className="text-xl font-bold text-slate-900 mt-2">{expandedProject.name}</h2>
+                              </div>
                             </div>
-                          ))}
+                            
+                            <p className="text-sm text-slate-600 leading-relaxed mb-6 whitespace-pre-wrap">{expandedProject.description || 'No detailed description available.'}</p>
+                            
+                            <div className="flex items-center gap-6 border-t border-slate-200 pt-4">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-slate-400" />
+                                <div>
+                                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Start Date</p>
+                                  <p className="text-sm font-bold text-slate-700">{expandedProject.start_date ? new Date(expandedProject.start_date).toLocaleDateString() : 'N/A'}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 border-l border-slate-200 pl-6">
+                                <AlertCircle className="h-4 w-4 text-amber-500" />
+                                <div>
+                                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Due Date</p>
+                                  <p className="text-sm font-bold text-slate-700">{expandedProject.due_date ? new Date(expandedProject.due_date).toLocaleDateString() : 'N/A'}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Nested Financials for this Specific Project (Admin Only) */}
+                          {role === 'admin' && (() => {
+                            const pInvs = invoices.filter(i => i.project_id === expandedProject.id);
+                            const pBilled = pInvs.reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
+                            const pPaid = pInvs.reduce((sum, inv) => sum + parseFloat(inv.amount_paid || 0), 0);
+                            const pExpected = parseFloat(expandedProject.expected_amount || 0);
+
+                            return (
+                              <div className="space-y-4">
+                                <h4 className="text-[12px] font-bold text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-2">Project Financials</h4>
+                                <div className="grid grid-cols-3 gap-4">
+                                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Expected Revenue</p>
+                                    <p className="text-lg font-black text-slate-700">₹{pExpected.toLocaleString()}</p>
+                                  </div>
+                                  <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+                                    <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mb-1">Total Billed</p>
+                                    <p className="text-lg font-black text-emerald-700">₹{pBilled.toLocaleString()}</p>
+                                  </div>
+                                  <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                    <p className="text-[9px] font-bold text-blue-600 uppercase tracking-widest mb-1">Total Paid</p>
+                                    <p className="text-lg font-black text-blue-700">₹{pPaid.toLocaleString()}</p>
+                                  </div>
+                                </div>
+
+                                {/* Project-Specific Invoices List */}
+                                <div className="mt-4">
+                                  {pInvs.length === 0 ? (
+                                    <p className="text-xs italic text-slate-400 bg-slate-50 p-4 rounded-xl text-center">No invoices linked directly to this project.</p>
+                                  ) : (
+                                    <div className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm">
+                                      <div className="grid grid-cols-12 gap-4 bg-slate-50 px-4 py-3 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                        <div className="col-span-4">Invoice No.</div>
+                                        <div className="col-span-4">Status</div>
+                                        <div className="col-span-4 text-right">Amount (₹)</div>
+                                      </div>
+                                      <div className="divide-y divide-slate-50">
+                                        {pInvs.map(inv => (
+                                          <div key={inv.id} className="grid grid-cols-12 gap-4 items-center px-4 py-3 text-sm">
+                                            <div className="col-span-4 font-bold text-slate-900">{inv.invoice_number}</div>
+                                            <div className="col-span-4">
+                                              <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest ${inv.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{inv.status}</span>
+                                            </div>
+                                            <div className="col-span-4 text-right font-black text-slate-700">₹{parseFloat(inv.total_amount || 0).toLocaleString()}</div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })()}
                         </div>
+                      ) : (
+                        /* STANDARD PROJECTS LIST GRID */
+                        projects.filter(p => p.customer_id === selectedCustomer.id).length === 0 ? (
+                          <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-10">No projects linked to this client yet.</p>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                            {projects.filter(p => p.customer_id === selectedCustomer.id).map(proj => (
+                              <div key={proj.id} onClick={() => setExpandedProject(proj)} className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-4 sm:p-5 hover:bg-blue-50/50 hover:border-blue-200 transition-all cursor-pointer flex flex-col group">
+                                 <div className="flex justify-between items-start mb-2 sm:mb-3">
+                                   <p className="font-bold text-slate-900 text-[13px] sm:text-[15px] pr-2 group-hover:text-blue-700 transition-colors">{proj.name}</p>
+                                   <span className={`px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-bold uppercase tracking-widest shrink-0 ${proj.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{proj.status}</span>
+                                 </div>
+                                 <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed mb-3 sm:mb-4 flex-1">{proj.description || 'No description provided.'}</p>
+                                 
+                                 <div className="flex justify-between items-end border-t border-slate-200 pt-2.5 sm:pt-3">
+                                   {role === 'admin' ? (
+                                     <div>
+                                       <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Expected Value</p>
+                                       <p className="text-[12px] sm:text-sm font-black text-slate-800">₹{(proj.expected_amount || 0).toLocaleString()}</p>
+                                     </div>
+                                   ) : <div></div>}
+                                   
+                                   <div className="text-right">
+                                     <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Due Date</p>
+                                     <p className="text-[11px] sm:text-xs font-bold text-slate-600">{proj.due_date ? new Date(proj.due_date).toLocaleDateString() : 'Unscheduled'}</p>
+                                   </div>
+                                 </div>
+                              </div>
+                            ))}
+                          </div>
+                        )
                       )}
                     </div>
                   )}
 
-                  {/* TAB 3: BILLING & PAYMENTS */}
-                  {modalTab === 'finance' && selectedCustomer && (
+                  {/* TAB 3: BILLING & PAYMENTS (ADMIN ONLY) */}
+                  {modalTab === 'finance' && selectedCustomer && role === 'admin' && (
                     <div className="flex-1 flex flex-col space-y-6 sm:space-y-8 py-2">
-                      {/* FIXED: Removed vertical centering from wrapper so content aligns top */}
                       {(() => {
                         const financials = getClientFinancials(selectedCustomer.id);
                         return (
@@ -587,8 +657,6 @@ export default function CustomersPage() {
                 </div>
 
                 <div className="border-t border-slate-100 bg-[#FAFCFF] flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-4 shrink-0 rounded-b-[2rem] sm:rounded-b-[2.5rem]">
-                  
-                  {/* Delete Button (Only shows if editing an existing profile on the profile tab) */}
                   {selectedCustomer && (role === 'admin' || role === 'head') && modalTab === 'profile' ? (
                     <div className="p-4 sm:p-6 w-full sm:w-auto">
                       <button onClick={handleDeleteCustomer} disabled={saveStatus !== "idle"} className="w-full sm:w-auto border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 rounded-xl h-10 sm:h-12 px-3 sm:px-5 flex items-center justify-center shadow-sm transition-colors shrink-0">
@@ -597,7 +665,6 @@ export default function CustomersPage() {
                     </div>
                   ) : <div className="hidden sm:block p-4 sm:p-6"></div>}
                   
-                  {/* Smart Save Bar (Only shows when changes exist) */}
                   <div className="w-full sm:w-auto flex-1 flex justify-end">
                     <AnimatePresence>
                       {hasUnsavedChanges && modalTab === 'profile' && (
@@ -624,7 +691,6 @@ export default function CustomersPage() {
                       )}
                     </AnimatePresence>
                     
-                    {/* Success Message */}
                     <AnimatePresence>
                       {isSuccess && !hasUnsavedChanges && modalTab === 'profile' && (
                         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="p-4 sm:p-6 flex items-center">
