@@ -52,7 +52,7 @@ export default function AppLayout() {
     setIsMobileDrawerOpen(false);
   }, [location.pathname]);
 
-  // --- DYNAMIC NAVIGATION LABELS ---
+  // --- DYNAMIC NAVIGATION LABELS (DESKTOP) ---
   const allNavLinks = [
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", allowedRoles: ['admin', 'head', 'user'] },
     { path: "/projects", icon: Briefcase, label: isAcademy ? "Courses" : "Projects", allowedRoles: ['admin', 'head', 'user'] },
@@ -64,9 +64,6 @@ export default function AppLayout() {
   ];
   
   const visibleLinks = allNavLinks.filter(link => link.allowedRoles.includes(role || 'user'));
-  
-  // For eCommerce-style Mobile Bottom Dock (Max 4 main links + Menu)
-  const primaryMobileLinks = visibleLinks.slice(0, 4); 
 
   const allowedContacts = employees.filter(emp => {
     if (emp.id == employeeId) return false; 
@@ -215,7 +212,7 @@ export default function AppLayout() {
   return (
     <div className="flex h-[100dvh] w-full bg-[#F8F9FC] text-slate-800 overflow-hidden font-sans sm:p-4 lg:p-6 selection:bg-blue-900 selection:text-white relative print:p-0 print:bg-white print:block print:h-auto">
       
-      {/* --- DESKTOP SIDEBAR (UNCHANGED) --- */}
+      {/* --- DESKTOP SIDEBAR --- */}
       <AnimatePresence mode="wait">
         {isSidebarOpen && (
           <motion.aside initial={{ width: 0, opacity: 0 }} animate={{ width: 280, opacity: 1 }} exit={{ width: 0, opacity: 0 }} transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }} 
@@ -278,7 +275,7 @@ export default function AppLayout() {
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMTQ4LCAxNjMsIDE4NCwgMC4wOCkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
         </div>
 
-        {/* --- DESKTOP HEADER (UNCHANGED) --- */}
+        {/* --- DESKTOP HEADER --- */}
         <header className="absolute top-6 left-0 right-0 hidden sm:flex items-start justify-between px-6 lg:px-10 z-20 pointer-events-none print:hidden">
           <div className="pointer-events-auto">
             {!isSidebarOpen && (
@@ -315,31 +312,38 @@ export default function AppLayout() {
               <span className="font-black text-slate-900 text-[15px] tracking-tight truncate">{brandName}</span>
            </div>
            
-           {/* Right: Global Chat */}
-           <div className="flex items-center gap-3 shrink-0">
-              <button onClick={() => setIsChatOpen(true)} className="relative text-slate-400 hover:text-blue-600 transition-colors">
-                <MessageSquare className="h-[22px] w-[22px]" />
-                {totalUnread > 0 && <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 border-2 border-white bg-rose-500 rounded-full"></span>}
+           {/* Right: Hamburger + Exit */}
+           <div className="flex items-center gap-1 shrink-0">
+              {activeWorkspace && role === 'admin' && (
+                 <button onClick={handleExitWorkspace} className="p-2 text-rose-500 hover:bg-rose-50 rounded-full transition-colors"><ArrowLeft className="h-5 w-5"/></button>
+              )}
+              <button onClick={() => setIsMobileDrawerOpen(true)} className="p-2 text-slate-400 hover:text-blue-900 transition-colors">
+                 <Menu className="h-6 w-6" />
               </button>
            </div>
         </div>
 
-        {/* --- ECOMMERCE MOBILE BOTTOM NAV DOCK --- */}
-        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 z-40 pb-[env(safe-area-inset-bottom)] print:hidden flex justify-around items-center h-[68px] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-2">
-           {primaryMobileLinks.map(link => (
-             <NavLink key={link.path} to={link.path} className={({isActive}) => `flex flex-col items-center justify-center w-full h-full space-y-1 rounded-xl transition-all ${isActive ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>
-               {({ isActive }) => (
-                 <>
-                   <link.icon className={`h-[22px] w-[22px] transition-colors ${isActive ? 'fill-blue-600/10' : ''}`} />
-                   <span className="text-[9px] font-bold tracking-wide">{link.label}</span>
-                 </>
-               )}
-             </NavLink>
-           ))}
-           {/* 5th Button: Menu Drawer Trigger */}
-           <button onClick={() => setIsMobileDrawerOpen(true)} className="flex flex-col items-center justify-center w-full h-full space-y-1 text-slate-400 hover:text-slate-600 transition-colors rounded-xl">
-             <Menu className="h-[22px] w-[22px]" />
-             <span className="text-[9px] font-bold tracking-wide">Menu</span>
+        {/* --- CONSTANT ECOMMERCE MOBILE BOTTOM NAV DOCK --- */}
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 z-40 pb-[env(safe-area-inset-bottom)] print:hidden flex justify-around items-center h-[68px] px-2 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+           <NavLink to="/dashboard" className={({isActive}) => `flex flex-col items-center justify-center w-full h-full space-y-1 rounded-xl transition-all ${isActive ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>
+               <LayoutDashboard className="h-[22px] w-[22px]" />
+               <span className="text-[10px] font-bold tracking-wide">Home</span>
+           </NavLink>
+           
+           <button onClick={() => setIsChatOpen(true)} className="relative flex flex-col items-center justify-center w-full h-full space-y-1 text-slate-400 hover:text-blue-600 transition-colors rounded-xl">
+             <MessageSquare className="h-[22px] w-[22px]" />
+             {totalUnread > 0 && <span className="absolute top-2.5 right-[30%] h-2.5 w-2.5 border-2 border-white bg-rose-500 rounded-full"></span>}
+             <span className="text-[10px] font-bold tracking-wide">Messages</span>
+           </button>
+
+           <NavLink to="/settings" className={({isActive}) => `flex flex-col items-center justify-center w-full h-full space-y-1 rounded-xl transition-all ${isActive ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>
+               <Settings className="h-[22px] w-[22px]" />
+               <span className="text-[10px] font-bold tracking-wide">Settings</span>
+           </NavLink>
+
+           <button onClick={handleSignOut} className="flex flex-col items-center justify-center w-full h-full space-y-1 text-slate-400 hover:text-rose-600 transition-colors rounded-xl">
+             <LogOut className="h-[22px] w-[22px]" />
+             <span className="text-[10px] font-bold tracking-wide">Logout</span>
            </button>
         </div>
 
@@ -363,34 +367,14 @@ export default function AppLayout() {
                      </div>
                      <p className="text-lg font-black text-slate-900 leading-tight">{displayName}</p>
                      <p className="text-[11px] font-bold text-blue-600 uppercase tracking-widest mt-1">{role || 'Operator'}</p>
-                     
-                     {activeWorkspace && role === 'admin' && (
-                        <div className="mt-4 pt-4 border-t border-slate-200 flex flex-col gap-2">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Workspace:</span>
-                          <span className="text-[13px] font-bold text-slate-800">{activeCompany?.name}</span>
-                          <button onClick={handleExitWorkspace} className="mt-2 text-[11px] font-bold text-rose-500 border border-rose-200 rounded-lg py-2 flex items-center justify-center gap-2 hover:bg-rose-50"><ArrowLeft className="h-3.5 w-3.5"/> Return to Global Admin</button>
-                        </div>
-                     )}
                   </div>
 
-                  <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1">
-                    {/* Only show links that are NOT in the bottom dock */}
-                    {visibleLinks.slice(4).map((link) => (
-                      <NavLink key={link.path} to={link.path} onClick={() => setIsMobileDrawerOpen(false)} className={({ isActive }) => `flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all text-[15px] font-bold ${isActive ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}>
-                        {({ isActive }) => (
-                          <>
-                            <link.icon className={`h-5 w-5 transition-colors ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
-                            {link.label}
-                          </>
-                        )}
-                      </NavLink>
-                    ))}
-                  </nav>
-
-                  <div className="p-4 border-t border-slate-100 bg-[#FAFCFF] shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
-                     <button onClick={handleSignOut} className="w-full py-3.5 rounded-xl bg-white border border-slate-200 text-[14px] font-bold text-rose-600 flex items-center justify-center gap-2 shadow-sm">
-                        <LogOut className="h-4 w-4" /> Sign Out Session
-                     </button>
+                  <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2">Account Options</p>
+                     <nav className="space-y-1">
+                        <NavLink to="/dashboard" onClick={() => setIsMobileDrawerOpen(false)} className="flex items-center gap-4 px-4 py-3.5 rounded-xl text-[15px] font-bold text-slate-600 hover:bg-slate-50"><LayoutDashboard className="h-5 w-5 text-slate-400" /> Dashboard</NavLink>
+                        <NavLink to="/settings" onClick={() => setIsMobileDrawerOpen(false)} className="flex items-center gap-4 px-4 py-3.5 rounded-xl text-[15px] font-bold text-slate-600 hover:bg-slate-50"><Settings className="h-5 w-5 text-slate-400" /> Settings</NavLink>
+                     </nav>
                   </div>
                 </motion.div>
               </>
@@ -398,7 +382,7 @@ export default function AppLayout() {
         </AnimatePresence>
 
         <main className={`flex-1 overflow-y-auto transition-all duration-300 relative z-10 print:p-0 print:pt-0 print:overflow-visible
-           max-sm:px-4 max-sm:pt-[76px] max-sm:pb-24
+           max-sm:px-4 max-sm:pt-[76px] max-sm:pb-[90px]
            sm:pt-10 sm:pb-10
            ${!isSidebarOpen ? 'sm:pl-20 lg:pl-28' : 'sm:pl-6 lg:pl-10'} 
            ${activeWorkspace && role === 'admin' ? 'sm:pr-6 lg:pr-64' : 'sm:pr-6 lg:pr-10'}
