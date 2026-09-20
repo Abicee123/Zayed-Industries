@@ -68,8 +68,9 @@ export default function CustomersPage() {
   const currentCompanyId = role === 'admin' ? (activeWorkspace || "") : companyId;
   const currentCompany = companies.find((c: any) => c.id?.toString() === currentCompanyId?.toString());
   
-  // --- DYNAMIC FINANCE ACCESS CHECK ---
+  // --- DYNAMIC ACCESS & TERMINOLOGY CHECKS ---
   const canViewFinance = role === 'admin' || (role === 'head' && currentCompany?.allow_head_finance !== false);
+  const isAcademy = currentCompany?.business_type === 'academy' || currentCompany?.business_type?.includes('education');
 
   const [formData, setFormData] = useState({
     company_id: currentCompanyId?.toString() || "", 
@@ -153,7 +154,7 @@ export default function CustomersPage() {
   };
 
   const handleSaveCustomer = async () => {
-    if (!formData.name.trim()) return alert("Company/Client Name is required.");
+    if (!formData.name.trim()) return alert(isAcademy ? "Student Name is required." : "Company/Client Name is required.");
     if (role === 'admin' && !activeWorkspace && !formData.company_id) return alert("Please select a network subsidiary.");
 
     setSaveStatus("saving");
@@ -233,18 +234,14 @@ export default function CustomersPage() {
       await fetchAllData();
       setIsModalOpen(false);
     } catch (error: any) { 
-      alert(`Error deleting client: ${error.message}`); 
+      alert(isAcademy ? `Error deleting student: ${error.message}` : `Error deleting client: ${error.message}`); 
     } finally { 
       setSaveStatus("idle"); 
     }
   };
 
-  // --- REDIRECT HANDLER ---
   const handleProjectClick = (projectId: number) => {
-    setIsModalOpen(false); // Close the customer modal
-    
-    // REDIRECT TO PROJECTS PAGE
-    // We pass the projectId in the state so the target page knows which project to automatically open.
+    setIsModalOpen(false);
     navigate('/projects', { state: { openProjectId: projectId } });
   };
 
@@ -268,12 +265,12 @@ export default function CustomersPage() {
 
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6">
           <div>
-            <p className="text-[9px] sm:text-[11px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-1.5 sm:mb-2 bg-blue-50 inline-block px-3 py-1 rounded-full">Client Management</p>
-            <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-slate-900 mt-1 sm:mt-2">Customers.</h1>
+            <p className="text-[9px] sm:text-[11px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-1.5 sm:mb-2 bg-blue-50 inline-block px-3 py-1 rounded-full">{isAcademy ? 'Student Management' : 'Client Management'}</p>
+            <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-slate-900 mt-1 sm:mt-2">{isAcademy ? 'Students.' : 'Customers.'}</h1>
           </div>
           {(role === 'admin' || role === 'head') && (
             <button onClick={openNewCustomer} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white shadow-lg shadow-blue-900/20 hover:shadow-xl hover:-translate-y-0.5 px-4 sm:px-6 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-[13px] font-bold transition-all flex items-center shrink-0">
-              <Plus className="h-4 w-4 mr-1.5 sm:mr-2" /> Add Client
+              <Plus className="h-4 w-4 mr-1.5 sm:mr-2" /> {isAcademy ? 'Add Student' : 'Add Client'}
             </button>
           )}
         </div>
@@ -281,7 +278,7 @@ export default function CustomersPage() {
         <div className="bg-white p-2 rounded-xl sm:rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-slate-400" />
-            <input type="text" placeholder="Search clients..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full h-10 sm:h-11 pl-9 sm:pl-11 pr-4 rounded-lg sm:rounded-xl border-none text-[13px] sm:text-sm font-medium outline-none bg-transparent focus:ring-0 placeholder:text-slate-400" />
+            <input type="text" placeholder={isAcademy ? "Search students..." : "Search clients..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full h-10 sm:h-11 pl-9 sm:pl-11 pr-4 rounded-lg sm:rounded-xl border-none text-[13px] sm:text-sm font-medium outline-none bg-transparent focus:ring-0 placeholder:text-slate-400" />
           </div>
           {role === 'admin' && !activeWorkspace && (
             <div className="sm:w-64 shrink-0 border-t sm:border-t-0 sm:border-l border-slate-100 pt-2 sm:pt-0 sm:pl-2">
@@ -302,7 +299,7 @@ export default function CustomersPage() {
           {visibleCustomers.length === 0 ? (
             <div className="col-span-full h-48 sm:h-64 border border-slate-200 border-dashed rounded-2xl sm:rounded-3xl flex flex-col items-center justify-center text-slate-400 bg-slate-50/50">
               <UserSquare2 className="h-8 w-8 sm:h-10 sm:w-10 mb-2 sm:mb-3 text-slate-300" />
-              <p className="text-[11px] sm:text-sm font-bold uppercase tracking-wider">No Clients Found</p>
+              <p className="text-[11px] sm:text-sm font-bold uppercase tracking-wider">{isAcademy ? 'No Students Found' : 'No Clients Found'}</p>
             </div>
           ) : (
             visibleCustomers.map(client => {
@@ -342,7 +339,7 @@ export default function CustomersPage() {
 
                   <div className="bg-[#FAFCFF] p-3 sm:p-5 flex items-center justify-between mt-auto">
                      <div>
-                       <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Projects</p>
+                       <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{isAcademy ? 'Courses' : 'Projects'}</p>
                        <p className="text-[12px] sm:text-sm font-bold text-slate-800 flex items-center gap-1 sm:gap-1.5"><Briefcase className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-500" /> {clientProjects}</p>
                      </div>
                      {canViewFinance && (
@@ -378,15 +375,15 @@ export default function CustomersPage() {
                 <div className="px-5 sm:px-8 pt-5 sm:pt-7 border-b border-slate-100 bg-[#FAFCFF] shrink-0">
                   <div className="flex items-center justify-between mb-4 sm:mb-5">
                     <div className="pr-4">
-                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-2 sm:px-2.5 py-1 rounded-full">Client Profile</span>
-                      <h3 className="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight mt-1.5 truncate">{selectedCustomer ? selectedCustomer.name : 'Register New Client'}</h3>
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-2 sm:px-2.5 py-1 rounded-full">{isAcademy ? 'Student Profile' : 'Client Profile'}</span>
+                      <h3 className="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight mt-1.5 truncate">{selectedCustomer ? selectedCustomer.name : (isAcademy ? 'Register New Student' : 'Register New Client')}</h3>
                     </div>
                     <button onClick={() => setIsModalOpen(false)} className="h-8 w-8 sm:h-9 sm:w-9 bg-white border border-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 shadow-sm transition-colors shrink-0"><X className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
                   </div>
                   
                   <div className="flex gap-4 sm:gap-8 overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     <button onClick={() => setModalTab('profile')} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${modalTab === 'profile' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>1. Profile & Details</button>
-                    <button onClick={() => setModalTab('projects')} disabled={!selectedCustomer} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'projects' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>2. Project History</button>
+                    <button onClick={() => setModalTab('projects')} disabled={!selectedCustomer} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'projects' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>2. {isAcademy ? 'Course History' : 'Project History'}</button>
                     {canViewFinance && (
                       <button onClick={() => setModalTab('finance')} disabled={!selectedCustomer} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'finance' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>3. Billing & Payouts</button>
                     )}
@@ -439,9 +436,9 @@ export default function CustomersPage() {
                             </div>
                           )}
                           <div className="bg-slate-50 border border-slate-100 rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-4 sm:space-y-5">
-                            <h4 className="text-[12px] sm:text-sm font-bold text-slate-800 uppercase tracking-widest border-b border-slate-200 pb-2 sm:pb-3 mb-3 sm:mb-4 flex items-center gap-2"><Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400"/> Company Details</h4>
+                            <h4 className="text-[12px] sm:text-sm font-bold text-slate-800 uppercase tracking-widest border-b border-slate-200 pb-2 sm:pb-3 mb-3 sm:mb-4 flex items-center gap-2"><Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400"/> {isAcademy ? 'Student Details' : 'Company Details'}</h4>
                             <div>
-                              <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Company / Entity Name *</label>
+                              <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">{isAcademy ? 'Student Name *' : 'Company / Entity Name *'}</label>
                               <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-bold outline-none focus:border-blue-500 shadow-sm" />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
@@ -451,15 +448,15 @@ export default function CustomersPage() {
                               </div>
                               <div>
                                 <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Contact Email</label>
-                                <input type="email" placeholder="contact@company.com" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 shadow-sm" />
+                                <input type="email" placeholder="contact@email.com" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 shadow-sm" />
                               </div>
                               <div>
                                 <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Phone Number</label>
                                 <input type="text" placeholder="+1 234 567 8900" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 shadow-sm" />
                               </div>
                               <div className="md:col-span-2">
-                                <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Registered Address</label>
-                                <textarea value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full h-20 sm:h-24 rounded-xl border border-slate-200 p-3 sm:p-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 shadow-sm resize-none" placeholder="123 Business Avenue..." />
+                                <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Residential Address</label>
+                                <textarea value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full h-20 sm:h-24 rounded-xl border border-slate-200 p-3 sm:p-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 shadow-sm resize-none" placeholder="123 Example Street..." />
                               </div>
                             </div>
                           </div>
@@ -472,7 +469,7 @@ export default function CustomersPage() {
                   {modalTab === 'projects' && selectedCustomer && (
                     <div className="flex-1 flex flex-col space-y-5 sm:space-y-6 py-2">
                       {projects.filter(p => p.customer_id === selectedCustomer.id).length === 0 ? (
-                        <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-10">No projects linked to this client yet.</p>
+                        <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-10">{isAcademy ? 'No courses linked to this student yet.' : 'No projects linked to this client yet.'}</p>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                           {projects.filter(p => p.customer_id === selectedCustomer.id).map(proj => (
@@ -489,19 +486,19 @@ export default function CustomersPage() {
                                <div className="flex justify-between items-start mb-2 sm:mb-3">
                                  <p className="font-bold text-slate-900 text-[13px] sm:text-[15px] pr-8 group-hover:text-blue-700 transition-colors">{proj.name}</p>
                                </div>
-                               <span className={`w-max px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-bold uppercase tracking-widest shrink-0 mb-2 ${proj.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{proj.status}</span>
+                               <span className={`w-max px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-bold uppercase tracking-widest shrink-0 mb-2 ${proj.status === 'Completed' || proj.status === 'Graduated' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{proj.status}</span>
                                <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed mb-3 sm:mb-4 flex-1">{proj.description || 'No description provided.'}</p>
                                
                                <div className="flex justify-between items-end border-t border-slate-200 pt-2.5 sm:pt-3">
                                  {canViewFinance ? (
                                    <div>
-                                     <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Expected Value</p>
+                                     <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{isAcademy ? 'Course Fee' : 'Expected Value'}</p>
                                      <p className="text-[12px] sm:text-sm font-black text-slate-800">₹{(proj.expected_amount || 0).toLocaleString()}</p>
                                    </div>
                                  ) : <div></div>}
                                  
                                  <div className="text-right">
-                                   <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Due Date</p>
+                                   <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{isAcademy ? 'End Date' : 'Due Date'}</p>
                                    <p className="text-[11px] sm:text-xs font-bold text-slate-600">{proj.due_date ? new Date(proj.due_date).toLocaleDateString() : 'Unscheduled'}</p>
                                  </div>
                                </div>
@@ -539,14 +536,14 @@ export default function CustomersPage() {
                         <h4 className="text-[12px] sm:text-sm font-bold text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3 sm:mb-4 flex items-center gap-2"><FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500"/> Invoicing Ledger</h4>
                         
                         {invoices.filter(i => i.customer_id === selectedCustomer.id).length === 0 ? (
-                          <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-6 sm:py-10">No invoices issued to this client.</p>
+                          <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-6 sm:py-10">No invoices issued to this {isAcademy ? 'student' : 'client'}.</p>
                         ) : (
                           <div className="bg-white border border-slate-100 shadow-sm rounded-xl sm:rounded-3xl overflow-hidden">
                              <div className="overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                                <div className="min-w-[600px]">
                                  <div className="grid grid-cols-12 gap-4 bg-slate-50 px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                                     <div className="col-span-3">Invoice No.</div>
-                                    <div className="col-span-3">Project</div>
+                                    <div className="col-span-3">{isAcademy ? 'Course' : 'Project'}</div>
                                     <div className="col-span-2">Status</div>
                                     <div className="col-span-2 text-right">Billed (₹)</div>
                                     <div className="col-span-2 text-right">Paid (₹)</div>
@@ -586,7 +583,7 @@ export default function CustomersPage() {
                   {selectedCustomer && (role === 'admin' || role === 'head') && modalTab === 'profile' ? (
                     <div className="p-4 sm:p-6 w-full sm:w-auto">
                       <button onClick={handleDeleteCustomer} disabled={saveStatus !== "idle"} className="w-full sm:w-auto border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 rounded-xl h-10 sm:h-12 px-3 sm:px-5 flex items-center justify-center shadow-sm transition-colors shrink-0">
-                        <Trash2 className="h-4 w-4" /> <span className="sm:hidden ml-2 font-bold text-xs">Delete Client</span>
+                        <Trash2 className="h-4 w-4" /> <span className="sm:hidden ml-2 font-bold text-xs">Delete {isAcademy ? 'Student' : 'Client'}</span>
                       </button>
                     </div>
                   ) : <div className="hidden sm:block p-4 sm:p-6"></div>}

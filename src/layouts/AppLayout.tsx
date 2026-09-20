@@ -31,17 +31,21 @@ export default function AppLayout() {
   
   const brandLogo = currentDisplayCompany?.logo_url || masterAdmin?.profile_image_url || null;
   
+  // --- DYNAMIC WORKSPACE TYPE CHECK ---
+  const isAcademy = currentDisplayCompany?.business_type === 'academy' || currentDisplayCompany?.business_type?.includes('education');
+  
   const isDashboard = location.pathname.includes('/dashboard');
 
   const handleExitWorkspace = async () => { setActiveWorkspace(null); await fetchAllData(); navigate("/dashboard"); };
   const handleSignOut = async () => { await signOut(); navigate("/login"); };
 
+  // --- DYNAMIC NAVIGATION LABELS ---
   const allNavLinks = [
     { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", allowedRoles: ['admin', 'head', 'user'] },
-    { path: "/projects", icon: Briefcase, label: "Projects", allowedRoles: ['admin', 'head', 'user'] },
+    { path: "/projects", icon: Briefcase, label: isAcademy ? "Courses" : "Projects", allowedRoles: ['admin', 'head', 'user'] },
     { path: "/finance", icon: Banknote, label: "Finance", allowedRoles: ['admin', 'head'] },
     { path: "/employees", icon: Users, label: "Personnel", allowedRoles: ['admin', 'head'] },
-    { path: "/customers", icon: UserSquare2, label: "Customers", allowedRoles: ['admin', 'head'] },
+    { path: "/customers", icon: UserSquare2, label: isAcademy ? "Students" : "Customers", allowedRoles: ['admin', 'head'] },
     { path: "/invoices", icon: FileText, label: "Invoices", allowedRoles: ['admin', 'head'] },
     { path: "/settings", icon: Settings, label: "Settings", allowedRoles: ['admin', 'head', 'user'] },
   ];
@@ -109,7 +113,6 @@ export default function AppLayout() {
   const displayInitial = currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : displayEmail.charAt(0).toUpperCase();
   const displayName = currentUser?.name || displayEmail.split('@')[0];
 
-
   // ============================================================================
   // POLYMORPHIC ERP INTERCEPTOR LOGIC
   // ============================================================================
@@ -130,12 +133,10 @@ export default function AppLayout() {
     setIsInitializing(true);
     try {
       for (const [cId, bType] of Object.entries(classifications)) {
-        // Explicitly extract and throw the error so it doesn't fail silently
         const { error } = await supabase.from('companies').update({ business_type: bType }).eq('id', parseInt(cId));
         if (error) throw error;
       }
       await fetchAllData();
-      // Force a hard reload to instantly drop the interceptor UI
       window.location.reload();
     } catch(e: any) {
       alert("Error saving: " + e.message);
@@ -232,7 +233,7 @@ export default function AppLayout() {
               <div className="h-28 flex items-center justify-between px-8 shrink-0">
                 <div className="flex items-center">
                   {brandLogo ? (
-                    <img src={brandLogo} alt="Logo" className="h-10 w-10 rounded-2xl object-cover shadow-sm mr-3 border border-slate-100" />
+                    <img src={brandLogo} alt="Logo" className="h-10 w-auto max-w-[120px] object-contain mr-3" />
                   ) : (
                     <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-slate-900 via-blue-900 to-blue-800 flex items-center justify-center text-white text-[16px] font-black tracking-tighter mr-3 shadow-md z-10">
                       {brandName.charAt(0).toUpperCase()}
@@ -343,7 +344,7 @@ export default function AppLayout() {
           <div className="sm:hidden flex items-center justify-between px-4 py-2.5 mx-4 mt-4 bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-[0_8px_30px_-10px_rgba(0,0,0,0.08)] rounded-full z-20 sticky top-4 print:hidden">
              <div className="flex items-center gap-3 min-w-0">
                {brandLogo ? (
-                 <img src={brandLogo} alt="Logo" className="h-8 w-8 rounded-full object-cover shadow-sm border border-slate-100 shrink-0" />
+                 <img src={brandLogo} alt="Logo" className="h-8 w-auto max-w-[100px] object-contain shrink-0" />
                ) : (
                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-slate-900 via-blue-900 to-blue-800 flex items-center justify-center text-white text-[13px] font-black tracking-tighter shadow-md shrink-0">
                    {brandName.charAt(0).toUpperCase()}
