@@ -10,11 +10,19 @@ const STATUS_OPTIONS = ['Pending', 'Partially Paid', 'Paid', 'Overdue', 'Cancell
 export default function InvoicesPage() {
   const { role, activeWorkspace, companyId } = useAuthStore();
   
-  // NOTE: Added `expenses = []` here to pull the extra project expenses from your store
   const { 
     invoices, invoiceItems, invoicePayments, projects, 
     customers, companies, employees, projectAllocations, salaryPayments, expenses = [], fetchAllData 
   } = useDataStore();
+
+  const isAdmin = role === 'admin';
+  const isHead = role === 'head';
+  const currentCompanyId = isAdmin ? (activeWorkspace || "") : companyId;
+  const currentCompany = companies.find((c: any) => c.id?.toString() === currentCompanyId?.toString());
+  
+  // --- DYNAMIC FINANCE ACCESS CHECK ---
+  // If ON: See Invoices/Billing. If OFF: See Project Expenses/Cost Sheets.
+  const canViewFinance = isAdmin || (isHead && currentCompany?.allow_head_finance !== false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCompanyId, setFilterCompanyId] = useState<string>("all");
@@ -24,7 +32,6 @@ export default function InvoicesPage() {
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const currentCompanyId = role === 'admin' ? (activeWorkspace || "") : companyId;
   const today = new Date().toISOString().split('T')[0];
 
   const [formData, setFormData] = useState({
@@ -39,7 +46,7 @@ export default function InvoicesPage() {
 
   const availableCustomers = customers.filter(c => c.company_id === parseInt(formData.company_id));
   const availableProjects = projects.filter(p => {
-    if (role === 'admin' && !activeWorkspace) return true;
+    if (isAdmin && !activeWorkspace) return true;
     return p.company_id === currentCompanyId;
   });
 
@@ -51,7 +58,7 @@ export default function InvoicesPage() {
     return inv.status;
   };
 
-  // --- ADMIN: Standard Client Invoices (Income) ---
+  // --- FULL ACCESS: Standard Client Invoices (Income) ---
   const visibleInvoices = invoices.filter(inv => {
     const proj = projects.find(p => p.id === inv.project_id);
     const searchStr = searchQuery.toLowerCase();
@@ -63,7 +70,7 @@ export default function InvoicesPage() {
     const dynamicStatus = getDynamicStatus(inv);
     const matchesStatus = filterStatus === "All" || dynamicStatus === filterStatus;
 
-    if (role === 'admin' && !activeWorkspace) {
+    if (isAdmin && !activeWorkspace) {
       const matchesCompany = filterCompanyId === "all" || inv.company_id.toString() === filterCompanyId;
       return matchesSearch && matchesStatus && matchesCompany;
     }
@@ -71,7 +78,7 @@ export default function InvoicesPage() {
   }).sort((a, b) => new Date(b.issue_date).getTime() - new Date(a.issue_date).getTime());
 
 
-  // --- HEAD: Dynamic Project Expense Reports (Costs + Labor) ---
+  // --- RESTRICTED ACCESS: Dynamic Project Expense Reports (Costs + Labor) ---
   const headProjectExpenses = projects.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch && p.company_id === currentCompanyId;
@@ -103,7 +110,7 @@ export default function InvoicesPage() {
     }
   });
 
-  const displayList = role === 'head' ? headProjectExpenses : visibleInvoices;
+  const displayList = !canViewFinance ? headProjectExpenses : visibleInvoices;
 
   const currentInvoicePayments = selectedInvoice && !selectedInvoice.isExpenseReport 
       ? invoicePayments.filter(p => p.invoice_id === selectedInvoice.id) 
@@ -143,14 +150,12 @@ export default function InvoicesPage() {
     setSelectedInvoice(inv);
     
     if (inv.isExpenseReport) {
-       // Head is viewing expense report
        setFormData({
          company_id: inv.company_id.toString(), customer_id: "", project_id: inv.project_id.toString(),
          invoice_number: inv.invoice_number, issue_date: inv.issue_date, due_date: inv.due_date,
          tax_rate: 0, discount_amount: 0, status: inv.status, amount_paid: inv.amount_paid
        });
     } else {
-       // Admin viewing standard invoice
        setFormData({
          company_id: inv.company_id.toString(), customer_id: inv.customer_id?.toString() || "", project_id: inv.project_id?.toString() || "",
          invoice_number: inv.invoice_number, issue_date: inv.issue_date, due_date: inv.due_date,
@@ -276,27 +281,27 @@ export default function InvoicesPage() {
   const handlePrint = () => window.print();
 
   const exportCSV = () => {
-    const headers = role === 'admin' 
+    const headers = canViewFinance 
         ? ["Invoice Number", "Company", "Customer", "Project", "Issue Date", "Due Date", "Total Amount", "Amount Paid", "Status"]
         : ["Cost ID", "Company", "Project Name", "Start Date", "End Date", "Total Project Costs", "Disbursed", "Project Status"];
         
     const rows = displayList.map(inv => [
       inv.invoice_number,
       companies.find(c => c.id === inv.company_id)?.name || 'Unknown',
-      role === 'admin' ? (customers.find(c => c.id === inv.customer_id)?.name || 'Internal Transfer') : inv.project_name,
-      role === 'admin' ? (projects.find(p => p.id === inv.project_id)?.name || 'None') : inv.issue_date,
-      role === 'admin' ? inv.issue_date : inv.due_date,
-      role === 'admin' ? inv.due_date : inv.total_amount,
-      role === 'admin' ? inv.total_amount : inv.amount_paid,
-      role === 'admin' ? (inv.amount_paid || 0) : inv.status,
-      role === 'admin' ? inv.status : ''
+      canViewFinance ? (customers.find(c => c.id === inv.customer_id)?.name || 'Internal Transfer') : inv.project_name,
+      canViewFinance ? (projects.find(p => p.id === inv.project_id)?.name || 'None') : inv.issue_date,
+      canViewFinance ? inv.issue_date : inv.due_date,
+      canViewFinance ? inv.due_date : inv.total_amount,
+      canViewFinance ? inv.total_amount : inv.amount_paid,
+      canViewFinance ? (inv.amount_paid || 0) : inv.status,
+      canViewFinance ? inv.status : ''
     ]);
     
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `${role === 'admin' ? 'Client_Invoices' : 'Project_Expense_Reports'}_${today}.csv`);
+    link.setAttribute("download", `${canViewFinance ? 'Client_Invoices' : 'Project_Expense_Reports'}_${today}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -329,17 +334,17 @@ export default function InvoicesPage() {
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6 print:hidden">
           <div>
             <p className="text-[9px] sm:text-[11px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-1.5 sm:mb-2 bg-blue-50 inline-block px-2.5 sm:px-3 py-1 rounded-full">
-              {role === 'admin' ? 'Billing & Ledger' : 'Internal Auditing'}
+              {canViewFinance ? 'Billing & Ledger' : 'Internal Auditing'}
             </p>
             <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-slate-900 mt-1 sm:mt-2">
-              {role === 'admin' ? 'Invoices.' : 'Project Expenses.'}
+              {canViewFinance ? 'Invoices.' : 'Project Expenses.'}
             </h1>
           </div>
           <div className="flex gap-2 sm:gap-3">
             <button onClick={exportCSV} className="flex-1 sm:flex-none bg-white border border-slate-200 text-slate-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 px-3 sm:px-5 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-[13px] font-bold transition-all flex items-center justify-center shrink-0">
               <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" /> Export CSV
             </button>
-            {role === 'admin' && (
+            {canViewFinance && (
               <button onClick={openNewInvoice} className="flex-1 sm:flex-none bg-gradient-to-r from-blue-900 to-indigo-800 text-white shadow-lg shadow-blue-900/20 hover:shadow-xl hover:-translate-y-0.5 px-3 sm:px-6 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-[13px] font-bold transition-all flex items-center justify-center shrink-0">
                 <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" /> Create <span className="hidden sm:inline ml-1">Invoice</span>
               </button>
@@ -353,14 +358,14 @@ export default function InvoicesPage() {
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-slate-400" />
             <input 
               type="text" 
-              placeholder={role === 'admin' ? "Search invoices or project names..." : "Search expense reports by project name..."}
+              placeholder={canViewFinance ? "Search invoices or project names..." : "Search expense reports by project name..."}
               value={searchQuery} 
               onChange={(e) => setSearchQuery(e.target.value)} 
               className="w-full h-10 sm:h-11 pl-9 sm:pl-11 pr-4 rounded-lg sm:rounded-xl border-none text-[13px] sm:text-sm font-medium outline-none bg-transparent focus:ring-0 placeholder:text-slate-400" 
             />
           </div>
           
-          {role === 'admin' && !activeWorkspace && (
+          {isAdmin && !activeWorkspace && (
             <div className="sm:w-64 shrink-0 border-t sm:border-t-0 sm:border-l border-slate-100 pt-2 sm:pt-0 sm:pl-2">
               <select 
                 value={filterCompanyId} 
@@ -374,7 +379,7 @@ export default function InvoicesPage() {
             </div>
           )}
 
-          {role === 'admin' && (
+          {canViewFinance && (
             <div className="sm:w-48 shrink-0 border-t sm:border-t-0 sm:border-l border-slate-100 pt-2 sm:pt-0 sm:pl-2">
               <select 
                 value={filterStatus} 
@@ -393,13 +398,13 @@ export default function InvoicesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 print:hidden">
           {displayList.length === 0 && <div className="col-span-full h-32 sm:h-48 border border-slate-200 border-dashed rounded-2xl sm:rounded-3xl flex items-center justify-center text-slate-400 bg-slate-50/50"><p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest">No matching records found</p></div>}
           {displayList.map((inv: any) => {
-            const status = role === 'admin' ? getDynamicStatus(inv) : inv.status;
+            const status = canViewFinance ? getDynamicStatus(inv) : inv.status;
             
-            const gridTitle = role === 'admin' 
+            const gridTitle = canViewFinance 
                 ? inv.invoice_number 
                 : inv.project_name;
                 
-            const gridClientName = role === 'admin'
+            const gridClientName = canViewFinance
                 ? (inv.customer_id 
                     ? customers.find(c => c.id === inv.customer_id)?.name 
                     : projects.find(p => p.id === inv.project_id)?.internal_company_id 
@@ -415,19 +420,19 @@ export default function InvoicesPage() {
                 </div>
                 <div className="space-y-1 sm:space-y-1.5 mb-4 sm:mb-6">
                   <p className="text-[11px] sm:text-[12px] font-medium text-slate-600 flex items-center gap-1.5 sm:gap-2 truncate">
-                    {role === 'admin' ? <UserSquare2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400 shrink-0" /> : <Receipt className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400 shrink-0" />} 
+                    {canViewFinance ? <UserSquare2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400 shrink-0" /> : <Receipt className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400 shrink-0" />} 
                     <span className="truncate">{gridClientName}</span>
                   </p>
-                  {role === 'admin' && inv.project_id && <p className="text-[11px] sm:text-[12px] font-medium text-slate-600 flex items-center gap-1.5 sm:gap-2 truncate"><Building2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400 shrink-0" /> <span className="truncate">{projects.find(p => p.id === inv.project_id)?.name}</span></p>}
+                  {canViewFinance && inv.project_id && <p className="text-[11px] sm:text-[12px] font-medium text-slate-600 flex items-center gap-1.5 sm:gap-2 truncate"><Building2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400 shrink-0" /> <span className="truncate">{projects.find(p => p.id === inv.project_id)?.name}</span></p>}
                 </div>
                 <div className="mt-auto pt-3 sm:pt-4 border-t border-slate-50 flex justify-between items-end">
                   <div>
-                    <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{role === 'admin' ? 'Due Date' : 'Target Date'}</p>
+                    <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{canViewFinance ? 'Due Date' : 'Target Date'}</p>
                     <p className={`text-[11px] sm:text-[12px] font-bold ${status === 'Overdue' ? 'text-rose-500' : 'text-slate-800'}`}>{inv.due_date ? new Date(inv.due_date).toLocaleDateString(undefined, {month: 'short', day: 'numeric'}) : 'TBD'}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{role === 'admin' ? 'Total' : 'Project Cost'}</p>
-                    <p className={`text-lg sm:text-xl font-bold tracking-tight ${role === 'head' ? 'text-rose-600' : 'text-slate-900'}`}>₹{(inv.total_amount || 0).toLocaleString()}</p>
+                    <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{canViewFinance ? 'Total' : 'Project Cost'}</p>
+                    <p className={`text-lg sm:text-xl font-bold tracking-tight ${!canViewFinance ? 'text-rose-600' : 'text-slate-900'}`}>₹{(inv.total_amount || 0).toLocaleString()}</p>
                   </div>
                 </div>
               </motion.div>
@@ -510,7 +515,7 @@ export default function InvoicesPage() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8 mb-6 sm:mb-10 p-4 sm:p-6 bg-slate-50 rounded-2xl sm:rounded-3xl border border-slate-100 print:bg-transparent print:border-none print:p-0 print:mb-6 print:gap-4">
-                    {role === 'admin' && !activeWorkspace && !selectedInvoice?.isExpenseReport && (
+                    {isAdmin && !activeWorkspace && !selectedInvoice?.isExpenseReport && (
                       <div className="print:hidden">
                         <p className="text-[9px] sm:text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-1.5 sm:mb-2">Issuing Subsidiary</p>
                         <select value={formData.company_id} onChange={(e) => setFormData({...formData, company_id: e.target.value, customer_id: "", project_id: ""})} className="w-full bg-transparent text-[14px] sm:text-lg font-bold text-slate-900 outline-none cursor-pointer border-b border-slate-200 pb-1">
@@ -520,7 +525,7 @@ export default function InvoicesPage() {
                       </div>
                     )}
 
-                    <div className={`${(role === 'admin' && !activeWorkspace && !selectedInvoice?.isExpenseReport) ? '' : 'sm:col-span-1 md:col-span-1'} print:col-span-2`}>
+                    <div className={`${(isAdmin && !activeWorkspace && !selectedInvoice?.isExpenseReport) ? '' : 'sm:col-span-1 md:col-span-1'} print:col-span-2`}>
                       <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 print:text-[8px] print:mb-1">
                         {selectedInvoice?.isExpenseReport ? 'Subject Project' : 'Billed To'} <span className="text-rose-500 print:hidden">*</span>
                       </p>
@@ -542,7 +547,7 @@ export default function InvoicesPage() {
                         </>
                       ) : (
                         <>
-                          <select value={formData.customer_id} onChange={(e) => setFormData({...formData, customer_id: e.target.value})} disabled={!formData.company_id && (role === 'admin' && !activeWorkspace)} className="w-full bg-transparent text-[14px] sm:text-lg font-bold text-slate-900 outline-none cursor-pointer border-b border-slate-200 pb-1 disabled:opacity-50 print:hidden truncate">
+                          <select value={formData.customer_id} onChange={(e) => setFormData({...formData, customer_id: e.target.value})} disabled={!formData.company_id && (isAdmin && !activeWorkspace)} className="w-full bg-transparent text-[14px] sm:text-lg font-bold text-slate-900 outline-none cursor-pointer border-b border-slate-200 pb-1 disabled:opacity-50 print:hidden truncate">
                              <option value="">-- Select Client --</option>
                              {availableCustomers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
@@ -556,7 +561,7 @@ export default function InvoicesPage() {
                     </div>
 
                     {!selectedInvoice?.isExpenseReport && (
-                      <div className={`${role === 'admin' && !activeWorkspace ? '' : 'sm:col-span-1 md:col-span-2'} print:col-span-1 print:text-right`}>
+                      <div className={`${isAdmin && !activeWorkspace ? '' : 'sm:col-span-1 md:col-span-2'} print:col-span-1 print:text-right`}>
                         <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 print:text-[8px] print:mb-1">Linked Project <span className="print:hidden">(Optional)</span></p>
                         <select value={formData.project_id} onChange={handleProjectSelect} className="w-full bg-transparent text-[14px] sm:text-lg font-bold text-blue-800 outline-none cursor-pointer border-b border-slate-200 pb-1 disabled:opacity-50 print:hidden truncate">
                            <option value="">-- Standalone Invoice --</option>
@@ -681,7 +686,7 @@ export default function InvoicesPage() {
                     </div>
                   </div>
 
-                  {/* Standard Client Invoice Ledger & Payment Recording (Admins Only) */}
+                  {/* Standard Client Invoice Ledger & Payment Recording */}
                   {selectedInvoice && !selectedInvoice.isExpenseReport && (
                     <div className="mt-8 sm:mt-12 border-t border-slate-100 pt-6 sm:pt-8 print:mt-6 print:pt-4 print:break-inside-avoid">
                       

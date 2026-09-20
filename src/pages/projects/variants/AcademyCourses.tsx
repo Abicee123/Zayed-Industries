@@ -6,7 +6,9 @@ import { useAuthStore } from "../../../store/authStore";
 import { useDataStore } from "../../../store/dataStore";
 import { supabase } from "../../../supabase";
 
-const ACADEMY_STATUSES = ['Enrollment', 'Ongoing', 'Graduated'];
+// Expanded to include hold/postponed statuses
+const ACADEMY_STATUSES = ['Enrollment', 'Ongoing', 'Graduated', 'Postponed', 'On Hold'];
+const ACADEMY_TYPES = ['Course', 'Workshop', 'Internship'];
 
 export default function AcademyCourses() {
   const { role, employeeId, activeWorkspace, companyId } = useAuthStore();
@@ -25,6 +27,7 @@ export default function AcademyCourses() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
+  const [filterType, setFilterType] = useState("All"); // New state for filtering type
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalTab, setModalTab] = useState<string>("details");
@@ -34,9 +37,10 @@ export default function AcademyCourses() {
   const today = new Date().toISOString().split('T')[0];
   const isUserView = role === 'user';
   const isAdminView = role === 'admin' || role === 'head';
+  const isHeadView = role === 'head'; // Added strict head role for financial data
 
   const [formData, setFormData] = useState({ 
-    name: "", description: "", status: "Enrollment", expected_amount: 0, 
+    name: "", description: "", status: "Enrollment", type: "Course", expected_amount: 0, 
     approval_date: today, due_date: "", company_id: "", customer_id: "", drive_folder_url: "", assignee_ids: [] as number[],
     tutor_allocations: {} as {[empId: number]: string}
   });
@@ -74,8 +78,14 @@ export default function AcademyCourses() {
     if (!p.name || p.company_id?.toString() !== currentCompanyId?.toString()) return false;
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === "All" || p.status === filterStatus;
+    
+    // Default to 'Course' if no type is set in metadata (for legacy records)
+    const pType = p.metadata?.type || 'Course';
+    const matchesType = filterType === "All" || pType === filterType;
+
     const isAssigned = !isUserView || (p.assignee_ids || []).includes(employeeId);
-    return matchesSearch && matchesStatus && isAssigned;
+    
+    return matchesSearch && matchesStatus && matchesType && isAssigned;
   }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const availableStudents = customers.filter(c => c.company_id === parseInt(currentCompanyId || '0'));
@@ -83,7 +93,7 @@ export default function AcademyCourses() {
 
   const openNewCourse = () => {
     setSelectedCourse(null);
-    setFormData({ name: "", description: "", status: "Enrollment", expected_amount: 0, approval_date: today, due_date: "", company_id: currentCompanyId?.toString() || "", customer_id: "", drive_folder_url: "", assignee_ids: [], tutor_allocations: {} });
+    setFormData({ name: "", description: "", status: "Enrollment", type: "Course", expected_amount: 0, approval_date: today, due_date: "", company_id: currentCompanyId?.toString() || "", customer_id: "", drive_folder_url: "", assignee_ids: [], tutor_allocations: {} });
     setNewStudent({ name: "", phone: "", email: "", address: "" }); setSelectedStudentId("");
     setNewModuleTitle(""); setNewModuleTutor("");
     setAllocationsForm({}); setExpandedFinanceEmpId(null); setShowPayoutForm(false);
@@ -95,6 +105,7 @@ export default function AcademyCourses() {
     setSelectedCourse(course);
     setFormData({
       name: course.name || "", description: course.description || "", status: course.status || "Enrollment", 
+      type: course.metadata?.type || "Course",
       expected_amount: course.expected_amount || 0, approval_date: course.approval_date || today, due_date: course.due_date || "", 
       company_id: course.company_id?.toString() || "", customer_id: course.customer_id?.toString() || "", 
       drive_folder_url: course.drive_folder_url || "", assignee_ids: course.assignee_ids || [],
@@ -128,7 +139,7 @@ export default function AcademyCourses() {
         customer_id: formData.customer_id ? parseInt(formData.customer_id) : null,
         drive_folder_url: formData.drive_folder_url || null,
         assignee_ids: formData.assignee_ids || [],
-        metadata: { tutor_allocations: formData.tutor_allocations }
+        metadata: { tutor_allocations: formData.tutor_allocations, type: formData.type }
       };
       
       if (!selectedCourse) {
@@ -380,7 +391,6 @@ export default function AcademyCourses() {
 
   const courseInvoices = selectedCourse ? invoices.filter(i => i.project_id === selectedCourse.id) : [];
   const totalInvoiced = courseInvoices.reduce((sum, i) => sum + (parseFloat(i.total_amount) || 0), 0);
-  // Strictly calculate total paid including partial amounts
   const totalPaid = courseInvoices.reduce((sum, i) => {
     const paid = parseFloat(i.amount_paid) || (i.status === 'Paid' ? parseFloat(i.total_amount) : 0);
     return sum + paid;
@@ -415,6 +425,23 @@ export default function AcademyCourses() {
           )}
         </div>
 
+        {/* --- TYPE FILTER TABS --- */}
+        <div className="flex gap-2 overflow-x-auto pb-1 max-sm:[&::-webkit-scrollbar]:hidden">
+          {['All', ...ACADEMY_TYPES].map(type => (
+            <button
+              key={type}
+              onClick={() => setFilterType(type)}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+                filterType === type 
+                  ? 'bg-purple-900 text-white shadow-md' 
+                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {type === 'All' ? 'All Programs' : `${type}s`}
+            </button>
+          ))}
+        </div>
+
         <div className="bg-white p-2 rounded-xl sm:rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-2 print:hidden">
           <div className="relative flex-1">
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-3.5 sm:h-4 w-3.5 sm:w-4 text-slate-400" />
@@ -443,6 +470,9 @@ export default function AcademyCourses() {
                 const totalModules = courseModules.length;
                 const progressPct = totalModules === 0 ? 0 : Math.round((completedModules / totalModules) * 100);
                 const enrolledCount = invoices.filter(i => i.project_id === course.id).length;
+                
+                // Get the type safely
+                const pType = course.metadata?.type || 'Course';
 
                 return (
                   <div key={course.id} onClick={() => openCourseDetails(course)} className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:border-purple-200 transition-all flex flex-col overflow-hidden cursor-pointer group">
@@ -451,15 +481,21 @@ export default function AcademyCourses() {
                         <div className="flex-1 min-w-0 flex items-start gap-4">
                           <div className="h-12 w-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100 group-hover:scale-105 transition-transform"><Library className="h-5 w-5" /></div>
                           <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-md">{pType}</span>
+                            </div>
                             <h3 className="text-[15px] sm:text-lg font-bold text-slate-900 tracking-tight group-hover:text-purple-900 transition-colors truncate">{course.name}</h3>
                             <p className="text-[10px] sm:text-[11px] text-slate-500 font-bold uppercase tracking-wider mt-1 truncate flex items-center gap-2">
                               <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {enrolledCount} Students</span>
-                              {!isUserView && <><span>•</span><span>Fee: ₹{(course.expected_amount || 0).toLocaleString()}</span></>}
+                              {isHeadView && <><span>•</span><span>Fee: ₹{(course.expected_amount || 0).toLocaleString()}</span></>}
                             </p>
                           </div>
                         </div>
                         <div className="shrink-0">
-                          <div className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider border ${course.status === 'Graduated' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
+                          <div className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider border 
+                            ${course.status === 'Graduated' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
+                              course.status === 'On Hold' || course.status === 'Postponed' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                              'bg-purple-50 text-purple-700 border-purple-200'}`}>
                              {course.status}
                           </div>
                         </div>
@@ -472,7 +508,7 @@ export default function AcademyCourses() {
                            </div>
                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{progressPct}% Syllabus</span>
                         </div>
-                        <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-3 py-1 rounded-lg border border-purple-100">View Batch Details →</span>
+                        <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-3 py-1 rounded-lg border border-purple-100">View Details →</span>
                       </div>
                     </div>
                   </div>
@@ -699,7 +735,8 @@ export default function AcademyCourses() {
       {typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           {isModalOpen && !isPrintingPayslip && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsModalOpen(false)} className="fixed inset-0 z-[9999] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm print:hidden">
+            // REMOVED: onClick={() => setIsModalOpen(false)} 
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[9999] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm print:hidden">
               <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-4xl h-full sm:h-[760px] sm:max-h-[90vh] flex flex-col overflow-hidden border border-slate-100 mt-auto sm:mt-0">
                 
                 <div className="px-5 sm:px-8 pt-5 sm:pt-7 border-b border-slate-100 bg-[#FAFCFF] shrink-0">
@@ -719,9 +756,9 @@ export default function AcademyCourses() {
                     <button onClick={() => setModalTab('syllabus')} disabled={!selectedCourse} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${!selectedCourse ? 'opacity-30 cursor-not-allowed' : modalTab === 'syllabus' ? 'border-purple-900 text-purple-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>2. Syllabus</button>
                     <button onClick={() => setModalTab('summary')} disabled={!selectedCourse} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${!selectedCourse ? 'opacity-30 cursor-not-allowed' : modalTab === 'summary' ? 'border-purple-900 text-purple-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>3. Students</button>
                     
-                    {isAdminView && <button onClick={() => setModalTab('finances')} disabled={!selectedCourse} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${!selectedCourse ? 'opacity-30 cursor-not-allowed' : modalTab === 'finances' ? 'border-purple-900 text-purple-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>4. Fee Ledger</button>}
+                    {isHeadView && <button onClick={() => setModalTab('finances')} disabled={!selectedCourse} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${!selectedCourse ? 'opacity-30 cursor-not-allowed' : modalTab === 'finances' ? 'border-purple-900 text-purple-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>4. Fee Ledger</button>}
                     
-                    {isAdminView && <button onClick={() => setModalTab('faculty')} disabled={!selectedCourse} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${!selectedCourse ? 'opacity-30 cursor-not-allowed' : modalTab === 'faculty' ? 'border-purple-900 text-purple-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>5. Faculty Payroll</button>}
+                    {isHeadView && <button onClick={() => setModalTab('faculty')} disabled={!selectedCourse} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${!selectedCourse ? 'opacity-30 cursor-not-allowed' : modalTab === 'faculty' ? 'border-purple-900 text-purple-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>5. Faculty Payroll</button>}
                     
                     {isUserView && <button onClick={() => setModalTab('reports')} disabled={!selectedCourse} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap ${!selectedCourse ? 'opacity-30 cursor-not-allowed' : modalTab === 'reports' ? 'border-purple-900 text-purple-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>4. Class Reports</button>}
                     
@@ -737,7 +774,7 @@ export default function AcademyCourses() {
                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Batch / Course Name</label>
                           <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} disabled={isUserView} className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium outline-none focus:border-purple-500 shadow-sm disabled:bg-slate-50" />
                         </div>
-                        {isAdminView && (
+                        {isHeadView && (
                           <div>
                             <label className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest block mb-2 px-1">Fee Per Head (₹)</label>
                             <input type="number" value={formData.expected_amount} onChange={(e) => setFormData({...formData, expected_amount: parseFloat(e.target.value) || 0})} className="w-full h-12 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-bold text-emerald-700 outline-none shadow-sm" />
@@ -745,8 +782,19 @@ export default function AcademyCourses() {
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                        <div><label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Status</label><select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} disabled={isUserView} className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium shadow-sm disabled:bg-slate-50"><option>Enrollment</option><option>Ongoing</option><option>Graduated</option></select></div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                        <div>
+                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Program Type</label>
+                           <select value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})} disabled={isUserView} className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium shadow-sm disabled:bg-slate-50">
+                              {ACADEMY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                           </select>
+                        </div>
+                        <div>
+                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Status</label>
+                           <select value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})} disabled={isUserView} className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium shadow-sm disabled:bg-slate-50">
+                              {ACADEMY_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                           </select>
+                        </div>
                         <div><label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Starting Date</label><input type="date" value={formData.approval_date} onChange={(e) => setFormData({...formData, approval_date: e.target.value})} disabled={isUserView} className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium shadow-sm disabled:bg-slate-50" /></div>
                         <div><label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Ending Date</label><input type="date" value={formData.due_date} onChange={(e) => setFormData({...formData, due_date: e.target.value})} disabled={isUserView} className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium shadow-sm disabled:bg-slate-50" /></div>
                       </div>
@@ -907,7 +955,7 @@ export default function AcademyCourses() {
                                      </div>
                                   </div>
                                   
-                                  {isAdminView && (
+                                  {isHeadView && (
                                      <div className="text-right flex flex-col items-end">
                                         <p className="text-sm font-black text-slate-900">₹{total.toLocaleString()}</p>
                                         <p className="text-[10px] font-bold text-emerald-600 mt-0.5">Paid: ₹{paid.toLocaleString()}</p>
@@ -924,7 +972,7 @@ export default function AcademyCourses() {
                   </div>
                 )}
 
-                {isAdminView && modalTab === 'finances' && (
+                {isHeadView && modalTab === 'finances' && (
                   <div className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                        <div className="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm text-center">
@@ -1121,7 +1169,7 @@ export default function AcademyCourses() {
                 )}
 
                 {/* ADMIN FACULTY REVIEW & PAYROLL DIRECTORY */}
-                {isAdminView && modalTab === 'faculty' && (
+                {isHeadView && modalTab === 'faculty' && (
                   <div className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-6">
                     <div className="flex justify-between items-center">
                        <div>

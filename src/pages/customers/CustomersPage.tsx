@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Plus, X, Building2, Phone, Briefcase, FileText, Trash2, UserSquare2, AlertCircle, Edit3, ImagePlus, Loader2, CheckCircle2, ArrowLeft, Calendar } from "lucide-react";
+import { Search, Plus, X, Building2, Phone, Briefcase, FileText, Trash2, UserSquare2, AlertCircle, Edit3, ImagePlus, Loader2, CheckCircle2 } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { useDataStore } from "../../store/dataStore";
 import { supabase } from "../../supabase";
@@ -44,6 +45,7 @@ const compressImage = async (file: File, maxWidth = 400, quality = 0.8): Promise
 };
 
 export default function CustomersPage() {
+  const navigate = useNavigate();
   const { role, activeWorkspace, companyId } = useAuthStore();
   const { customers, companies, projects, invoices, fetchAllData } = useDataStore();
 
@@ -53,9 +55,6 @@ export default function CustomersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalTab, setModalTab] = useState<"profile" | "projects" | "finance">("profile");
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
-  
-  // NEW: State for nested project view inside the modal
-  const [expandedProject, setExpandedProject] = useState<any>(null);
   
   const [saveStatus, setSaveStatus] = useState<"idle" | "compressing" | "uploading" | "saving">("idle");
   const [isSuccess, setIsSuccess] = useState(false);
@@ -67,6 +66,10 @@ export default function CustomersPage() {
   const [showPhotoMenu, setShowPhotoMenu] = useState(false);
 
   const currentCompanyId = role === 'admin' ? (activeWorkspace || "") : companyId;
+  const currentCompany = companies.find((c: any) => c.id?.toString() === currentCompanyId?.toString());
+  
+  // --- DYNAMIC FINANCE ACCESS CHECK ---
+  const canViewFinance = role === 'admin' || (role === 'head' && currentCompany?.allow_head_finance !== false);
 
   const [formData, setFormData] = useState({
     company_id: currentCompanyId?.toString() || "", 
@@ -103,7 +106,6 @@ export default function CustomersPage() {
       name: "", contact_person: "", email: "", phone: "", address: "" 
     });
     setImageFile(null); setImagePreview(null); setRemoveImage(false); setShowPhotoMenu(false);
-    setExpandedProject(null);
     setModalTab("profile");
     setIsModalOpen(true);
   };
@@ -119,7 +121,6 @@ export default function CustomersPage() {
       address: customer.address || ""
     });
     setImageFile(null); setImagePreview(customer.profile_image_url || null); setRemoveImage(false); setShowPhotoMenu(false);
-    setExpandedProject(null);
     setModalTab("profile");
     setIsModalOpen(true);
   };
@@ -238,6 +239,15 @@ export default function CustomersPage() {
     }
   };
 
+  // --- REDIRECT HANDLER ---
+  const handleProjectClick = (projectId: number) => {
+    setIsModalOpen(false); // Close the customer modal
+    
+    // REDIRECT TO PROJECTS PAGE
+    // We pass the projectId in the state so the target page knows which project to automatically open.
+    navigate('/projects', { state: { openProjectId: projectId } });
+  };
+
   const getClientFinancials = (clientId: number) => {
     const clientInvoices = invoices.filter(i => i.customer_id === clientId);
     const totalBilled = clientInvoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
@@ -301,7 +311,7 @@ export default function CustomersPage() {
               
               return (
                 <motion.div key={client.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={() => openCustomerDossier(client)} className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all flex flex-col relative overflow-hidden group cursor-pointer">
-                  {role === 'admin' && financials.totalPending > 0 && (
+                  {canViewFinance && financials.totalPending > 0 && (
                     <div className="absolute top-3 right-3 sm:top-5 sm:right-5 z-10">
                       <span className="bg-amber-50 text-amber-600 border border-amber-100 text-[8px] sm:text-[9px] font-bold uppercase tracking-widest px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg flex items-center gap-1 shadow-sm">
                         <AlertCircle className="h-2 w-2 sm:h-3 sm:w-3"/> Due
@@ -335,7 +345,7 @@ export default function CustomersPage() {
                        <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Projects</p>
                        <p className="text-[12px] sm:text-sm font-bold text-slate-800 flex items-center gap-1 sm:gap-1.5"><Briefcase className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-500" /> {clientProjects}</p>
                      </div>
-                     {role === 'admin' && (
+                     {canViewFinance && (
                        <div className="text-right">
                          <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Total Billed</p>
                          <p className="text-[14px] sm:text-lg font-black text-emerald-600 tracking-tight">₹{financials.totalBilled.toLocaleString()}</p>
@@ -375,10 +385,10 @@ export default function CustomersPage() {
                   </div>
                   
                   <div className="flex gap-4 sm:gap-8 overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                    <button onClick={() => { setModalTab('profile'); setExpandedProject(null); }} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${modalTab === 'profile' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>1. Profile & Details</button>
-                    <button onClick={() => { setModalTab('projects'); setExpandedProject(null); }} disabled={!selectedCustomer} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'projects' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>2. Project History</button>
-                    {role === 'admin' && (
-                      <button onClick={() => { setModalTab('finance'); setExpandedProject(null); }} disabled={!selectedCustomer} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'finance' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>3. Billing & Payouts</button>
+                    <button onClick={() => setModalTab('profile')} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${modalTab === 'profile' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>1. Profile & Details</button>
+                    <button onClick={() => setModalTab('projects')} disabled={!selectedCustomer} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'projects' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>2. Project History</button>
+                    {canViewFinance && (
+                      <button onClick={() => setModalTab('finance')} disabled={!selectedCustomer} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'finance' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>3. Billing & Payouts</button>
                     )}
                   </div>
                 </div>
@@ -458,136 +468,52 @@ export default function CustomersPage() {
                     </div>
                   )}
 
-                  {/* TAB 2: PROJECTS HISTORY */}
+                  {/* TAB 2: PROJECTS HISTORY - CLICKS REDIRECT */}
                   {modalTab === 'projects' && selectedCustomer && (
                     <div className="flex-1 flex flex-col space-y-5 sm:space-y-6 py-2">
-                      
-                      {/* SUB-VIEW: EXPANDED PROJECT DETAILS */}
-                      {expandedProject ? (
-                        <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
-                          <button onClick={() => setExpandedProject(null)} className="text-[12px] font-bold text-slate-500 hover:text-blue-600 flex items-center transition-colors">
-                            <ArrowLeft className="h-4 w-4 mr-1.5" /> Back to Project List
-                          </button>
-                          
-                          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 shadow-sm">
-                            <div className="flex justify-between items-start mb-4">
-                              <div>
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${expandedProject.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{expandedProject.status}</span>
-                                <h2 className="text-xl font-bold text-slate-900 mt-2">{expandedProject.name}</h2>
-                              </div>
-                            </div>
-                            
-                            <p className="text-sm text-slate-600 leading-relaxed mb-6 whitespace-pre-wrap">{expandedProject.description || 'No detailed description available.'}</p>
-                            
-                            <div className="flex items-center gap-6 border-t border-slate-200 pt-4">
-                              <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4 text-slate-400" />
-                                <div>
-                                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Start Date</p>
-                                  <p className="text-sm font-bold text-slate-700">{expandedProject.start_date ? new Date(expandedProject.start_date).toLocaleDateString() : 'N/A'}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 border-l border-slate-200 pl-6">
-                                <AlertCircle className="h-4 w-4 text-amber-500" />
-                                <div>
-                                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Due Date</p>
-                                  <p className="text-sm font-bold text-slate-700">{expandedProject.due_date ? new Date(expandedProject.due_date).toLocaleDateString() : 'N/A'}</p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Nested Financials for this Specific Project (Admin Only) */}
-                          {role === 'admin' && (() => {
-                            const pInvs = invoices.filter(i => i.project_id === expandedProject.id);
-                            const pBilled = pInvs.reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
-                            const pPaid = pInvs.reduce((sum, inv) => sum + parseFloat(inv.amount_paid || 0), 0);
-                            const pExpected = parseFloat(expandedProject.expected_amount || 0);
-
-                            return (
-                              <div className="space-y-4">
-                                <h4 className="text-[12px] font-bold text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-2">Project Financials</h4>
-                                <div className="grid grid-cols-3 gap-4">
-                                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Expected Revenue</p>
-                                    <p className="text-lg font-black text-slate-700">₹{pExpected.toLocaleString()}</p>
-                                  </div>
-                                  <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-                                    <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mb-1">Total Billed</p>
-                                    <p className="text-lg font-black text-emerald-700">₹{pBilled.toLocaleString()}</p>
-                                  </div>
-                                  <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                                    <p className="text-[9px] font-bold text-blue-600 uppercase tracking-widest mb-1">Total Paid</p>
-                                    <p className="text-lg font-black text-blue-700">₹{pPaid.toLocaleString()}</p>
-                                  </div>
-                                </div>
-
-                                {/* Project-Specific Invoices List */}
-                                <div className="mt-4">
-                                  {pInvs.length === 0 ? (
-                                    <p className="text-xs italic text-slate-400 bg-slate-50 p-4 rounded-xl text-center">No invoices linked directly to this project.</p>
-                                  ) : (
-                                    <div className="bg-white border border-slate-100 rounded-xl overflow-hidden shadow-sm">
-                                      <div className="grid grid-cols-12 gap-4 bg-slate-50 px-4 py-3 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                                        <div className="col-span-4">Invoice No.</div>
-                                        <div className="col-span-4">Status</div>
-                                        <div className="col-span-4 text-right">Amount (₹)</div>
-                                      </div>
-                                      <div className="divide-y divide-slate-50">
-                                        {pInvs.map(inv => (
-                                          <div key={inv.id} className="grid grid-cols-12 gap-4 items-center px-4 py-3 text-sm">
-                                            <div className="col-span-4 font-bold text-slate-900">{inv.invoice_number}</div>
-                                            <div className="col-span-4">
-                                              <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest ${inv.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{inv.status}</span>
-                                            </div>
-                                            <div className="col-span-4 text-right font-black text-slate-700">₹{parseFloat(inv.total_amount || 0).toLocaleString()}</div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )
-                          })()}
-                        </div>
+                      {projects.filter(p => p.customer_id === selectedCustomer.id).length === 0 ? (
+                        <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-10">No projects linked to this client yet.</p>
                       ) : (
-                        /* STANDARD PROJECTS LIST GRID */
-                        projects.filter(p => p.customer_id === selectedCustomer.id).length === 0 ? (
-                          <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-10">No projects linked to this client yet.</p>
-                        ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                            {projects.filter(p => p.customer_id === selectedCustomer.id).map(proj => (
-                              <div key={proj.id} onClick={() => setExpandedProject(proj)} className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-4 sm:p-5 hover:bg-blue-50/50 hover:border-blue-200 transition-all cursor-pointer flex flex-col group">
-                                 <div className="flex justify-between items-start mb-2 sm:mb-3">
-                                   <p className="font-bold text-slate-900 text-[13px] sm:text-[15px] pr-2 group-hover:text-blue-700 transition-colors">{proj.name}</p>
-                                   <span className={`px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-bold uppercase tracking-widest shrink-0 ${proj.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{proj.status}</span>
-                                 </div>
-                                 <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed mb-3 sm:mb-4 flex-1">{proj.description || 'No description provided.'}</p>
-                                 
-                                 <div className="flex justify-between items-end border-t border-slate-200 pt-2.5 sm:pt-3">
-                                   {role === 'admin' ? (
-                                     <div>
-                                       <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Expected Value</p>
-                                       <p className="text-[12px] sm:text-sm font-black text-slate-800">₹{(proj.expected_amount || 0).toLocaleString()}</p>
-                                     </div>
-                                   ) : <div></div>}
-                                   
-                                   <div className="text-right">
-                                     <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Due Date</p>
-                                     <p className="text-[11px] sm:text-xs font-bold text-slate-600">{proj.due_date ? new Date(proj.due_date).toLocaleDateString() : 'Unscheduled'}</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                          {projects.filter(p => p.customer_id === selectedCustomer.id).map(proj => (
+                            <div 
+                              key={proj.id} 
+                              onClick={() => handleProjectClick(proj.id)} 
+                              className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-4 sm:p-5 hover:bg-blue-50/50 hover:border-blue-200 transition-all cursor-pointer flex flex-col group relative"
+                            >
+                               {/* Quick "Open" hint icon on hover */}
+                               <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                 <Briefcase className="h-4 w-4 text-blue-500" />
+                               </div>
+
+                               <div className="flex justify-between items-start mb-2 sm:mb-3">
+                                 <p className="font-bold text-slate-900 text-[13px] sm:text-[15px] pr-8 group-hover:text-blue-700 transition-colors">{proj.name}</p>
+                               </div>
+                               <span className={`w-max px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-bold uppercase tracking-widest shrink-0 mb-2 ${proj.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{proj.status}</span>
+                               <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed mb-3 sm:mb-4 flex-1">{proj.description || 'No description provided.'}</p>
+                               
+                               <div className="flex justify-between items-end border-t border-slate-200 pt-2.5 sm:pt-3">
+                                 {canViewFinance ? (
+                                   <div>
+                                     <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Expected Value</p>
+                                     <p className="text-[12px] sm:text-sm font-black text-slate-800">₹{(proj.expected_amount || 0).toLocaleString()}</p>
                                    </div>
+                                 ) : <div></div>}
+                                 
+                                 <div className="text-right">
+                                   <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Due Date</p>
+                                   <p className="text-[11px] sm:text-xs font-bold text-slate-600">{proj.due_date ? new Date(proj.due_date).toLocaleDateString() : 'Unscheduled'}</p>
                                  </div>
-                              </div>
-                            ))}
-                          </div>
-                        )
+                               </div>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
                   )}
 
-                  {/* TAB 3: BILLING & PAYMENTS (ADMIN ONLY) */}
-                  {modalTab === 'finance' && selectedCustomer && role === 'admin' && (
+                  {/* TAB 3: BILLING & PAYMENTS (ADMIN/HEAD ONLY) */}
+                  {modalTab === 'finance' && selectedCustomer && canViewFinance && (
                     <div className="flex-1 flex flex-col space-y-6 sm:space-y-8 py-2">
                       {(() => {
                         const financials = getClientFinancials(selectedCustomer.id);

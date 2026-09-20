@@ -74,7 +74,7 @@ export default function DashboardPage() {
   
   const [isSavingAnnouncement, setIsSavingAnnouncement] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "compressing" | "uploading" | "saving">("idle");
-  const [companyFormData, setCompanyFormData] = useState({ name: "", area: "", head_name: "", phone: "", website_url: "", logo_url: "", business_type: "normal" });
+  const [companyFormData, setCompanyFormData] = useState({ name: "", area: "", head_name: "", phone: "", website_url: "", logo_url: "", business_type: "normal", allow_head_finance: true });
 
   const activeCompanyId = activeWorkspace || companyId;
   const visibleAnnouncements = announcements.filter(a => !a.company_id || a.company_id === activeCompanyId);
@@ -107,7 +107,7 @@ export default function DashboardPage() {
     setCompanyModalMode("add"); setSelectedCompany(null); 
     setLogoFile(null); setLogoPreview(null); setRemoveLogo(false); setShowLogoMenu(false);
     setShowCustomTypeInput(false); setCustomTypeLabel("");
-    setCompanyFormData({ name: "", area: "", head_name: "", phone: "", website_url: "", logo_url: "", business_type: "normal" }); 
+    setCompanyFormData({ name: "", area: "", head_name: "", phone: "", website_url: "", logo_url: "", business_type: "normal", allow_head_finance: true }); 
     setIsCompanyModalOpen(true); 
   };
   
@@ -127,7 +127,8 @@ export default function DashboardPage() {
       phone: selectedCompany.phone || "", 
       website_url: selectedCompany.website_url || "", 
       logo_url: selectedCompany.logo_url || "",
-      business_type: selectedCompany.business_type || "normal"
+      business_type: selectedCompany.business_type || "normal",
+      allow_head_finance: selectedCompany.allow_head_finance ?? true
     }); 
   };
 
@@ -206,7 +207,8 @@ export default function DashboardPage() {
         phone: companyFormData.phone, 
         website_url: companyFormData.website_url, 
         logo_url: finalLogoUrl,
-        business_type: finalBusinessType
+        business_type: finalBusinessType,
+        allow_head_finance: companyFormData.allow_head_finance
       };
       
       if (companyModalMode === 'add') { 
@@ -697,6 +699,21 @@ export default function DashboardPage() {
                         <div><label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Phone</label><input type="text" value={companyFormData.phone} onChange={(e) => setCompanyFormData({...companyFormData, phone: e.target.value})} className="w-full h-12 sm:h-12 rounded-xl border border-slate-200 bg-white px-4 sm:px-4 text-[13px] sm:text-[13px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
                         <div><label className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 px-1">Website URL</label><input type="url" value={companyFormData.website_url} onChange={(e) => setCompanyFormData({...companyFormData, website_url: e.target.value})} className="w-full h-12 sm:h-12 rounded-xl border border-slate-200 bg-white px-4 sm:px-4 text-[13px] sm:text-[13px] font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" /></div>
                       </div>
+
+                      {/* --- NEW: FINANCIAL ACCESS TOGGLE --- */}
+                      <div className="mt-5 border-t border-slate-100 pt-5">
+                         <label className="flex items-center justify-between p-4 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors bg-white shadow-sm">
+                           <div>
+                             <p className="text-[12px] sm:text-[13px] font-bold text-slate-800">Financial Access for Head</p>
+                             <p className="text-[10px] sm:text-[11px] font-medium text-slate-500 mt-0.5 max-w-[250px] sm:max-w-none">If ON, the head can view invoices, customer finances, and ledgers.</p>
+                           </div>
+                           <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${companyFormData.allow_head_finance ? 'bg-blue-600' : 'bg-slate-300'}`}>
+                             <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${companyFormData.allow_head_finance ? 'translate-x-6' : 'translate-x-1'}`} />
+                           </div>
+                           <input type="checkbox" className="hidden" checked={companyFormData.allow_head_finance} onChange={(e) => setCompanyFormData({...companyFormData, allow_head_finance: e.target.checked})} />
+                         </label>
+                      </div>
+
                     </div>
                   )}
                 </div>
