@@ -5,6 +5,7 @@ import { Plus, Search, FolderKanban, CheckCircle2, AlertCircle, X, Check, User, 
 import { useAuthStore } from "../../../store/authStore";
 import { useDataStore } from "../../../store/dataStore";
 import { supabase } from "../../../supabase";
+
 const STATUS_OPTIONS = ['Planning', 'In Progress', 'Review', 'Completed'];
 
 const DEFAULT_MILESTONES = {
@@ -26,7 +27,7 @@ export default function StandardProjects() {
   const [modalTab, setModalTab] = useState<"details" | "tasks" | "progress" | "finance">("details");
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   const [viewMode, setViewMode] = useState<'admin' | 'user'>('admin');
   const [roleSelectProject, setRoleSelectProject] = useState<any>(null);
 
@@ -71,11 +72,18 @@ export default function StandardProjects() {
 
   const currentCompanyId = role === 'admin' ? (activeWorkspace || "") : companyId;
 
+  // Safe Data Variables for Rendering (Prevents .map crashes if data is malformed in DB)
+  const myReport = selectedProject ? reports.find(r => r.project_id === selectedProject.id && r.employee_id === employeeId) : null;
+  const myEntries = Array.isArray(myReport?.entries) ? myReport.entries : [];
+
+  const adminTimelineReport = (selectedProject && timelineModalEmpId) ? reports.find(r => r.project_id === selectedProject.id && r.employee_id === timelineModalEmpId) : null;
+  const adminTimelineEntries = Array.isArray(adminTimelineReport?.entries) ? adminTimelineReport.entries : [];
+
   const visibleProjects = projects.filter(p => {
     if (!p.name) return false;
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === "All" || p.status === filterStatus;
-    const isAssigned = (role === 'admin' || role === 'head') || (p.assignee_ids || []).includes(employeeId);
+    const isAssigned = (role === 'admin' || role === 'head') || (Array.isArray(p.assignee_ids) ? p.assignee_ids : []).includes(employeeId);
 
     if (role === 'admin' && !activeWorkspace) {
       const matchesCompany = filterCompanyId === "all" || p.company_id?.toString() === filterCompanyId;
@@ -89,7 +97,7 @@ export default function StandardProjects() {
   const availableEmployees = employees.filter(emp => emp.access_level === 'admin' || emp.company_id === parseInt(formData.company_id || '0'));
 
   const handleProjectClick = (project: any) => {
-    if ((role === 'admin' || role === 'head') && (project.assignee_ids || []).includes(employeeId)) {
+    if ((role === 'admin' || role === 'head') && (Array.isArray(project.assignee_ids) ? project.assignee_ids : []).includes(employeeId)) {
       setRoleSelectProject(project);
     } else {
       openProjectDetails(project, role === 'user' ? 'user' : 'admin');
@@ -109,34 +117,51 @@ export default function StandardProjects() {
     setViewMode(mode);
     setRoleSelectProject(null);
     setSelectedProject(project);
+    
+    // SAFE MERGE: Guarantees legacy projects won't crash when opening the Timeline Milestones
+    const safeMilestones = {
+      in_progress: { ...DEFAULT_MILESTONES.in_progress, ...(project.milestones?.in_progress || {}) },
+      review: { ...DEFAULT_MILESTONES.review, ...(project.milestones?.review || {}) },
+      completed: { ...DEFAULT_MILESTONES.completed, ...(project.milestones?.completed || {}) }
+    };
+
     setFormData({
       name: project.name || "", description: project.description || "", priority: project.priority || "Medium", status: project.status || "Planning", 
       expected_amount: project.expected_amount || 0, approval_date: project.approval_date || today, due_date: project.due_date || "", 
       company_id: project.company_id?.toString() || "", customer_id: project.customer_id?.toString() || "", 
-      internal_company_id: project.internal_company_id?.toString() || "", drive_folder_url: project.drive_folder_url || "", assignee_ids: project.assignee_ids || [],
-      milestones: project.milestones || DEFAULT_MILESTONES
+      internal_company_id: project.internal_company_id?.toString() || "", drive_folder_url: project.drive_folder_url || "", 
+      assignee_ids: Array.isArray(project.assignee_ids) ? project.assignee_ids : [],
+      milestones: safeMilestones
     });
     setCustomerType(project.internal_company_id ? "in_house" : project.customer_id ? "existing" : "in_house"); 
     setNewCustomer({ name: "", phone: "" }); setPendingTasks([]); setNewTaskTitle(""); setNewTaskAssignee(""); setNewTaskDeadline("");
     setExpandedFinanceEmpId(null); setShowPayoutForm(false); setShowDriveHelp(false); setTimelineModalEmpId(null); setReactionFormId(null);
 
     const currentAlloc: any = {};
-    project.assignee_ids?.forEach((id: number) => {
-      const a = projectAllocations.find(pa => pa.project_id === project.id && pa.employee_id === id);
-      currentAlloc[id] = { allocated: a?.allocated_amount || 0, incentive: a?.incentive_amount || 0 };
-    });
+    if (Array.isArray(project.assignee_ids)) {
+      project.assignee_ids.forEach((id: number) => {
+        const a = projectAllocations.find(pa => pa.project_id === project.id && pa.employee_id === id);
+        currentAlloc[id] = { allocated: a?.allocated_amount || 0, incentive: a?.incentive_amount || 0 };
+      });
+    }
     setAllocationsForm(currentAlloc); setModalTab("details"); setIsModalOpen(true);
   };
 
   const handleMilestoneToggle = (phase: keyof typeof DEFAULT_MILESTONES, key: string) => {
     if (isUserView) return;
     const newMilestones = { ...formData.milestones };
-    newMilestones[phase] = { ...newMilestones[phase], [key]: !newMilestones[phase][key as keyof typeof newMilestones[typeof phase]] };
+    
+    if (!newMilestones[phase]) newMilestones[phase] = { ...DEFAULT_MILESTONES[phase] };
+
+    newMilestones[phase] = { 
+       ...newMilestones[phase], 
+       [key]: !newMilestones[phase][key as keyof typeof newMilestones[typeof phase]] 
+    };
 
     let newStatus = formData.status;
-    const inProgressReqs = Object.values(newMilestones.in_progress).every(Boolean);
-    const reviewReqs = Object.values(newMilestones.review).every(Boolean);
-    const completedReqs = Object.values(newMilestones.completed).every(Boolean);
+    const inProgressReqs = Object.values(newMilestones.in_progress || {}).every(Boolean);
+    const reviewReqs = Object.values(newMilestones.review || {}).every(Boolean);
+    const completedReqs = Object.values(newMilestones.completed || {}).every(Boolean);
 
     if (completedReqs && reviewReqs && inProgressReqs) newStatus = 'Completed';
     else if (reviewReqs && inProgressReqs) newStatus = 'Review';
@@ -175,22 +200,6 @@ export default function StandardProjects() {
         const { data, error } = await supabase.from('projects').insert([payload]).select().single();
         if (error) throw new Error(`Project Error: ${error.message}`);
 
-        if (payload.expected_amount >= 0) {
-           const invPayload = {
-             company_id: payload.company_id, customer_id: finalCustomerId, project_id: data.id,
-             invoice_number: `INV-${Math.floor(10000 + Math.random() * 90000)}`,
-             issue_date: today, due_date: payload.due_date || today,
-             subtotal: payload.expected_amount, total_amount: payload.expected_amount, status: 'Pending'
-           };
-           const { data: invData, error: invError } = await supabase.from('invoices').insert([invPayload]).select().single();
-           if (invError) throw new Error(`Auto-Invoice Error: ${invError.message}`);
-
-           if (invData) {
-             const { error: itemError } = await supabase.from('invoice_items').insert([{ invoice_id: invData.id, description: `Project: ${payload.name}`, quantity: 1, rate: payload.expected_amount, total: payload.expected_amount }]);
-             if (itemError) throw new Error(`Invoice Line Item Error: ${itemError.message}`);
-           }
-        }
-
         if (pendingTasks.length > 0) {
           const tasksToInsert = pendingTasks.map(t => ({ project_id: data.id, title: t.title, assignee_id: t.assignee_id, is_completed: t.is_completed, deadline: t.deadline }));
           await supabase.from('project_tasks').insert(tasksToInsert);
@@ -205,6 +214,56 @@ export default function StandardProjects() {
       if(modalTab === 'details') setIsModalOpen(false); 
       else alert('Project updated successfully.');
     } catch (error: any) { alert(error.message); } finally { setIsSaving(false); }
+  };
+
+  const handleGenerateInvoice = async () => {
+    if (!selectedProject) return;
+    if (formData.expected_amount <= 0) return alert("Expected Value must be greater than 0 to generate an invoice.");
+
+    setIsSaving(true);
+    try {
+      const { data: existingInvoices, error: checkError } = await supabase
+        .from('invoices')
+        .select('id')
+        .eq('project_id', selectedProject.id);
+
+      if (checkError) throw checkError;
+      if (existingInvoices && existingInvoices.length > 0) {
+        return alert("An invoice has already been generated for this project.");
+      }
+
+      const invPayload = {
+        company_id: selectedProject.company_id,
+        customer_id: selectedProject.customer_id,
+        project_id: selectedProject.id,
+        invoice_number: `INV-${Math.floor(10000 + Math.random() * 90000)}`,
+        issue_date: today,
+        due_date: selectedProject.due_date || today,
+        subtotal: formData.expected_amount,
+        total_amount: formData.expected_amount,
+        status: 'Pending'
+      };
+
+      const { data: invData, error: invError } = await supabase.from('invoices').insert([invPayload]).select().single();
+      if (invError) throw new Error(`Auto-Invoice Error: ${invError.message}`);
+
+      if (invData) {
+        const { error: itemError } = await supabase.from('invoice_items').insert([{ 
+          invoice_id: invData.id, 
+          description: `Project: ${selectedProject.name}`, 
+          quantity: 1, 
+          rate: formData.expected_amount, 
+          total: formData.expected_amount 
+        }]);
+        if (itemError) throw new Error(`Invoice Line Item Error: ${itemError.message}`);
+      }
+
+      alert("Invoice generated and approved successfully!");
+    } catch (error: any) {
+      alert(error.message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSaveAllocations = async () => {
@@ -247,13 +306,12 @@ export default function StandardProjects() {
     } catch (error: any) { alert(error.message); } finally { setIsSaving(false); }
   };
 
-  // Structured Log Saving (User Side)
   const handleSaveMyReport = async () => {
     if (!selectedProject || !myReportText.trim()) return;
     setIsSaving(true);
     try {
       const existingReport = reports.find(r => r.project_id === selectedProject.id && r.employee_id === employeeId);
-      
+
       const newEntry = {
         id: crypto.randomUUID(),
         type: 'note',
@@ -261,14 +319,14 @@ export default function StandardProjects() {
         timestamp: new Date().toISOString()
       };
 
-      const currentEntries = existingReport?.entries || [];
-      
+      const currentEntries = Array.isArray(existingReport?.entries) ? existingReport.entries : [];
+
       await supabase.from('project_reports').upsert({ 
         project_id: selectedProject.id, 
         employee_id: employeeId, 
         entries: [...currentEntries, newEntry] 
       }, { onConflict: 'project_id, employee_id' });
-      
+
       setMyReportText(""); 
       await fetchAllData();
     } catch (e: any) { alert(e.message); } finally { setIsSaving(false); }
@@ -281,12 +339,13 @@ export default function StandardProjects() {
       const existingReport = reports.find(r => r.project_id === selectedProject.id && r.employee_id === employeeId);
       if (!existingReport) return;
 
-      const updatedEntries = (existingReport.entries || []).map((e: any) => 
+      const currentEntries = Array.isArray(existingReport?.entries) ? existingReport.entries : [];
+      const updatedEntries = currentEntries.map((e: any) => 
         e.id === entryId ? { ...e, text: editingEntryText.trim() } : e
       );
 
       await supabase.from('project_reports').update({ entries: updatedEntries }).eq('id', existingReport.id);
-      
+
       setEditingEntryId(null);
       setEditingEntryText("");
       await fetchAllData();
@@ -299,21 +358,22 @@ export default function StandardProjects() {
     try {
       const existingReport = reports.find(r => r.project_id === selectedProject.id && r.employee_id === empId);
       if (!existingReport) return;
-      
-      const updatedEntries = (existingReport.entries || []).filter((e: any) => e.id !== entryId);
+
+      const currentEntries = Array.isArray(existingReport?.entries) ? existingReport.entries : [];
+      const updatedEntries = currentEntries.filter((e: any) => e.id !== entryId);
       await supabase.from('project_reports').update({ entries: updatedEntries }).eq('id', existingReport.id);
       await fetchAllData();
     } catch (e: any) { alert(e.message); } finally { setIsSaving(false); }
   };
 
-  // Admin Reactions
   const handleAdminReact = async (empId: number, entryId: string, status: string, customText: string = "") => {
     setIsSaving(true);
     try {
       const existingReport = reports.find(r => r.project_id === selectedProject.id && r.employee_id === empId);
       if (!existingReport) return;
 
-      const updatedEntries = (existingReport.entries || []).map((e: any) => {
+      const currentEntries = Array.isArray(existingReport?.entries) ? existingReport.entries : [];
+      const updatedEntries = currentEntries.map((e: any) => {
         if (e.id === entryId) {
           return {
             ...e,
@@ -337,7 +397,8 @@ export default function StandardProjects() {
       const existingReport = reports.find(r => r.project_id === selectedProject.id && r.employee_id === empId);
       if (!existingReport) return;
 
-      const updatedEntries = (existingReport.entries || []).map((e: any) => {
+      const currentEntries = Array.isArray(existingReport?.entries) ? existingReport.entries : [];
+      const updatedEntries = currentEntries.map((e: any) => {
         if (e.id === entryId) {
           const { reaction, ...rest } = e; 
           return rest;
@@ -401,11 +462,11 @@ export default function StandardProjects() {
   const handleEmployeeUploadComplete = async () => {
     if (!taskToUpload || !selectedProject) return;
     if (!uploadNote.trim()) return alert("Please provide a brief note detailing what you uploaded or updated.");
-    
+
     setIsSaving(true);
     try {
       await supabase.from('project_tasks').update({ is_completed: true }).eq('id', taskToUpload.id);
-      
+
       const existingReport = reports.find(r => r.project_id === selectedProject.id && r.employee_id === employeeId);
       const newEntry = {
         id: crypto.randomUUID(),
@@ -414,8 +475,8 @@ export default function StandardProjects() {
         text: uploadNote.trim(),
         timestamp: new Date().toISOString()
       };
-      const currentEntries = existingReport?.entries || [];
-      
+      const currentEntries = Array.isArray(existingReport?.entries) ? existingReport.entries : [];
+
       await supabase.from('project_reports').upsert({ 
         project_id: selectedProject.id, 
         employee_id: employeeId, 
@@ -476,7 +537,7 @@ export default function StandardProjects() {
   const userTotalAllocated = (userAllocation?.allocated_amount || 0) + (userAllocation?.incentive_amount || 0);
   const userBalanceDue = Math.max(0, userTotalAllocated - userTotalEarned);
 
-  const hasAllocationChanges = selectedProject && (formData.assignee_ids || []).some(empId => {
+  const hasAllocationChanges = selectedProject && (Array.isArray(formData.assignee_ids) ? formData.assignee_ids : []).some(empId => {
     const formAlloc = allocationsForm[empId] || { allocated: 0, incentive: 0 };
     const originalAlloc = projectAllocations.find(pa => pa.project_id === selectedProject.id && pa.employee_id === empId);
     return Number(formAlloc.allocated) !== Number(originalAlloc?.allocated_amount || 0) || Number(formAlloc.incentive) !== Number(originalAlloc?.incentive_amount || 0);
@@ -485,7 +546,7 @@ export default function StandardProjects() {
   return (
     <>
       <div className="max-w-[1200px] mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-700 pb-8 relative z-0 print:p-0 print:m-0">
-        
+
         <div className="absolute inset-0 pointer-events-none z-[-1] overflow-hidden print:hidden">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMTQ4LCAxNjMsIDE4NCwgMC4wOCkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
         </div>
@@ -595,7 +656,7 @@ export default function StandardProjects() {
                              <p className="text-sm font-bold text-slate-800">{completedTasks} / {totalTasks}</p>
                            </div>
                            <div className="flex -space-x-2 pl-2 border-l border-slate-100 sm:border-none sm:pl-0">
-                             {(project.assignee_ids || []).slice(0, 4).map((id: number) => {
+                             {(Array.isArray(project.assignee_ids) ? project.assignee_ids : []).slice(0, 4).map((id: number) => {
                                const emp = getAvatar(id);
                                return (
                                  <div key={id} className="h-7 w-7 sm:h-8 sm:w-8 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center text-[9px] sm:text-[10px] font-bold text-slate-600 overflow-hidden shadow-sm" title={emp?.name}>
@@ -603,12 +664,12 @@ export default function StandardProjects() {
                                  </div>
                                )
                              })}
-                             {(project.assignee_ids || []).length > 4 && <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center text-[9px] sm:text-[10px] font-bold text-slate-600 shadow-sm">+{(project.assignee_ids || []).length - 4}</div>}
-                             {(project.assignee_ids || []).length === 0 && <span className="text-[10px] sm:text-[11px] font-semibold text-slate-400 pl-2">Unassigned</span>}
+                             {(Array.isArray(project.assignee_ids) ? project.assignee_ids : []).length > 4 && <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center text-[9px] sm:text-[10px] font-bold text-slate-600 shadow-sm">+{(Array.isArray(project.assignee_ids) ? project.assignee_ids : []).length - 4}</div>}
+                             {(Array.isArray(project.assignee_ids) ? project.assignee_ids : []).length === 0 && <span className="text-[10px] sm:text-[11px] font-semibold text-slate-400 pl-2">Unassigned</span>}
                            </div>
                         </div>
 
-                        {(role === 'admin' || role === 'head') && (
+                        {role === 'admin' && (
                           <div className="flex flex-col items-end">
                             <span className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Value</span>
                             <span className="text-[12px] sm:text-sm font-black text-emerald-600">₹{(project.expected_amount || 0).toLocaleString()}</span>
@@ -697,7 +758,7 @@ export default function StandardProjects() {
                   <div className="h-12 w-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4"><Layers className="h-6 w-6" /></div>
                   <h3 className="text-xl font-black text-slate-900 tracking-tight mb-2">Open Workspace As</h3>
                   <p className="text-xs font-medium text-slate-500 mb-6">You are assigned to tasks on <strong className="text-slate-800">{roleSelectProject.name}</strong>. How would you like to view it?</p>
-                  
+
                   <div className="space-y-3">
                     <button onClick={() => openProjectDetails(roleSelectProject, 'admin')} className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl py-3.5 text-sm font-bold shadow-md transition-all flex items-center justify-center gap-2">
                        Manage Project (Admin)
@@ -706,7 +767,7 @@ export default function StandardProjects() {
                        My Tasks (User)
                     </button>
                   </div>
-                  
+
                   <button onClick={() => setRoleSelectProject(null)} className="mt-5 w-full text-slate-400 hover:text-slate-600 font-bold text-xs uppercase tracking-wider transition-colors">Cancel</button>
                </motion.div>
              </motion.div>
@@ -735,8 +796,8 @@ export default function StandardProjects() {
                  </div>
 
                  <div className="flex-1 overflow-y-auto p-6 space-y-5">
-                    {reports.find(r => r.project_id === selectedProject?.id && r.employee_id === timelineModalEmpId)?.entries?.length > 0 ? (
-                       reports.find(r => r.project_id === selectedProject?.id && r.employee_id === timelineModalEmpId)?.entries.map((entry: any) => {
+                    {adminTimelineEntries.length > 0 ? (
+                       adminTimelineEntries.map((entry: any) => {
                           const hasReaction = !!entry.reaction;
                           const visual = getReactionVisuals(entry.reaction?.status);
 
@@ -913,7 +974,7 @@ export default function StandardProjects() {
                 {/* TAB 1: DETAILS */}
                 {modalTab === 'details' && (
                   <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-5 sm:p-8 flex flex-col sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-300 sm:[&::-webkit-scrollbar-thumb]:rounded-full sm:[&::-webkit-scrollbar-track]:bg-transparent max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
-                    
+
                     {isUserView ? (
                       <div className="flex-1 max-w-4xl mx-auto w-full">
                         <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 sm:p-8 space-y-8">
@@ -1042,14 +1103,23 @@ export default function StandardProjects() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-5">
-                          <div className="md:col-span-3">
+                          <div className={role === 'admin' ? "md:col-span-3" : "md:col-span-4"}>
                             <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1 whitespace-nowrap truncate">Project Name</label>
                             <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 shadow-sm disabled:bg-slate-50" />
                           </div>
-                          <div>
-                            <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1 whitespace-nowrap truncate">Expected Value (₹)</label>
-                            <input type="number" value={formData.expected_amount} onChange={(e) => setFormData({...formData, expected_amount: parseFloat(e.target.value) || 0})} placeholder="For Auto-Invoice" className="w-full h-10 sm:h-12 rounded-xl border border-emerald-200 bg-emerald-50 px-3 sm:px-4 text-[12px] sm:text-sm font-bold text-emerald-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 shadow-sm disabled:bg-slate-50 disabled:text-slate-400 disabled:border-slate-200" />
-                          </div>
+                          {role === 'admin' && (
+                            <div className="flex flex-col">
+                              <label className="text-[9px] sm:text-[10px] font-bold text-emerald-600 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1 whitespace-nowrap truncate">Expected Value (₹)</label>
+                              <div className="flex gap-2 items-center">
+                                <input type="number" value={formData.expected_amount} onChange={(e) => setFormData({...formData, expected_amount: parseFloat(e.target.value) || 0})} className="w-full h-10 sm:h-12 rounded-xl border border-emerald-200 bg-emerald-50 px-3 sm:px-4 text-[12px] sm:text-sm font-bold text-emerald-700 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 shadow-sm disabled:bg-slate-50 disabled:text-slate-400 disabled:border-slate-200" />
+                                {selectedProject && (
+                                  <button type="button" onClick={handleGenerateInvoice} disabled={isSaving} className="shrink-0 h-10 sm:h-12 px-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl text-[11px] font-bold shadow-md transition-all">
+                                     Approve Invoice
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         <div><label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Description</label><textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="w-full h-20 sm:h-24 rounded-xl border border-slate-200 bg-white p-3 sm:p-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 shadow-sm resize-none disabled:bg-slate-50" /></div>
@@ -1158,7 +1228,7 @@ export default function StandardProjects() {
                                     <p className={`text-[12px] sm:text-[13px] font-bold leading-relaxed break-words ${task.is_completed ? 'text-slate-500' : 'text-slate-700'}`}>{task.title}</p>
                                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5">
                                       {task.assignee_id && <span className="text-[9px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-wider truncate">{getAvatar(task.assignee_id)?.name}</span>}
-                                      
+
                                       {isAdminView ? (
                                         <input 
                                           type="date" 
@@ -1197,7 +1267,7 @@ export default function StandardProjects() {
                 {/* TAB 3: TIMELINE & MILESTONES */}
                 {modalTab === 'progress' && (
                   <div className="flex-1 overflow-y-auto min-h-0 overscroll-contain p-5 sm:p-8 flex flex-col sm:[&::-webkit-scrollbar]:w-1.5 sm:[&::-webkit-scrollbar-thumb]:bg-slate-300 sm:[&::-webkit-scrollbar-thumb]:rounded-full sm:[&::-webkit-scrollbar-track]:bg-transparent max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
-                    
+
                     {isAdminView && (
                       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 sm:p-6 mb-6 shadow-sm">
                         <div className="flex justify-between items-center mb-4">
@@ -1216,11 +1286,11 @@ export default function StandardProjects() {
                             <div className="space-y-2">
                               {Object.entries({ drive_created: "Drive Folder Created", team_briefed: "Team Briefed", budget_cleared: "Budget Cleared" }).map(([key, label]) => (
                                 <label key={key} className="flex items-center gap-3 cursor-pointer group">
-                                  <div className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors ${formData.milestones.in_progress[key as keyof typeof formData.milestones.in_progress] ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300 group-hover:border-blue-400'}`}>
-                                    {formData.milestones.in_progress[key as keyof typeof formData.milestones.in_progress] && <Check className="h-3.5 w-3.5 text-white" />}
+                                  <div className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors ${formData.milestones?.in_progress?.[key as keyof typeof formData.milestones.in_progress] ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300 group-hover:border-blue-400'}`}>
+                                    {formData.milestones?.in_progress?.[key as keyof typeof formData.milestones.in_progress] && <Check className="h-3.5 w-3.5 text-white" />}
                                   </div>
-                                  <span className={`text-xs font-semibold ${formData.milestones.in_progress[key as keyof typeof formData.milestones.in_progress] ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{label}</span>
-                                  <input type="checkbox" className="hidden" checked={formData.milestones.in_progress[key as keyof typeof formData.milestones.in_progress]} onChange={() => handleMilestoneToggle('in_progress', key)} />
+                                  <span className={`text-xs font-semibold ${formData.milestones?.in_progress?.[key as keyof typeof formData.milestones.in_progress] ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{label}</span>
+                                  <input type="checkbox" className="hidden" checked={!!formData.milestones?.in_progress?.[key as keyof typeof formData.milestones.in_progress]} onChange={() => handleMilestoneToggle('in_progress', key)} />
                                 </label>
                               ))}
                             </div>
@@ -1230,11 +1300,11 @@ export default function StandardProjects() {
                             <div className="space-y-2">
                               {Object.entries({ all_tasks_done: "All Tasks Completed", internal_qa: "Internal QA Passed" }).map(([key, label]) => (
                                 <label key={key} className="flex items-center gap-3 cursor-pointer group">
-                                  <div className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors ${formData.milestones.review[key as keyof typeof formData.milestones.review] ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300 group-hover:border-blue-400'}`}>
-                                    {formData.milestones.review[key as keyof typeof formData.milestones.review] && <Check className="h-3.5 w-3.5 text-white" />}
+                                  <div className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors ${formData.milestones?.review?.[key as keyof typeof formData.milestones.review] ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300 group-hover:border-blue-400'}`}>
+                                    {formData.milestones?.review?.[key as keyof typeof formData.milestones.review] && <Check className="h-3.5 w-3.5 text-white" />}
                                   </div>
-                                  <span className={`text-xs font-semibold ${formData.milestones.review[key as keyof typeof formData.milestones.review] ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{label}</span>
-                                  <input type="checkbox" className="hidden" checked={formData.milestones.review[key as keyof typeof formData.milestones.review]} onChange={() => handleMilestoneToggle('review', key)} />
+                                  <span className={`text-xs font-semibold ${formData.milestones?.review?.[key as keyof typeof formData.milestones.review] ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{label}</span>
+                                  <input type="checkbox" className="hidden" checked={!!formData.milestones?.review?.[key as keyof typeof formData.milestones.review]} onChange={() => handleMilestoneToggle('review', key)} />
                                 </label>
                               ))}
                             </div>
@@ -1244,11 +1314,11 @@ export default function StandardProjects() {
                             <div className="space-y-2">
                               {Object.entries({ client_approved: "Client Approved", final_handover: "Final Handover" }).map(([key, label]) => (
                                 <label key={key} className="flex items-center gap-3 cursor-pointer group">
-                                  <div className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors ${formData.milestones.completed[key as keyof typeof formData.milestones.completed] ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300 group-hover:border-blue-400'}`}>
-                                    {formData.milestones.completed[key as keyof typeof formData.milestones.completed] && <Check className="h-3.5 w-3.5 text-white" />}
+                                  <div className={`h-5 w-5 rounded-md border flex items-center justify-center transition-colors ${formData.milestones?.completed?.[key as keyof typeof formData.milestones.completed] ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-300 group-hover:border-blue-400'}`}>
+                                    {formData.milestones?.completed?.[key as keyof typeof formData.milestones.completed] && <Check className="h-3.5 w-3.5 text-white" />}
                                   </div>
-                                  <span className={`text-xs font-semibold ${formData.milestones.completed[key as keyof typeof formData.milestones.completed] ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{label}</span>
-                                  <input type="checkbox" className="hidden" checked={formData.milestones.completed[key as keyof typeof formData.milestones.completed]} onChange={() => handleMilestoneToggle('completed', key)} />
+                                  <span className={`text-xs font-semibold ${formData.milestones?.completed?.[key as keyof typeof formData.milestones.completed] ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{label}</span>
+                                  <input type="checkbox" className="hidden" checked={!!formData.milestones?.completed?.[key as keyof typeof formData.milestones.completed]} onChange={() => handleMilestoneToggle('completed', key)} />
                                 </label>
                               ))}
                             </div>
@@ -1273,9 +1343,9 @@ export default function StandardProjects() {
 
                            <div className="flex-1 overflow-y-auto min-h-0 pt-5 sm:pt-6 border-t border-slate-100">
                              <h4 className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3 sm:mb-4">My Previous Updates</h4>
-                             
+
                              <div className="space-y-4">
-                               {reports.find(r => r.project_id === selectedProject?.id && r.employee_id === employeeId)?.entries?.map((entry: any) => {
+                               {myEntries.map((entry: any) => {
                                  const isEditing = editingEntryId === entry.id;
                                  const hasReaction = !!entry.reaction;
                                  const visual = getReactionVisuals(entry.reaction?.status);
@@ -1289,7 +1359,7 @@ export default function StandardProjects() {
                                                <button onClick={() => handleDeleteEntry(employeeId, entry.id)} className="p-1.5 text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 rounded-md transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
                                             </div>
                                          )}
-                                         
+
                                          {entry.type === 'upload' && (
                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-100 text-[9px] font-bold uppercase tracking-wider rounded-lg mb-3">
                                               <FileText className="h-3 w-3" /> Attached File: {entry.task_title}
@@ -1327,13 +1397,13 @@ export default function StandardProjects() {
                                })}
 
                                {/* Legacy text support */}
-                               {reports.find(r => r.project_id === selectedProject?.id && r.employee_id === employeeId)?.report_text && (!reports.find(r => r.project_id === selectedProject?.id && r.employee_id === employeeId)?.entries || reports.find(r => r.project_id === selectedProject?.id && r.employee_id === employeeId)?.entries?.length === 0) && (
+                               {myReport?.report_text && myEntries.length === 0 && (
                                  <pre className="text-[12px] sm:text-[13px] text-slate-700 whitespace-pre-wrap font-sans leading-relaxed bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
-                                   {reports.find(r => r.project_id === selectedProject?.id && r.employee_id === employeeId)?.report_text}
+                                   {myReport.report_text}
                                  </pre>
                                )}
 
-                               {(!reports.find(r => r.project_id === selectedProject?.id && r.employee_id === employeeId)?.entries?.length && !reports.find(r => r.project_id === selectedProject?.id && r.employee_id === employeeId)?.report_text) && (
+                               {myEntries.length === 0 && !myReport?.report_text && (
                                  <p className="text-[12px] sm:text-sm italic text-slate-400 py-6">No updates submitted yet.</p>
                                )}
                              </div>
@@ -1342,12 +1412,14 @@ export default function StandardProjects() {
                        ) : (
                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                            {(formData.assignee_ids || []).length === 0 && <p className="text-[12px] sm:text-sm text-slate-400 italic md:col-span-2">No team members assigned.</p>}
-                           
+
                            {(formData.assignee_ids || []).map(empId => {
                              const emp = getAvatar(empId);
                              const empReport = reports.find(r => r.project_id === selectedProject?.id && r.employee_id === empId);
-                             const noteCount = empReport?.entries?.length || 0;
                              
+                             // Safe extraction of entries length
+                             const noteCount = Array.isArray(empReport?.entries) ? empReport.entries.length : 0;
+
                              return (
                                <div key={empId} className="bg-white border border-slate-200 hover:border-blue-300 rounded-2xl p-5 shadow-sm flex flex-col items-center text-center transition-all group">
                                  <div className="h-12 w-12 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-sm font-bold text-slate-600 overflow-hidden shrink-0 mb-3 shadow-sm">
@@ -1355,9 +1427,9 @@ export default function StandardProjects() {
                                  </div>
                                  <p className="text-[14px] sm:text-base font-black text-slate-900 tracking-tight">{emp?.name}</p>
                                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1 mb-4">{noteCount} Updates Logged</p>
-                                 
+
                                  <button onClick={() => setTimelineModalEmpId(empId)} className="w-full py-2.5 rounded-xl bg-slate-50 text-slate-700 text-[11px] font-bold uppercase tracking-wider border border-slate-200 group-hover:bg-blue-50 group-hover:text-blue-700 group-hover:border-blue-200 transition-colors">
-                                    View Timeline
+                                   View Timeline
                                  </button>
                                </div>
                              )
@@ -1518,7 +1590,7 @@ export default function StandardProjects() {
                                                                    </div>
                                                                    <div className="flex items-center gap-3 sm:gap-4 shrink-0">
                                                                       <span className="font-black text-emerald-600">₹{parseFloat(p.amount).toLocaleString()}</span>
-                                                                      <button onClick={(e) => { e.stopPropagation(); handleDeleteProjectPayment(p.id); }} className="text-rose-400 hover:text-rose-600 p-1 bg-rose-50 rounded-md transition-colors"><Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" /></button>
+                                                                      <button onClick={(e) => { e.stopPropagation(); handleDeleteProjectPayment(p.id); }} className="text-rose-400 hover:text-rose-600 p-1 bg-rose-50 rounded-md transition-colors"><Trash2 className="h-3 w-3 sm:h-3.5 w-3.5" /></button>
                                                                    </div>
                                                                 </div>
                                                              ))}
