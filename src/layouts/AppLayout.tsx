@@ -270,11 +270,6 @@ export default function AppLayout() {
       {/* --- MAIN CONTENT AREA --- */}
       <div className="flex-1 flex flex-col min-w-0 relative bg-[#FAFCFF] sm:rounded-r-[2.5rem] sm:border-y sm:border-r border-slate-100 sm:shadow-[0_8px_40px_rgb(0,0,0,0.04)] print:bg-white print:block overflow-hidden">
         
-        {/* Simple Background - Animations Removed */}
-        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden print:hidden">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMTQ4LCAxNjMsIDE4NCwgMC4wOCkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
-        </div>
-
         {/* --- DESKTOP HEADER --- */}
         <header className="absolute top-6 left-0 right-0 hidden sm:flex items-start justify-between px-6 lg:px-10 z-20 pointer-events-none print:hidden">
           <div className="pointer-events-auto">
@@ -298,62 +293,49 @@ export default function AppLayout() {
           </div>
         </header>
 
-        {/* --- MOBILE FLOATING NOTCH TOP HEADER --- */}
-        <div className="sm:hidden absolute top-0 left-0 right-0 h-16 pointer-events-none z-40 print:hidden">
+        {/* --- MOBILE APP BAR (Notch Style with Solid Background to block scrolling) --- */}
+        <div className="sm:hidden fixed top-0 left-0 right-0 h-[72px] bg-[#FAFCFF] z-40 print:hidden flex items-center justify-between px-4 border-b border-slate-100/50 shadow-sm">
            
            {/* Left Menu Button */}
-           <div className="absolute top-3 left-4 pointer-events-auto flex gap-2">
+           <div className="flex gap-2 items-center">
              {activeWorkspace && role === 'admin' && (
-               <button onClick={handleExitWorkspace} className="h-10 w-10 bg-rose-50 border border-rose-100 rounded-full flex items-center justify-center text-rose-500 shadow-sm"><ArrowLeft className="h-5 w-5" /></button>
+               <button onClick={handleExitWorkspace} className="h-10 w-10 text-rose-500 flex items-center justify-center transition-all active:scale-95"><ArrowLeft className="h-5 w-5" /></button>
              )}
-             <button onClick={() => setIsMobileDrawerOpen(true)} className="h-10 w-10 bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-full flex items-center justify-center text-slate-500 hover:text-blue-900 shadow-sm transition-all">
-                <Menu className="h-5 w-5" />
+             <button onClick={() => setIsMobileDrawerOpen(true)} className="h-10 w-10 text-slate-500 hover:text-blue-900 flex items-center justify-center transition-all active:scale-95">
+                <Menu className="h-6 w-6" />
              </button>
            </div>
 
            {/* Center "Notch" Logo Pill */}
-           <div className="absolute top-3 left-1/2 -translate-x-1/2 max-w-[50%] bg-white/90 backdrop-blur-xl border border-slate-200/50 rounded-full px-4 py-1.5 shadow-sm flex items-center justify-center gap-2 pointer-events-auto cursor-pointer">
+           <div className="bg-white border border-slate-200/60 rounded-[1.5rem] px-4 py-2 shadow-sm flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-95">
               {brandLogo ? (
-                 <img src={brandLogo} alt="Logo" className="h-5 w-auto object-contain shrink-0" />
+                 <img src={brandLogo} alt="Logo" className="h-5 w-auto max-w-[80px] object-contain shrink-0" />
               ) : (
-                 <div className="h-5 w-5 rounded-full bg-slate-900 flex items-center justify-center text-white text-[9px] font-black shrink-0">
+                 <div className="h-5 w-5 rounded-md bg-slate-900 flex items-center justify-center text-white text-[9px] font-black shrink-0">
                    {brandName.charAt(0).toUpperCase()}
                  </div>
               )}
-              <span className="font-bold text-slate-900 text-[13px] tracking-tight truncate">{brandName}</span>
+              <div className="font-bold text-slate-900 text-[13px] tracking-tight flex overflow-visible">
+                {brandName.split("").map((char, index) => (
+                  <motion.span
+                    key={index}
+                    animate={{ x: [0, 3, 0] }}
+                    transition={{ duration: 0.6, repeat: Infinity, repeatDelay: 3.5, delay: index * 0.05, ease: "easeInOut" }}
+                    style={{ display: "inline-block", whiteSpace: "pre" }}
+                  >
+                    {char}
+                  </motion.span>
+                ))}
+              </div>
            </div>
 
            {/* Right Chat Button */}
-           <div className="absolute top-3 right-4 pointer-events-auto">
-             <button onClick={() => setIsChatOpen(true)} className="relative h-10 w-10 bg-white/90 backdrop-blur-md border border-slate-200/50 rounded-full flex items-center justify-center text-slate-500 hover:text-blue-900 shadow-sm transition-all">
+           <div className="flex items-center">
+             <button onClick={() => setIsChatOpen(true)} className="relative h-10 w-10 text-slate-500 hover:text-blue-900 flex items-center justify-center transition-all active:scale-95">
                 <MessageSquare className="h-5 w-5" />
                 {totalUnread > 0 && <span className="absolute top-2 right-2 h-2.5 w-2.5 border-2 border-white bg-rose-500 rounded-full"></span>}
              </button>
            </div>
-        </div>
-
-        {/* --- STATIC ECOMMERCE MOBILE BOTTOM NAV DOCK --- */}
-        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 z-40 pb-[env(safe-area-inset-bottom)] print:hidden flex justify-around items-center h-[68px] px-2">
-           <NavLink to="/dashboard" className={({isActive}) => `flex flex-col items-center justify-center w-full h-full space-y-1 rounded-xl transition-all ${isActive ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>
-               <LayoutDashboard className="h-[22px] w-[22px]" />
-               <span className="text-[10px] font-bold tracking-wide">Home</span>
-           </NavLink>
-           
-           <button onClick={() => setIsChatOpen(true)} className="relative flex flex-col items-center justify-center w-full h-full space-y-1 text-slate-400 hover:text-blue-600 transition-colors rounded-xl">
-             <MessageSquare className="h-[22px] w-[22px]" />
-             {totalUnread > 0 && <span className="absolute top-2.5 right-[30%] h-2.5 w-2.5 border-2 border-white bg-rose-500 rounded-full"></span>}
-             <span className="text-[10px] font-bold tracking-wide">Messages</span>
-           </button>
-
-           <NavLink to="/settings" className={({isActive}) => `flex flex-col items-center justify-center w-full h-full space-y-1 rounded-xl transition-all ${isActive ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>
-               <Settings className="h-[22px] w-[22px]" />
-               <span className="text-[10px] font-bold tracking-wide">Settings</span>
-           </NavLink>
-
-           <button onClick={handleSignOut} className="flex flex-col items-center justify-center w-full h-full space-y-1 text-slate-400 hover:text-rose-600 transition-colors rounded-xl">
-             <LogOut className="h-[22px] w-[22px]" />
-             <span className="text-[10px] font-bold tracking-wide">Logout</span>
-           </button>
         </div>
 
         {/* --- MOBILE SIDE DRAWER (HAMBURGER MENU) --- */}
@@ -380,7 +362,6 @@ export default function AppLayout() {
 
                   <div className="flex-1 overflow-y-auto px-4 py-6 space-y-1">
                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-2">Navigation</p>
-                    {/* Drawer shows all links for easy access */}
                     {visibleLinks.map((link) => (
                       <NavLink key={link.path} to={link.path} onClick={() => setIsMobileDrawerOpen(false)} className={({ isActive }) => `flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all text-[15px] font-bold ${isActive ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}>
                         {({ isActive }) => (
@@ -395,7 +376,7 @@ export default function AppLayout() {
 
                   <div className="p-4 border-t border-slate-100 bg-[#FAFCFF] shrink-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
                      <button onClick={handleSignOut} className="w-full py-3.5 rounded-xl bg-white border border-slate-200 text-[14px] font-bold text-rose-600 flex items-center justify-center gap-2 shadow-sm">
-                        <LogOut className="h-4 w-4" /> Sign Out Session
+                        <LogOut className="h-4 w-4" /> Sign Out
                      </button>
                   </div>
                 </motion.div>
@@ -404,7 +385,7 @@ export default function AppLayout() {
         </AnimatePresence>
 
         <main className={`flex-1 overflow-y-auto transition-all duration-300 relative z-10 print:p-0 print:pt-0 print:overflow-visible
-           max-sm:px-4 max-sm:pt-[76px] max-sm:pb-24
+           max-sm:px-4 max-sm:pt-[88px] max-sm:pb-8
            sm:pt-10 sm:pb-10
            ${!isSidebarOpen ? 'sm:pl-20 lg:pl-28' : 'sm:pl-6 lg:pl-10'} 
            ${activeWorkspace && role === 'admin' ? 'sm:pr-6 lg:pr-64' : 'sm:pr-6 lg:pr-10'}
