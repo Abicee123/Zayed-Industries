@@ -1,7 +1,8 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Plus, X, Building2, Phone, Briefcase, FileText, Trash2, UserSquare2, AlertCircle, Edit3, ImagePlus, Loader2, CheckCircle2, GraduationCap, BookOpen, User } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Search, Plus, X, Building2, Phone, Briefcase, FileText, Trash2, UserSquare2, AlertCircle, Edit3, ImagePlus, Loader2, CheckCircle2, GraduationCap, BookOpen, User, Download, Printer } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { useDataStore } from "../../store/dataStore";
 import { supabase } from "../../supabase";
@@ -71,6 +72,18 @@ export default function CustomersPage() {
   // --- DYNAMIC ACCESS & TERMINOLOGY CHECKS ---
   const canViewFinance = role === 'admin' || (role === 'head' && currentCompany?.allow_head_finance !== false);
   const isAcademy = currentCompany?.business_type === 'academy' || currentCompany?.business_type?.includes('education');
+
+  // --- PDF REPORT STATES ---
+  const [isReportConfigOpen, setIsReportConfigOpen] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [reportConfig, setReportConfig] = useState({
+    courseId: "all",
+    showPhone: true,
+    showEmail: true,
+    showAddress: false,
+    showCourse: true,
+    showFinancials: canViewFinance
+  });
 
   const [formData, setFormData] = useState({
     company_id: currentCompanyId?.toString() || "", 
@@ -255,9 +268,38 @@ export default function CustomersPage() {
 
   const displayImage = imagePreview || (!removeImage && selectedCustomer?.profile_image_url ? selectedCustomer.profile_image_url : null);
 
+  // --- PDF GENERATION LOGIC ---
+  const handlePrintPDF = () => {
+    setIsReportConfigOpen(false);
+    setIsPrinting(true);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setIsPrinting(false), 500);
+    }, 500);
+  };
+
+  const printFilteredCustomers = visibleCustomers.filter(client => {
+    if (reportConfig.courseId === "all") return true;
+    
+    // Check if the client is enrolled in the specifically selected course/project
+    const isEnrolled = projects.some(p => p.id.toString() === reportConfig.courseId && p.customer_id === client.id) ||
+                       invoices.some(i => i.project_id?.toString() === reportConfig.courseId && i.customer_id === client.id);
+    return isEnrolled;
+  });
+
+  const getPrintFinancials = (clientId: number) => {
+    let clientInvoices = invoices.filter(i => i.customer_id === clientId);
+    if (reportConfig.courseId !== 'all') {
+      clientInvoices = clientInvoices.filter(i => i.project_id?.toString() === reportConfig.courseId);
+    }
+    const billed = clientInvoices.reduce((sum, inv) => sum + parseFloat(inv.total_amount || 0), 0);
+    const paid = clientInvoices.reduce((sum, inv) => sum + parseFloat(inv.amount_paid || 0), 0);
+    return { billed, paid, due: Math.max(0, billed - paid) };
+  };
+
   return (
     <>
-      <div className="max-w-[1200px] mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-700 pb-8 relative z-0">
+      <div className="max-w-[1200px] mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-700 pb-8 relative z-0 print:hidden">
         
         <div className="absolute inset-0 pointer-events-none z-[-1] overflow-hidden print:hidden">
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMTQ4LCAxNjMsIDE4NCwgMC4wOCkiLz48L3N2Zz4=')] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
@@ -268,11 +310,17 @@ export default function CustomersPage() {
             <p className="text-[9px] sm:text-[11px] font-bold text-blue-600 uppercase tracking-[0.2em] mb-1.5 sm:mb-2 bg-blue-50 inline-block px-3 py-1 rounded-full">{isAcademy ? 'Student Management' : 'Client Management'}</p>
             <h1 className="text-2xl sm:text-4xl font-bold tracking-tight text-slate-900 mt-1 sm:mt-2">{isAcademy ? 'Students.' : 'Customers.'}</h1>
           </div>
-          {(role === 'admin' || role === 'head') && (
-            <button onClick={openNewCustomer} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white shadow-lg shadow-blue-900/20 hover:shadow-xl hover:-translate-y-0.5 px-4 sm:px-6 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-[13px] font-bold transition-all flex items-center shrink-0">
-              <Plus className="h-4 w-4 mr-1.5 sm:mr-2" /> {isAcademy ? 'Register Student' : 'Add Client'}
+          
+          <div className="flex gap-2 sm:gap-3 flex-wrap">
+            <button onClick={() => setIsReportConfigOpen(true)} className="bg-white text-slate-700 border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 px-4 sm:px-6 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-[13px] font-bold transition-all flex items-center shrink-0">
+              <Download className="h-4 w-4 mr-1.5 sm:mr-2" /> PDF Report
             </button>
-          )}
+            {(role === 'admin' || role === 'head') && (
+              <button onClick={openNewCustomer} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white shadow-lg shadow-blue-900/20 hover:shadow-xl hover:-translate-y-0.5 px-4 sm:px-6 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-[13px] font-bold transition-all flex items-center shrink-0">
+                <Plus className="h-4 w-4 mr-1.5 sm:mr-2" /> {isAcademy ? 'Register Student' : 'Add Client'}
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="bg-white p-2 rounded-xl sm:rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-2">
@@ -499,7 +547,7 @@ export default function CustomersPage() {
                          const customerProjects = projects.filter(p => linkedProjectIds.includes(p.id));
 
                          if (customerProjects.length === 0) {
-                           return <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-10">{isAcademy ? 'No enrollments found for this student.' : 'No projects linked to this client yet.'}</p>;
+                           return <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-10">{isAcademy ? 'No courses linked to this student yet.' : 'No projects linked to this client yet.'}</p>;
                          }
 
                          return (
@@ -663,6 +711,157 @@ export default function CustomersPage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* --- PDF REPORT CONFIGURATION MODAL --- */}
+        <AnimatePresence>
+          {isReportConfigOpen && (
+            <div className="fixed inset-0 z-[10000] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm print:hidden">
+              <motion.div initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border border-slate-100">
+                <div className="px-6 py-5 border-b border-slate-100 bg-[#FAFCFF] flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-slate-900 tracking-tight">Export {isAcademy ? 'Student Roster' : 'Client List'}</h3>
+                  <button onClick={() => setIsReportConfigOpen(false)} className="h-8 w-8 bg-white border border-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 shadow-sm"><X className="h-4 w-4" /></button>
+                </div>
+                
+                <div className="p-6 space-y-4">
+                   <div>
+                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Filter by {isAcademy ? 'Course/Batch' : 'Project'}</label>
+                     <select value={reportConfig.courseId} onChange={e => setReportConfig({...reportConfig, courseId: e.target.value})} className="w-full h-11 rounded-xl border border-slate-200 px-3 text-sm font-medium outline-none focus:border-blue-500 cursor-pointer">
+                        <option value="all">All {isAcademy ? 'Students' : 'Clients'}</option>
+                        {projects.filter(p => p.company_id === currentCompanyId).map(p => (
+                          <option key={p.id} value={p.id.toString()}>{p.name}</option>
+                        ))}
+                     </select>
+                   </div>
+                   
+                   <div className="pt-2">
+                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Columns to Include</p>
+                     <div className="space-y-3">
+                       <label className="flex items-center gap-3 cursor-pointer">
+                         <input type="checkbox" checked={reportConfig.showPhone} onChange={e => setReportConfig({...reportConfig, showPhone: e.target.checked})} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                         <span className="text-sm font-bold text-slate-700">Phone Number</span>
+                       </label>
+                       <label className="flex items-center gap-3 cursor-pointer">
+                         <input type="checkbox" checked={reportConfig.showEmail} onChange={e => setReportConfig({...reportConfig, showEmail: e.target.checked})} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                         <span className="text-sm font-bold text-slate-700">Email Address</span>
+                       </label>
+                       <label className="flex items-center gap-3 cursor-pointer">
+                         <input type="checkbox" checked={reportConfig.showAddress} onChange={e => setReportConfig({...reportConfig, showAddress: e.target.checked})} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                         <span className="text-sm font-bold text-slate-700">Residential Address</span>
+                       </label>
+                       <label className="flex items-center gap-3 cursor-pointer">
+                         <input type="checkbox" checked={reportConfig.showCourse} onChange={e => setReportConfig({...reportConfig, showCourse: e.target.checked})} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                         <span className="text-sm font-bold text-slate-700">{isAcademy ? 'Enrolled Courses' : 'Linked Projects'}</span>
+                       </label>
+                       {canViewFinance && (
+                         <label className="flex items-center gap-3 cursor-pointer">
+                           <input type="checkbox" checked={reportConfig.showFinancials} onChange={e => setReportConfig({...reportConfig, showFinancials: e.target.checked})} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                           <span className="text-sm font-bold text-slate-700">Financials (Billed / Paid / Due)</span>
+                         </label>
+                       )}
+                     </div>
+                   </div>
+                </div>
+
+                <div className="p-6 border-t border-slate-100 bg-[#FAFCFF] flex justify-end gap-3 shrink-0">
+                   <button onClick={() => setIsReportConfigOpen(false)} className="rounded-xl border border-slate-200 bg-white h-11 px-6 font-bold text-sm text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
+                   <button onClick={handlePrintPDF} className="bg-blue-600 text-white rounded-xl h-11 px-6 font-bold text-sm shadow-md hover:bg-blue-700 transition-all flex items-center gap-2">
+                     <Printer className="h-4 w-4" /> Generate PDF
+                   </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* --- PRINT PORTAL (VISIBLE ONLY WHEN PRINTING) --- */}
+        {isPrinting && typeof document !== 'undefined' && createPortal(
+          <div className="fixed inset-0 z-[999999] bg-white print:block print:relative print:w-full print:h-auto overflow-visible p-12 font-sans text-slate-900 print:p-0 print:m-0" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+            {/* Header */}
+            <div className="flex justify-between items-start pb-6 border-b-2 border-slate-900 mb-6">
+               <div className="flex items-center gap-4">
+                  {currentCompany?.logo_url ? <img src={currentCompany.logo_url} className="h-16 max-w-[140px] object-contain" /> : <Building2 className="h-10 w-10 text-blue-900" />}
+                  <div>
+                     <h2 className="text-2xl font-black tracking-tight">{currentCompany?.name || 'Enterprise'}</h2>
+                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mt-0.5">
+                       {reportConfig.courseId !== 'all' 
+                          ? `${projects.find(p => p.id.toString() === reportConfig.courseId)?.name} Roster`
+                          : (isAcademy ? 'Global Student Roster' : 'Global Client Roster')}
+                     </p>
+                  </div>
+               </div>
+               <div className="text-right">
+                  <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">REPORT</h1>
+                  <p className="text-xs text-slate-500 mt-1">Date: {new Date().toLocaleDateString()}</p>
+               </div>
+            </div>
+
+            {/* Table */}
+            <table className="w-full text-left text-[10px] border-collapse">
+              <thead>
+                <tr className="border-b-2 border-slate-800 text-slate-900 uppercase tracking-widest">
+                  <th className="py-2 pr-2 font-bold">{isAcademy ? 'Student' : 'Client'}</th>
+                  {reportConfig.showPhone && <th className="py-2 px-2 font-bold">Phone</th>}
+                  {reportConfig.showEmail && <th className="py-2 px-2 font-bold">Email</th>}
+                  {reportConfig.showAddress && <th className="py-2 px-2 font-bold w-48">Address</th>}
+                  {reportConfig.showCourse && <th className="py-2 px-2 font-bold">{isAcademy ? 'Course/Project' : 'Linked Projects'}</th>}
+                  {reportConfig.showFinancials && canViewFinance && (
+                    <>
+                      <th className="py-2 px-2 font-bold text-right">Billed</th>
+                      <th className="py-2 px-2 font-bold text-right">Paid</th>
+                      <th className="py-2 pl-2 font-bold text-right">Due</th>
+                    </>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                 {printFilteredCustomers.map(client => {
+                    let clientFinancials = { billed: 0, paid: 0, due: 0 };
+                    let displayCourses = '';
+
+                    // Find linked courses/projects for this row
+                    const linkedProjectIds = Array.from(new Set([
+                      ...projects.filter(p => p.customer_id === client.id).map(p => p.id),
+                      ...invoices.filter(i => i.customer_id === client.id && i.project_id).map(i => i.project_id)
+                    ]));
+                    
+                    if (reportConfig.courseId !== 'all') {
+                       displayCourses = projects.find(p => p.id.toString() === reportConfig.courseId)?.name || '';
+                    } else {
+                       displayCourses = projects.filter(p => linkedProjectIds.includes(p.id)).map(p => p.name).join(', ') || '-';
+                    }
+
+                    // Calculate financials
+                    if (reportConfig.showFinancials && canViewFinance) {
+                       clientFinancials = getPrintFinancials(client.id);
+                    }
+
+                    return (
+                      <tr key={client.id} className="print:break-inside-avoid">
+                        <td className="py-2.5 pr-2 align-top">
+                          <p className="font-bold text-slate-900 text-xs">{client.name}</p>
+                          {client.contact_person && <p className="text-[9px] text-slate-500 mt-0.5">{client.contact_person}</p>}
+                        </td>
+                        {reportConfig.showPhone && <td className="py-2.5 px-2 align-top font-medium">{client.phone || '-'}</td>}
+                        {reportConfig.showEmail && <td className="py-2.5 px-2 align-top font-medium">{client.email || '-'}</td>}
+                        {reportConfig.showAddress && <td className="py-2.5 px-2 align-top text-slate-600 truncate max-w-xs">{client.address || '-'}</td>}
+                        {reportConfig.showCourse && <td className="py-2.5 px-2 align-top text-slate-600 font-medium">{displayCourses}</td>}
+                        {reportConfig.showFinancials && canViewFinance && (
+                          <>
+                            <td className="py-2.5 px-2 align-top text-right font-bold text-slate-800">₹{clientFinancials.billed.toLocaleString()}</td>
+                            <td className="py-2.5 px-2 align-top text-right font-bold text-emerald-600">₹{clientFinancials.paid.toLocaleString()}</td>
+                            <td className={`py-2.5 pl-2 align-top text-right font-black ${clientFinancials.due > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                              ₹{clientFinancials.due.toLocaleString()}
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    )
+                 })}
+              </tbody>
+            </table>
+          </div>,
+          document.body
+        )}
 
       </div>
     </>
