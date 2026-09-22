@@ -304,7 +304,13 @@ export default function CustomersPage() {
           ) : (
             visibleCustomers.map(client => {
               const financials = getClientFinancials(client.id);
-              const clientProjects = projects.filter(p => p.customer_id === client.id).length;
+              
+              // NEW LOGIC: Calculate total projects by finding direct links AND links via invoices (enrollments)
+              const clientProjectIds = new Set([
+                ...projects.filter(p => p.customer_id === client.id).map(p => p.id),
+                ...invoices.filter(i => i.customer_id === client.id && i.project_id).map(i => i.project_id)
+              ]);
+              const clientProjects = clientProjectIds.size;
               
               return (
                 <motion.div key={client.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={() => openCustomerDossier(client)} className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all flex flex-col relative overflow-hidden group cursor-pointer">
@@ -468,44 +474,55 @@ export default function CustomersPage() {
                   {/* TAB 2: PROJECTS HISTORY - CLICKS REDIRECT */}
                   {modalTab === 'projects' && selectedCustomer && (
                     <div className="flex-1 flex flex-col space-y-5 sm:space-y-6 py-2">
-                      {projects.filter(p => p.customer_id === selectedCustomer.id).length === 0 ? (
-                        <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-10">{isAcademy ? 'No courses linked to this student yet.' : 'No projects linked to this client yet.'}</p>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                          {projects.filter(p => p.customer_id === selectedCustomer.id).map(proj => (
-                            <div 
-                              key={proj.id} 
-                              onClick={() => handleProjectClick(proj.id)} 
-                              className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-4 sm:p-5 hover:bg-blue-50/50 hover:border-blue-200 transition-all cursor-pointer flex flex-col group relative"
-                            >
-                               {/* Quick "Open" hint icon on hover */}
-                               <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                 <Briefcase className="h-4 w-4 text-blue-500" />
-                               </div>
+                      {(() => {
+                         // 1. Find direct projects and invoice-linked projects
+                         const linkedProjectIds = Array.from(new Set([
+                           ...projects.filter(p => p.customer_id === selectedCustomer.id).map(p => p.id),
+                           ...invoices.filter(i => i.customer_id === selectedCustomer.id && i.project_id).map(i => i.project_id)
+                         ]));
+                         const customerProjects = projects.filter(p => linkedProjectIds.includes(p.id));
 
-                               <div className="flex justify-between items-start mb-2 sm:mb-3">
-                                 <p className="font-bold text-slate-900 text-[13px] sm:text-[15px] pr-8 group-hover:text-blue-700 transition-colors">{proj.name}</p>
+                         if (customerProjects.length === 0) {
+                           return <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-10">{isAcademy ? 'No courses linked to this student yet.' : 'No projects linked to this client yet.'}</p>;
+                         }
+
+                         return (
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                             {customerProjects.map(proj => (
+                               <div 
+                                 key={proj.id} 
+                                 onClick={() => handleProjectClick(proj.id)} 
+                                 className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-4 sm:p-5 hover:bg-blue-50/50 hover:border-blue-200 transition-all cursor-pointer flex flex-col group relative"
+                               >
+                                  {/* Quick "Open" hint icon on hover */}
+                                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Briefcase className="h-4 w-4 text-blue-500" />
+                                  </div>
+
+                                  <div className="flex justify-between items-start mb-2 sm:mb-3">
+                                    <p className="font-bold text-slate-900 text-[13px] sm:text-[15px] pr-8 group-hover:text-blue-700 transition-colors">{proj.name}</p>
+                                  </div>
+                                  <span className={`w-max px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-bold uppercase tracking-widest shrink-0 mb-2 ${proj.status === 'Completed' || proj.status === 'Graduated' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{proj.status}</span>
+                                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed mb-3 sm:mb-4 flex-1">{proj.description || 'No description provided.'}</p>
+                                  
+                                  <div className="flex justify-between items-end border-t border-slate-200 pt-2.5 sm:pt-3">
+                                    {canViewFinance ? (
+                                      <div>
+                                        <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{isAcademy ? 'Course Fee' : 'Expected Value'}</p>
+                                        <p className="text-[12px] sm:text-sm font-black text-slate-800">₹{(proj.expected_amount || 0).toLocaleString()}</p>
+                                      </div>
+                                    ) : <div></div>}
+                                    
+                                    <div className="text-right">
+                                      <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{isAcademy ? 'End Date' : 'Due Date'}</p>
+                                      <p className="text-[11px] sm:text-xs font-bold text-slate-600">{proj.due_date ? new Date(proj.due_date).toLocaleDateString() : 'Unscheduled'}</p>
+                                    </div>
+                                  </div>
                                </div>
-                               <span className={`w-max px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-bold uppercase tracking-widest shrink-0 mb-2 ${proj.status === 'Completed' || proj.status === 'Graduated' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{proj.status}</span>
-                               <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed mb-3 sm:mb-4 flex-1">{proj.description || 'No description provided.'}</p>
-                               
-                               <div className="flex justify-between items-end border-t border-slate-200 pt-2.5 sm:pt-3">
-                                 {canViewFinance ? (
-                                   <div>
-                                     <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{isAcademy ? 'Course Fee' : 'Expected Value'}</p>
-                                     <p className="text-[12px] sm:text-sm font-black text-slate-800">₹{(proj.expected_amount || 0).toLocaleString()}</p>
-                                   </div>
-                                 ) : <div></div>}
-                                 
-                                 <div className="text-right">
-                                   <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{isAcademy ? 'End Date' : 'Due Date'}</p>
-                                   <p className="text-[11px] sm:text-xs font-bold text-slate-600">{proj.due_date ? new Date(proj.due_date).toLocaleDateString() : 'Unscheduled'}</p>
-                                 </div>
-                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                             ))}
+                           </div>
+                         );
+                      })()}
                     </div>
                   )}
 
