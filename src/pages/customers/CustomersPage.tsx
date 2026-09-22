@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Plus, X, Building2, Phone, Briefcase, FileText, Trash2, UserSquare2, AlertCircle, Edit3, ImagePlus, Loader2, CheckCircle2 } from "lucide-react";
+import { Search, Plus, X, Building2, Phone, Briefcase, FileText, Trash2, UserSquare2, AlertCircle, Edit3, ImagePlus, Loader2, CheckCircle2, GraduationCap, BookOpen, User } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { useDataStore } from "../../store/dataStore";
 import { supabase } from "../../supabase";
@@ -270,7 +270,7 @@ export default function CustomersPage() {
           </div>
           {(role === 'admin' || role === 'head') && (
             <button onClick={openNewCustomer} className="bg-gradient-to-r from-blue-900 to-indigo-800 text-white shadow-lg shadow-blue-900/20 hover:shadow-xl hover:-translate-y-0.5 px-4 sm:px-6 py-2.5 sm:py-3.5 rounded-xl sm:rounded-2xl text-[11px] sm:text-[13px] font-bold transition-all flex items-center shrink-0">
-              <Plus className="h-4 w-4 mr-1.5 sm:mr-2" /> {isAcademy ? 'Add Student' : 'Add Client'}
+              <Plus className="h-4 w-4 mr-1.5 sm:mr-2" /> {isAcademy ? 'Register Student' : 'Add Client'}
             </button>
           )}
         </div>
@@ -298,19 +298,22 @@ export default function CustomersPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
           {visibleCustomers.length === 0 ? (
             <div className="col-span-full h-48 sm:h-64 border border-slate-200 border-dashed rounded-2xl sm:rounded-3xl flex flex-col items-center justify-center text-slate-400 bg-slate-50/50">
-              <UserSquare2 className="h-8 w-8 sm:h-10 sm:w-10 mb-2 sm:mb-3 text-slate-300" />
+              {isAcademy ? <GraduationCap className="h-8 w-8 sm:h-10 sm:w-10 mb-2 sm:mb-3 text-slate-300" /> : <UserSquare2 className="h-8 w-8 sm:h-10 sm:w-10 mb-2 sm:mb-3 text-slate-300" />}
               <p className="text-[11px] sm:text-sm font-bold uppercase tracking-wider">{isAcademy ? 'No Students Found' : 'No Clients Found'}</p>
             </div>
           ) : (
             visibleCustomers.map(client => {
               const financials = getClientFinancials(client.id);
               
-              // NEW LOGIC: Calculate total projects by finding direct links AND links via invoices (enrollments)
+              // Calculate total projects by finding direct links AND links via invoices (enrollments)
               const clientProjectIds = new Set([
                 ...projects.filter(p => p.customer_id === client.id).map(p => p.id),
                 ...invoices.filter(i => i.customer_id === client.id && i.project_id).map(i => i.project_id)
               ]);
-              const clientProjects = clientProjectIds.size;
+              const customerProjects = projects.filter(p => clientProjectIds.has(p.id));
+              
+              // Get latest enrolled course/project
+              const latestProject = customerProjects.sort((a,b)=>new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
               
               return (
                 <motion.div key={client.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} onClick={() => openCustomerDossier(client)} className="bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all flex flex-col relative overflow-hidden group cursor-pointer">
@@ -327,14 +330,21 @@ export default function CustomersPage() {
                        {client.profile_image_url ? (
                          <img src={client.profile_image_url} alt="" className="h-full w-full object-cover" />
                        ) : (
-                         <Building2 className="h-5 w-5 sm:h-7 sm:w-7" />
+                         isAcademy ? <GraduationCap className="h-5 w-5 sm:h-7 sm:w-7" /> : <Building2 className="h-5 w-5 sm:h-7 sm:w-7" />
                        )}
                     </div>
                     
                     <div className="flex-1 min-w-0 w-full flex flex-col items-start">
                       <h3 className="text-[14px] sm:text-[18px] font-bold text-slate-900 tracking-tight group-hover:text-blue-900 transition-colors truncate w-full pr-10 sm:pr-0">{client.name}</h3>
-                      <div className="space-y-0.5 sm:space-y-1.5 mt-1 sm:mt-2 w-full">
-                        <p className="text-[10px] sm:text-[12px] font-medium text-slate-600 flex items-center gap-1.5 sm:gap-2 truncate"><UserSquare2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400 shrink-0" /> <span className="truncate">{client.contact_person || 'No Primary Contact'}</span></p>
+                      
+                      {isAcademy && latestProject && (
+                        <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded w-max mt-1.5 truncate max-w-full">
+                          Enrolled: {latestProject.name}
+                        </span>
+                      )}
+
+                      <div className="space-y-0.5 sm:space-y-1.5 mt-1.5 sm:mt-2 w-full">
+                        <p className="text-[10px] sm:text-[12px] font-medium text-slate-600 flex items-center gap-1.5 sm:gap-2 truncate"><User className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400 shrink-0" /> <span className="truncate">{client.contact_person || (isAcademy ? 'No Guardian Listed' : 'No Primary Contact')}</span></p>
                         {client.phone && <p className="text-[10px] sm:text-[12px] font-medium text-slate-600 flex items-center gap-1.5 sm:gap-2 truncate"><Phone className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-400 shrink-0" /> <span className="truncate">{client.phone}</span></p>}
                         {role === 'admin' && !activeWorkspace && (
                            <p className="text-[8px] sm:text-[10px] font-bold text-blue-600/80 uppercase tracking-widest flex items-center gap-1.5 sm:gap-2 mt-1 sm:mt-2 pt-1 sm:pt-2 border-t border-slate-50 truncate"><Building2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" /> <span className="truncate">{companies.find(c => c.id === client.company_id)?.name}</span></p>
@@ -345,12 +355,15 @@ export default function CustomersPage() {
 
                   <div className="bg-[#FAFCFF] p-3 sm:p-5 flex items-center justify-between mt-auto">
                      <div>
-                       <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{isAcademy ? 'Courses' : 'Projects'}</p>
-                       <p className="text-[12px] sm:text-sm font-bold text-slate-800 flex items-center gap-1 sm:gap-1.5"><Briefcase className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-500" /> {clientProjects}</p>
+                       <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{isAcademy ? 'Total Courses' : 'Total Projects'}</p>
+                       <p className="text-[12px] sm:text-sm font-bold text-slate-800 flex items-center gap-1 sm:gap-1.5">
+                         {isAcademy ? <BookOpen className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-500" /> : <Briefcase className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-500" />} 
+                         {customerProjects.length}
+                       </p>
                      </div>
                      {canViewFinance && (
                        <div className="text-right">
-                         <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Total Billed</p>
+                         <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{isAcademy ? 'Total Tuition' : 'Total Billed'}</p>
                          <p className="text-[14px] sm:text-lg font-black text-emerald-600 tracking-tight">₹{financials.totalBilled.toLocaleString()}</p>
                        </div>
                      )}
@@ -389,9 +402,9 @@ export default function CustomersPage() {
                   
                   <div className="flex gap-4 sm:gap-8 overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                     <button onClick={() => setModalTab('profile')} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${modalTab === 'profile' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>1. Profile & Details</button>
-                    <button onClick={() => setModalTab('projects')} disabled={!selectedCustomer} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'projects' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>2. {isAcademy ? 'Course History' : 'Project History'}</button>
+                    <button onClick={() => setModalTab('projects')} disabled={!selectedCustomer} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'projects' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>2. {isAcademy ? 'Academic Record' : 'Project History'}</button>
                     {canViewFinance && (
-                      <button onClick={() => setModalTab('finance')} disabled={!selectedCustomer} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'finance' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>3. Billing & Payouts</button>
+                      <button onClick={() => setModalTab('finance')} disabled={!selectedCustomer} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'finance' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>3. {isAcademy ? 'Tuition Ledger' : 'Billing & Payouts'}</button>
                     )}
                   </div>
                 </div>
@@ -406,7 +419,7 @@ export default function CustomersPage() {
                           <div className="relative mb-2">
                             <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" />
                             <div className="h-24 w-24 sm:h-32 sm:w-32 rounded-[1.5rem] bg-slate-50 border-[3px] border-white shadow-md flex items-center justify-center text-slate-300 overflow-hidden relative ring-4 ring-slate-50">
-                              {displayImage ? <img src={displayImage} alt="Client" className="h-full w-full object-cover" /> : <Building2 className="h-10 w-10 sm:h-12 sm:w-12 opacity-50" />}
+                              {displayImage ? <img src={displayImage} alt="Client" className="h-full w-full object-cover" /> : (isAcademy ? <GraduationCap className="h-10 w-10 sm:h-12 sm:w-12 opacity-50" /> : <Building2 className="h-10 w-10 sm:h-12 sm:w-12 opacity-50" />)}
                             </div>
                             <button onClick={() => setShowPhotoMenu(!showPhotoMenu)} className="absolute -bottom-2 -right-2 h-8 w-8 sm:h-10 sm:w-10 bg-blue-600 border-2 border-white rounded-full flex items-center justify-center text-white hover:bg-blue-700 shadow-md transition-all active:scale-95 z-10">
                               <Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -442,18 +455,21 @@ export default function CustomersPage() {
                             </div>
                           )}
                           <div className="bg-slate-50 border border-slate-100 rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-4 sm:space-y-5">
-                            <h4 className="text-[12px] sm:text-sm font-bold text-slate-800 uppercase tracking-widest border-b border-slate-200 pb-2 sm:pb-3 mb-3 sm:mb-4 flex items-center gap-2"><Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400"/> {isAcademy ? 'Student Details' : 'Company Details'}</h4>
+                            <h4 className="text-[12px] sm:text-sm font-bold text-slate-800 uppercase tracking-widest border-b border-slate-200 pb-2 sm:pb-3 mb-3 sm:mb-4 flex items-center gap-2">
+                              {isAcademy ? <GraduationCap className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400"/> : <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400"/>} 
+                              {isAcademy ? 'Student Details' : 'Company Details'}
+                            </h4>
                             <div>
-                              <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">{isAcademy ? 'Student Name *' : 'Company / Entity Name *'}</label>
+                              <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">{isAcademy ? 'Student Full Name *' : 'Company / Entity Name *'}</label>
                               <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-bold outline-none focus:border-blue-500 shadow-sm" />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
                               <div>
-                                <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Primary Contact</label>
+                                <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">{isAcademy ? 'Parent / Guardian Name' : 'Primary Contact'}</label>
                                 <input type="text" placeholder="John Doe" value={formData.contact_person} onChange={(e) => setFormData({...formData, contact_person: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 shadow-sm" />
                               </div>
                               <div>
-                                <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Contact Email</label>
+                                <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">{isAcademy ? 'Student / Guardian Email' : 'Contact Email'}</label>
                                 <input type="email" placeholder="contact@email.com" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 shadow-sm" />
                               </div>
                               <div>
@@ -461,7 +477,7 @@ export default function CustomersPage() {
                                 <input type="text" placeholder="+1 234 567 8900" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 shadow-sm" />
                               </div>
                               <div className="md:col-span-2">
-                                <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Residential Address</label>
+                                <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">{isAcademy ? 'Residential Address' : 'Registered Address'}</label>
                                 <textarea value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full h-20 sm:h-24 rounded-xl border border-slate-200 p-3 sm:p-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 shadow-sm resize-none" placeholder="123 Example Street..." />
                               </div>
                             </div>
@@ -471,7 +487,7 @@ export default function CustomersPage() {
                     </div>
                   )}
 
-                  {/* TAB 2: PROJECTS HISTORY - CLICKS REDIRECT */}
+                  {/* TAB 2: PROJECTS/COURSES HISTORY - CLICKS REDIRECT */}
                   {modalTab === 'projects' && selectedCustomer && (
                     <div className="flex-1 flex flex-col space-y-5 sm:space-y-6 py-2">
                       {(() => {
@@ -483,7 +499,7 @@ export default function CustomersPage() {
                          const customerProjects = projects.filter(p => linkedProjectIds.includes(p.id));
 
                          if (customerProjects.length === 0) {
-                           return <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-10">{isAcademy ? 'No courses linked to this student yet.' : 'No projects linked to this client yet.'}</p>;
+                           return <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-10">{isAcademy ? 'No enrollments found for this student.' : 'No projects linked to this client yet.'}</p>;
                          }
 
                          return (
@@ -496,7 +512,7 @@ export default function CustomersPage() {
                                >
                                   {/* Quick "Open" hint icon on hover */}
                                   <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Briefcase className="h-4 w-4 text-blue-500" />
+                                    {isAcademy ? <BookOpen className="h-4 w-4 text-blue-500" /> : <Briefcase className="h-4 w-4 text-blue-500" />}
                                   </div>
 
                                   <div className="flex justify-between items-start mb-2 sm:mb-3">
@@ -508,13 +524,13 @@ export default function CustomersPage() {
                                   <div className="flex justify-between items-end border-t border-slate-200 pt-2.5 sm:pt-3">
                                     {canViewFinance ? (
                                       <div>
-                                        <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{isAcademy ? 'Course Fee' : 'Expected Value'}</p>
+                                        <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{isAcademy ? 'Tuition Fee' : 'Expected Value'}</p>
                                         <p className="text-[12px] sm:text-sm font-black text-slate-800">₹{(proj.expected_amount || 0).toLocaleString()}</p>
                                       </div>
                                     ) : <div></div>}
                                     
                                     <div className="text-right">
-                                      <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{isAcademy ? 'End Date' : 'Due Date'}</p>
+                                      <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{isAcademy ? 'Completion Date' : 'Due Date'}</p>
                                       <p className="text-[11px] sm:text-xs font-bold text-slate-600">{proj.due_date ? new Date(proj.due_date).toLocaleDateString() : 'Unscheduled'}</p>
                                     </div>
                                   </div>
@@ -534,7 +550,7 @@ export default function CustomersPage() {
                         return (
                           <div className="grid grid-cols-3 gap-2 sm:gap-4">
                             <div className="bg-slate-50 p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-100 text-center">
-                              <p className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Billed</p>
+                              <p className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{isAcademy ? 'Total Tuition' : 'Total Billed'}</p>
                               <p className="text-[13px] sm:text-2xl font-black text-slate-700">₹{financials.totalBilled.toLocaleString()}</p>
                             </div>
                             <div className="bg-emerald-50 p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-emerald-100 text-center">
@@ -550,19 +566,19 @@ export default function CustomersPage() {
                       })()}
 
                       <div className="pb-2">
-                        <h4 className="text-[12px] sm:text-sm font-bold text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3 sm:mb-4 flex items-center gap-2"><FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500"/> Invoicing Ledger</h4>
+                        <h4 className="text-[12px] sm:text-sm font-bold text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3 sm:mb-4 flex items-center gap-2"><FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500"/> {isAcademy ? 'Fee & Payment Ledger' : 'Invoicing Ledger'}</h4>
                         
                         {invoices.filter(i => i.customer_id === selectedCustomer.id).length === 0 ? (
-                          <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-6 sm:py-10">No invoices issued to this {isAcademy ? 'student' : 'client'}.</p>
+                          <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-6 sm:py-10">No records issued to this {isAcademy ? 'student' : 'client'}.</p>
                         ) : (
                           <div className="bg-white border border-slate-100 shadow-sm rounded-xl sm:rounded-3xl overflow-hidden">
                              <div className="overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                                <div className="min-w-[600px]">
                                  <div className="grid grid-cols-12 gap-4 bg-slate-50 px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                                    <div className="col-span-3">Invoice No.</div>
+                                    <div className="col-span-3">{isAcademy ? 'Ref No.' : 'Invoice No.'}</div>
                                     <div className="col-span-3">{isAcademy ? 'Course' : 'Project'}</div>
                                     <div className="col-span-2">Status</div>
-                                    <div className="col-span-2 text-right">Billed (₹)</div>
+                                    <div className="col-span-2 text-right">{isAcademy ? 'Tuition (₹)' : 'Billed (₹)'}</div>
                                     <div className="col-span-2 text-right">Paid (₹)</div>
                                  </div>
                                  <div className="divide-y divide-slate-50">
@@ -570,7 +586,7 @@ export default function CustomersPage() {
                                      <div key={inv.id} className="grid grid-cols-12 gap-4 items-center px-4 sm:px-6 py-3 sm:py-4 hover:bg-slate-50/50 transition-colors">
                                        <div className="col-span-3">
                                          <p className="font-bold text-slate-900 text-[11px] sm:text-[13px] truncate">{inv.invoice_number}</p>
-                                         <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 sm:mt-1 truncate">Due: {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : 'N/A'}</p>
+                                         <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 sm:mt-1 truncate">{isAcademy ? 'Deadline:' : 'Due:'} {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : 'N/A'}</p>
                                        </div>
                                        <div className="col-span-3 text-[11px] sm:text-[12px] font-medium text-slate-600 truncate pr-2">
                                          {inv.project_id ? projects.find(p=>p.id===inv.project_id)?.name : 'General / Standalone'}
