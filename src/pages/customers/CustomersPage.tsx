@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
-import { Search, Plus, X, Building2, Phone, Briefcase, FileText, Trash2, UserSquare2, AlertCircle, Edit3, ImagePlus, Loader2, CheckCircle2, GraduationCap, BookOpen, User, Download, Printer } from "lucide-react";
+import { Search, Plus, X, Building2, Phone, Briefcase, FileText, Trash2, UserSquare2, AlertCircle, Edit3, ImagePlus, Loader2, CheckCircle2, GraduationCap, BookOpen, User, Download, Printer, MapPin, Mail, Award, TrendingUp, CreditCard } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { useDataStore } from "../../store/dataStore";
 import { supabase } from "../../supabase";
@@ -54,7 +54,8 @@ export default function CustomersPage() {
   const [filterCompanyId, setFilterCompanyId] = useState<string>("all");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalTab, setModalTab] = useState<"profile" | "projects" | "finance">("profile");
+  // NEW TABS: "overview" (Dashboard style), "ledger" (Finance), "settings" (Edit Form)
+  const [modalTab, setModalTab] = useState<"overview" | "ledger" | "settings">("overview");
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   
   const [saveStatus, setSaveStatus] = useState<"idle" | "compressing" | "uploading" | "saving">("idle");
@@ -64,7 +65,6 @@ export default function CustomersPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
-  const [showPhotoMenu, setShowPhotoMenu] = useState(false);
 
   const currentCompanyId = role === 'admin' ? (activeWorkspace || "") : companyId;
   const currentCompany = companies.find((c: any) => c.id?.toString() === currentCompanyId?.toString());
@@ -119,8 +119,8 @@ export default function CustomersPage() {
       company_id: currentCompanyId?.toString() || "", 
       name: "", contact_person: "", email: "", phone: "", address: "" 
     });
-    setImageFile(null); setImagePreview(null); setRemoveImage(false); setShowPhotoMenu(false);
-    setModalTab("profile");
+    setImageFile(null); setImagePreview(null); setRemoveImage(false); 
+    setModalTab("settings"); // Default to settings for new entry
     setIsModalOpen(true);
   };
 
@@ -134,8 +134,8 @@ export default function CustomersPage() {
       phone: customer.phone || "",
       address: customer.address || ""
     });
-    setImageFile(null); setImagePreview(customer.profile_image_url || null); setRemoveImage(false); setShowPhotoMenu(false);
-    setModalTab("profile");
+    setImageFile(null); setImagePreview(customer.profile_image_url || null); setRemoveImage(false); 
+    setModalTab("overview");
     setIsModalOpen(true);
   };
 
@@ -144,7 +144,6 @@ export default function CustomersPage() {
       setImageFile(e.target.files[0]); 
       setImagePreview(URL.createObjectURL(e.target.files[0])); 
       setRemoveImage(false); 
-      setShowPhotoMenu(false);
     }
   };
 
@@ -152,7 +151,6 @@ export default function CustomersPage() {
     setImageFile(null); 
     setImagePreview(null); 
     setRemoveImage(true); 
-    setShowPhotoMenu(false);
   };
 
   const deleteOldAvatar = async (url: string | null) => {
@@ -280,8 +278,6 @@ export default function CustomersPage() {
 
   const printFilteredCustomers = visibleCustomers.filter(client => {
     if (reportConfig.courseId === "all") return true;
-    
-    // Check if the client is enrolled in the specifically selected course/project
     const isEnrolled = projects.some(p => p.id.toString() === reportConfig.courseId && p.customer_id === client.id) ||
                        invoices.some(i => i.project_id?.toString() === reportConfig.courseId && i.customer_id === client.id);
     return isEnrolled;
@@ -296,6 +292,14 @@ export default function CustomersPage() {
     const paid = clientInvoices.reduce((sum, inv) => sum + parseFloat(inv.amount_paid || 0), 0);
     return { billed, paid, due: Math.max(0, billed - paid) };
   };
+
+  // --- MODAL DATA CALCS ---
+  const activeModalFinancials = selectedCustomer ? getClientFinancials(selectedCustomer.id) : { totalBilled: 0, totalPaid: 0, totalPending: 0 };
+  const linkedProjectIds = selectedCustomer ? Array.from(new Set([
+    ...projects.filter(p => p.customer_id === selectedCustomer.id).map(p => p.id),
+    ...invoices.filter(i => i.customer_id === selectedCustomer.id && i.project_id).map(i => i.project_id)
+  ])) : [];
+  const modalProjects = projects.filter(p => linkedProjectIds.includes(p.id));
 
   return (
     <>
@@ -353,14 +357,11 @@ export default function CustomersPage() {
             visibleCustomers.map(client => {
               const financials = getClientFinancials(client.id);
               
-              // Calculate total projects by finding direct links AND links via invoices (enrollments)
               const clientProjectIds = new Set([
                 ...projects.filter(p => p.customer_id === client.id).map(p => p.id),
                 ...invoices.filter(i => i.customer_id === client.id && i.project_id).map(i => i.project_id)
               ]);
               const customerProjects = projects.filter(p => clientProjectIds.has(p.id));
-              
-              // Get latest enrolled course/project
               const latestProject = customerProjects.sort((a,b)=>new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
               
               return (
@@ -422,207 +423,196 @@ export default function CustomersPage() {
           )}
         </div>
 
+        {/* --- DYNAMIC ID/PROFILE MODAL --- */}
         <AnimatePresence>
           {isModalOpen && (
             <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
               onClick={() => setIsModalOpen(false)}
-              className="fixed inset-0 z-[100] flex flex-col items-center justify-center max-sm:px-4 max-sm:pt-20 max-sm:pb-[110px] sm:p-4 bg-slate-900/40 backdrop-blur-sm"
+              className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm"
             >
               <motion.div 
-                initial={{ opacity: 0, y: 40, scale: 0.95 }} 
-                animate={{ opacity: 1, y: 0, scale: 1 }} 
-                exit={{ opacity: 0, y: 40, scale: 0.95 }} 
+                initial={{ opacity: 0, y: 40, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.95 }} 
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-4xl h-full sm:h-[700px] sm:max-h-[85svh] flex flex-col overflow-hidden border border-slate-100 mt-auto sm:mt-0"
+                className="bg-[#F8FAFC] sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl h-[100dvh] sm:h-[800px] sm:max-h-[90svh] flex flex-col overflow-hidden relative"
               >
                 
-                <div className="px-5 sm:px-8 pt-5 sm:pt-7 border-b border-slate-100 bg-[#FAFCFF] shrink-0">
-                  <div className="flex items-center justify-between mb-4 sm:mb-5">
-                    <div className="pr-4">
-                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-2 sm:px-2.5 py-1 rounded-full">{isAcademy ? 'Student Profile' : 'Client Profile'}</span>
-                      <h3 className="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight mt-1.5 truncate">{selectedCustomer ? selectedCustomer.name : (isAcademy ? 'Register New Student' : 'Register New Client')}</h3>
-                    </div>
-                    <button onClick={() => setIsModalOpen(false)} className="h-8 w-8 sm:h-9 sm:w-9 bg-white border border-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-900 shadow-sm transition-colors shrink-0"><X className="h-3.5 w-3.5 sm:h-4 sm:w-4" /></button>
-                  </div>
-                  
-                  <div className="flex gap-4 sm:gap-8 overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                    <button onClick={() => setModalTab('profile')} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${modalTab === 'profile' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>1. Profile & Details</button>
-                    <button onClick={() => setModalTab('projects')} disabled={!selectedCustomer} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'projects' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>2. {isAcademy ? 'Academic Record' : 'Project History'}</button>
-                    {canViewFinance && (
-                      <button onClick={() => setModalTab('finance')} disabled={!selectedCustomer} className={`pb-2.5 sm:pb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider transition-all border-b-2 whitespace-nowrap outline-none ${!selectedCustomer ? 'opacity-30 cursor-not-allowed' : modalTab === 'finance' ? 'border-blue-900 text-blue-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>3. {isAcademy ? 'Tuition Ledger' : 'Billing & Payouts'}</button>
-                    )}
-                  </div>
+                {/* Hero Banner Area */}
+                <div className={`h-32 sm:h-48 w-full shrink-0 relative overflow-hidden ${isAcademy ? 'bg-gradient-to-r from-blue-600 via-indigo-700 to-purple-800' : 'bg-gradient-to-r from-slate-800 via-slate-900 to-black'}`}>
+                   {/* Background Pattern */}
+                   <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LCAyNTUsIDI1NSwgMC4wOCkiLz48L3N2Zz4=')] opacity-50 mix-blend-overlay"></div>
+                   <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 sm:top-6 sm:right-6 h-10 w-10 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center text-white transition-all shadow-sm z-20"><X className="h-5 w-5" /></button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-8 bg-white flex flex-col max-sm:[&::-webkit-scrollbar]:hidden max-sm:[-ms-overflow-style:none] max-sm:[scrollbar-width:none]">
-                  
-                  {/* TAB 1: PROFILE */}
-                  {modalTab === 'profile' && (
-                    <div className="flex-1 flex flex-col justify-center w-full max-w-3xl mx-auto">
-                      <div className="space-y-5 sm:space-y-6 flex flex-col md:flex-row gap-6 sm:gap-8">
-                        <div className="shrink-0 flex flex-col items-center">
-                          <div className="relative mb-2">
-                            <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" />
-                            <div className="h-24 w-24 sm:h-32 sm:w-32 rounded-[1.5rem] bg-slate-50 border-[3px] border-white shadow-md flex items-center justify-center text-slate-300 overflow-hidden relative ring-4 ring-slate-50">
-                              {displayImage ? <img src={displayImage} alt="Client" className="h-full w-full object-cover" /> : (isAcademy ? <GraduationCap className="h-10 w-10 sm:h-12 sm:w-12 opacity-50" /> : <Building2 className="h-10 w-10 sm:h-12 sm:w-12 opacity-50" />)}
-                            </div>
-                            <button onClick={() => setShowPhotoMenu(!showPhotoMenu)} className="absolute -bottom-2 -right-2 h-8 w-8 sm:h-10 sm:w-10 bg-blue-600 border-2 border-white rounded-full flex items-center justify-center text-white hover:bg-blue-700 shadow-md transition-all active:scale-95 z-10">
-                              <Edit3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            </button>
-                            <AnimatePresence>
-                              {showPhotoMenu && (
-                                <>
-                                  <div className="fixed inset-0 z-[10]" onClick={() => setShowPhotoMenu(false)}></div>
-                                  <motion.div initial={{ opacity: 0, y: 5, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 5, scale: 0.95 }} transition={{ duration: 0.15 }} className="absolute top-full mt-3 left-1/2 -translate-x-1/2 w-44 sm:w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-[20] py-1">
-                                    <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center gap-2 px-4 py-2.5 sm:py-3 text-[12px] sm:text-sm font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
-                                      <ImagePlus className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Upload Image
-                                    </button>
-                                    {displayImage && (
-                                      <button onClick={handleRemovePhoto} className="w-full flex items-center gap-2 px-4 py-2.5 sm:py-3 text-[12px] sm:text-sm font-bold text-rose-600 hover:bg-rose-50 transition-colors border-t border-slate-50">
-                                        <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Remove Image
-                                      </button>
-                                    )}
-                                  </motion.div>
-                                </>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        </div>
-
-                        <div className="flex-1 space-y-5 sm:space-y-6">
-                          {role === 'admin' && !activeWorkspace && (
-                            <div className="p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-100">
-                              <label className="text-[9px] sm:text-[10px] font-bold text-slate-600 uppercase tracking-widest block mb-2 sm:mb-3 px-1">Owning Subsidiary</label>
-                              <select value={formData.company_id} onChange={(e) => setFormData({...formData, company_id: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 bg-white px-3 sm:px-4 text-[12px] sm:text-sm font-bold outline-none cursor-pointer">
-                                <option value="" disabled>-- Assign to Company --</option>
-                                {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                              </select>
-                            </div>
-                          )}
-                          <div className="bg-slate-50 border border-slate-100 rounded-2xl sm:rounded-3xl p-4 sm:p-6 space-y-4 sm:space-y-5">
-                            <h4 className="text-[12px] sm:text-sm font-bold text-slate-800 uppercase tracking-widest border-b border-slate-200 pb-2 sm:pb-3 mb-3 sm:mb-4 flex items-center gap-2">
-                              {isAcademy ? <GraduationCap className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400"/> : <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-400"/>} 
-                              {isAcademy ? 'Student Details' : 'Company Details'}
-                            </h4>
-                            <div>
-                              <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">{isAcademy ? 'Student Full Name *' : 'Company / Entity Name *'}</label>
-                              <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-bold outline-none focus:border-blue-500 shadow-sm" />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-                              <div>
-                                <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">{isAcademy ? 'Parent / Guardian Name' : 'Primary Contact'}</label>
-                                <input type="text" placeholder="John Doe" value={formData.contact_person} onChange={(e) => setFormData({...formData, contact_person: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 shadow-sm" />
-                              </div>
-                              <div>
-                                <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">{isAcademy ? 'Student / Guardian Email' : 'Contact Email'}</label>
-                                <input type="email" placeholder="contact@email.com" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 shadow-sm" />
-                              </div>
-                              <div>
-                                <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">Phone Number</label>
-                                <input type="text" placeholder="+1 234 567 8900" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full h-10 sm:h-12 rounded-xl border border-slate-200 px-3 sm:px-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 shadow-sm" />
-                              </div>
-                              <div className="md:col-span-2">
-                                <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1.5 sm:mb-2 px-1">{isAcademy ? 'Residential Address' : 'Registered Address'}</label>
-                                <textarea value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full h-20 sm:h-24 rounded-xl border border-slate-200 p-3 sm:p-4 text-[12px] sm:text-sm font-medium outline-none focus:border-blue-500 shadow-sm resize-none" placeholder="123 Example Street..." />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                {/* Overlapping Profile Info */}
+                <div className="px-6 sm:px-10 flex flex-col sm:flex-row gap-4 sm:gap-6 relative -mt-16 sm:-mt-20 mb-6 shrink-0 pointer-events-none">
+                   {/* Avatar */}
+                   <div className="h-32 w-32 sm:h-40 sm:w-40 rounded-[2rem] border-4 border-[#F8FAFC] bg-white shadow-xl flex items-center justify-center relative overflow-hidden pointer-events-auto shrink-0 group">
+                      <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageSelect} className="hidden" />
+                      {displayImage ? (
+                         <img src={displayImage} alt="Profile" className="h-full w-full object-cover" />
+                      ) : (
+                         isAcademy ? <GraduationCap className="h-12 w-12 text-slate-300" /> : <Building2 className="h-12 w-12 text-slate-300" />
+                      )}
+                      
+                      <div onClick={() => fileInputRef.current?.click()} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                         <ImagePlus className="h-8 w-8 text-white" />
                       </div>
-                    </div>
-                  )}
+                      
+                      {displayImage && (
+                        <button onClick={handleRemovePhoto} className="absolute bottom-2 right-2 h-8 w-8 bg-rose-500 rounded-xl flex items-center justify-center text-white shadow-md hover:bg-rose-600 transition-colors opacity-0 group-hover:opacity-100">
+                           <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                   </div>
 
-                  {/* TAB 2: PROJECTS/COURSES HISTORY - CLICKS REDIRECT */}
-                  {modalTab === 'projects' && selectedCustomer && (
-                    <div className="flex-1 flex flex-col space-y-5 sm:space-y-6 py-2">
-                      {(() => {
-                         // 1. Find direct projects and invoice-linked projects
-                         const linkedProjectIds = Array.from(new Set([
-                           ...projects.filter(p => p.customer_id === selectedCustomer.id).map(p => p.id),
-                           ...invoices.filter(i => i.customer_id === selectedCustomer.id && i.project_id).map(i => i.project_id)
-                         ]));
-                         const customerProjects = projects.filter(p => linkedProjectIds.includes(p.id));
+                   {/* Quick Info & Actions */}
+                   <div className="pt-2 sm:pt-24 flex-1 flex flex-col sm:flex-row justify-between items-start gap-4 pointer-events-auto">
+                      <div>
+                         <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none mb-2">
+                           {formData.name || (isAcademy ? "New Student" : "New Client")}
+                         </h2>
+                         {formData.email && <p className="text-sm font-medium text-slate-500 flex items-center gap-1.5 mb-1"><Mail className="h-3.5 w-3.5"/> {formData.email}</p>}
+                         {formData.phone && <p className="text-sm font-medium text-slate-500 flex items-center gap-1.5"><Phone className="h-3.5 w-3.5"/> {formData.phone}</p>}
+                      </div>
+                      <div className="flex gap-2">
+                        {modalTab !== 'settings' && (
+                           <button onClick={() => setModalTab('settings')} className="bg-white border border-slate-200 text-slate-700 shadow-sm hover:shadow-md px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center">
+                             <Edit3 className="h-4 w-4 mr-2 text-blue-500"/> Edit Profile
+                           </button>
+                        )}
+                        {(role === 'admin' || role === 'head') && selectedCustomer && (
+                           <button onClick={handleDeleteCustomer} disabled={saveStatus !== "idle"} className="bg-rose-50 border border-rose-100 text-rose-600 shadow-sm hover:shadow-md px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center">
+                             <Trash2 className="h-4 w-4 sm:mr-2"/> <span className="hidden sm:inline">Delete</span>
+                           </button>
+                        )}
+                      </div>
+                   </div>
+                </div>
 
-                         if (customerProjects.length === 0) {
-                           return <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-10">{isAcademy ? 'No courses linked to this student yet.' : 'No projects linked to this client yet.'}</p>;
-                         }
+                {/* Custom Segmented Control */}
+                {selectedCustomer && (
+                  <div className="px-6 sm:px-10 shrink-0 mb-2 overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden">
+                     <div className="flex bg-slate-200/50 p-1.5 rounded-[1rem] w-max">
+                        <button onClick={() => setModalTab('overview')} className={`px-5 py-2 rounded-xl text-[12px] font-bold transition-all ${modalTab === 'overview' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Dashboard</button>
+                        {canViewFinance && <button onClick={() => setModalTab('ledger')} className={`px-5 py-2 rounded-xl text-[12px] font-bold transition-all ${modalTab === 'ledger' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Financial Ledger</button>}
+                        <button onClick={() => setModalTab('settings')} className={`px-5 py-2 rounded-xl text-[12px] font-bold transition-all ${modalTab === 'settings' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Settings</button>
+                     </div>
+                  </div>
+                )}
 
-                         return (
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                             {customerProjects.map(proj => (
-                               <div 
-                                 key={proj.id} 
-                                 onClick={() => handleProjectClick(proj.id)} 
-                                 className="bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl p-4 sm:p-5 hover:bg-blue-50/50 hover:border-blue-200 transition-all cursor-pointer flex flex-col group relative"
-                               >
-                                  {/* Quick "Open" hint icon on hover */}
-                                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {isAcademy ? <BookOpen className="h-4 w-4 text-blue-500" /> : <Briefcase className="h-4 w-4 text-blue-500" />}
-                                  </div>
-
-                                  <div className="flex justify-between items-start mb-2 sm:mb-3">
-                                    <p className="font-bold text-slate-900 text-[13px] sm:text-[15px] pr-8 group-hover:text-blue-700 transition-colors">{proj.name}</p>
-                                  </div>
-                                  <span className={`w-max px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-bold uppercase tracking-widest shrink-0 mb-2 ${proj.status === 'Completed' || proj.status === 'Graduated' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>{proj.status}</span>
-                                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium line-clamp-2 leading-relaxed mb-3 sm:mb-4 flex-1">{proj.description || 'No description provided.'}</p>
-                                  
-                                  <div className="flex justify-between items-end border-t border-slate-200 pt-2.5 sm:pt-3">
-                                    {canViewFinance ? (
-                                      <div>
-                                        <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{isAcademy ? 'Tuition Fee' : 'Expected Value'}</p>
-                                        <p className="text-[12px] sm:text-sm font-black text-slate-800">₹{(proj.expected_amount || 0).toLocaleString()}</p>
-                                      </div>
-                                    ) : <div></div>}
-                                    
-                                    <div className="text-right">
-                                      <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{isAcademy ? 'Completion Date' : 'Due Date'}</p>
-                                      <p className="text-[11px] sm:text-xs font-bold text-slate-600">{proj.due_date ? new Date(proj.due_date).toLocaleDateString() : 'Unscheduled'}</p>
-                                    </div>
-                                  </div>
-                               </div>
-                             ))}
+                {/* SCROLLABLE CONTENT BODY */}
+                <div className="flex-1 overflow-y-auto overscroll-contain px-6 sm:px-10 py-6 max-sm:[&::-webkit-scrollbar]:hidden">
+                  
+                  {/* TAB 1: OVERVIEW (Replaces "Profile" view and "Projects" tab) */}
+                  {modalTab === 'overview' && selectedCustomer && (
+                     <div className="space-y-6 sm:space-y-8 animate-in fade-in">
+                        {/* KPI Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                           <div className="bg-white rounded-3xl p-5 shadow-[0_2px_10px_rgb(0,0,0,0.03)] border border-slate-100 flex flex-col justify-between min-h-[120px]">
+                              <div className="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center mb-2"><BookOpen className="h-5 w-5" /></div>
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">{isAcademy ? 'Enrolled Courses' : 'Active Projects'}</p>
+                              <p className="text-2xl font-black text-slate-800">{modalProjects.length}</p>
                            </div>
-                         );
-                      })()}
-                    </div>
+                           {canViewFinance && (
+                             <>
+                               <div className="bg-white rounded-3xl p-5 shadow-[0_2px_10px_rgb(0,0,0,0.03)] border border-slate-100 flex flex-col justify-between min-h-[120px]">
+                                  <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center mb-2"><TrendingUp className="h-5 w-5" /></div>
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">{isAcademy ? 'Total Tuition Billed' : 'Total Value'}</p>
+                                  <p className="text-2xl font-black text-slate-800">₹{activeModalFinancials.totalBilled.toLocaleString()}</p>
+                               </div>
+                               <div className="bg-white rounded-3xl p-5 shadow-[0_2px_10px_rgb(0,0,0,0.03)] border border-slate-100 flex flex-col justify-between min-h-[120px]">
+                                  <div className="h-10 w-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center mb-2"><AlertCircle className="h-5 w-5" /></div>
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">{isAcademy ? 'Pending Dues' : 'Outstanding Balance'}</p>
+                                  <p className={`text-2xl font-black ${activeModalFinancials.totalPending > 0 ? 'text-rose-500' : 'text-slate-800'}`}>₹{activeModalFinancials.totalPending.toLocaleString()}</p>
+                               </div>
+                             </>
+                           )}
+                        </div>
+
+                        {/* Split Layout: Projects List & ID Card */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                           
+                           {/* Main: Project/Course List */}
+                           <div className="lg:col-span-2 space-y-4">
+                              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest">{isAcademy ? 'Academic Record' : 'Project Portfolio'}</h3>
+                              {modalProjects.length === 0 ? (
+                                <div className="border border-dashed border-slate-200 rounded-3xl p-8 text-center text-slate-400 italic bg-slate-50/50">
+                                   {isAcademy ? 'No course enrollments found for this student.' : 'No projects associated with this client.'}
+                                </div>
+                              ) : (
+                                <div className="space-y-4">
+                                  {modalProjects.map(proj => (
+                                     <div key={proj.id} onClick={() => handleProjectClick(proj.id)} className="bg-white rounded-[1.5rem] p-5 shadow-[0_2px_10px_rgb(0,0,0,0.03)] border border-slate-100 flex flex-col sm:flex-row gap-4 sm:items-center justify-between cursor-pointer hover:border-indigo-200 transition-all group">
+                                        <div className="flex items-start gap-4">
+                                           <div className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 ${proj.status === 'Completed' || proj.status === 'Graduated' ? 'bg-emerald-50 text-emerald-500' : 'bg-indigo-50 text-indigo-500'}`}>
+                                              {isAcademy ? <Award className="h-6 w-6" /> : <Briefcase className="h-6 w-6" />}
+                                           </div>
+                                           <div>
+                                              <h4 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{proj.name}</h4>
+                                              <p className="text-xs text-slate-500 font-medium line-clamp-1 mt-0.5 pr-4">{proj.description || 'No description available'}</p>
+                                              <div className="flex items-center gap-3 mt-2">
+                                                 <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest ${proj.status === 'Completed' || proj.status === 'Graduated' ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-100 text-indigo-700'}`}>{proj.status}</span>
+                                                 {proj.due_date && <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{new Date(proj.due_date).toLocaleDateString()}</span>}
+                                              </div>
+                                           </div>
+                                        </div>
+                                        {canViewFinance && (
+                                           <div className="text-left sm:text-right shrink-0 border-t sm:border-none border-slate-50 pt-3 sm:pt-0 mt-2 sm:mt-0">
+                                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">{isAcademy ? 'Tuition Fee' : 'Value'}</p>
+                                              <p className="text-lg font-black text-slate-800">₹{(proj.expected_amount || 0).toLocaleString()}</p>
+                                           </div>
+                                        )}
+                                     </div>
+                                  ))}
+                                </div>
+                              )}
+                           </div>
+
+                           {/* Side: ID Card / Contact Info */}
+                           <div className="space-y-4">
+                              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Contact Information</h3>
+                              <div className="bg-slate-900 text-white rounded-[2rem] p-6 shadow-xl relative overflow-hidden">
+                                 <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none"><User className="h-32 w-32" /></div>
+                                 <div className="relative z-10 space-y-6">
+                                    <div>
+                                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{isAcademy ? 'Parent / Guardian' : 'Primary Contact'}</p>
+                                       <p className="text-base font-bold">{formData.contact_person || 'Not Provided'}</p>
+                                    </div>
+                                    <div>
+                                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Direct Email</p>
+                                       <p className="text-sm font-medium">{formData.email || 'Not Provided'}</p>
+                                    </div>
+                                    <div>
+                                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Direct Phone</p>
+                                       <p className="text-sm font-medium">{formData.phone || 'Not Provided'}</p>
+                                    </div>
+                                    <div>
+                                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{isAcademy ? 'Residential Address' : 'Registered Address'}</p>
+                                       <p className="text-sm font-medium leading-relaxed">{formData.address || 'Not Provided'}</p>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+
+                        </div>
+                     </div>
                   )}
 
-                  {/* TAB 3: BILLING & PAYMENTS (ADMIN/HEAD ONLY) */}
-                  {modalTab === 'finance' && selectedCustomer && canViewFinance && (
-                    <div className="flex-1 flex flex-col space-y-6 sm:space-y-8 py-2">
-                      {(() => {
-                        const financials = getClientFinancials(selectedCustomer.id);
-                        return (
-                          <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                            <div className="bg-slate-50 p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-100 text-center">
-                              <p className="text-[8px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{isAcademy ? 'Total Tuition' : 'Total Billed'}</p>
-                              <p className="text-[13px] sm:text-2xl font-black text-slate-700">₹{financials.totalBilled.toLocaleString()}</p>
-                            </div>
-                            <div className="bg-emerald-50 p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-emerald-100 text-center">
-                              <p className="text-[8px] sm:text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1">Total Paid</p>
-                              <p className="text-[13px] sm:text-2xl font-black text-emerald-700">₹{financials.totalPaid.toLocaleString()}</p>
-                            </div>
-                            <div className={`p-3 sm:p-5 rounded-xl sm:rounded-2xl border text-center ${financials.totalPending > 0 ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100'}`}>
-                              <p className={`text-[8px] sm:text-[10px] font-bold uppercase tracking-widest mb-1 ${financials.totalPending > 0 ? 'text-amber-600' : 'text-slate-400'}`}>Pending Balance</p>
-                              <p className={`text-[13px] sm:text-2xl font-black ${financials.totalPending > 0 ? 'text-amber-600' : 'text-slate-400'}`}>₹{financials.totalPending.toLocaleString()}</p>
-                            </div>
-                          </div>
-                        )
-                      })()}
-
-                      <div className="pb-2">
-                        <h4 className="text-[12px] sm:text-sm font-bold text-slate-800 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3 sm:mb-4 flex items-center gap-2"><FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500"/> {isAcademy ? 'Fee & Payment Ledger' : 'Invoicing Ledger'}</h4>
-                        
-                        {invoices.filter(i => i.customer_id === selectedCustomer.id).length === 0 ? (
-                          <p className="text-[12px] sm:text-sm text-slate-400 italic text-center py-6 sm:py-10">No records issued to this {isAcademy ? 'student' : 'client'}.</p>
-                        ) : (
-                          <div className="bg-white border border-slate-100 shadow-sm rounded-xl sm:rounded-3xl overflow-hidden">
-                             <div className="overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {/* TAB 2: FINANCIAL LEDGER */}
+                  {modalTab === 'ledger' && selectedCustomer && canViewFinance && (
+                     <div className="space-y-6 animate-in fade-in">
+                        <div className="bg-white rounded-[2rem] shadow-[0_2px_10px_rgb(0,0,0,0.03)] border border-slate-100 overflow-hidden">
+                           <div className="p-6 border-b border-slate-50 flex items-center justify-between">
+                              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2"><CreditCard className="h-5 w-5 text-indigo-500" /> {isAcademy ? 'Fee & Payment Ledger' : 'Invoicing Ledger'}</h3>
+                           </div>
+                           
+                           {invoices.filter(i => i.customer_id === selectedCustomer.id).length === 0 ? (
+                             <div className="p-10 text-center text-slate-400 italic">No financial records found.</div>
+                           ) : (
+                             <div className="overflow-x-auto max-sm:[&::-webkit-scrollbar]:hidden">
                                <div className="min-w-[600px]">
-                                 <div className="grid grid-cols-12 gap-4 bg-slate-50 px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                 <div className="grid grid-cols-12 gap-4 bg-slate-50/50 px-6 py-4 border-b border-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                                     <div className="col-span-3">{isAcademy ? 'Ref No.' : 'Invoice No.'}</div>
                                     <div className="col-span-3">{isAcademy ? 'Course' : 'Project'}</div>
                                     <div className="col-span-2">Status</div>
@@ -631,21 +621,21 @@ export default function CustomersPage() {
                                  </div>
                                  <div className="divide-y divide-slate-50">
                                    {invoices.filter(i => i.customer_id === selectedCustomer.id).sort((a,b)=>new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map(inv => (
-                                     <div key={inv.id} className="grid grid-cols-12 gap-4 items-center px-4 sm:px-6 py-3 sm:py-4 hover:bg-slate-50/50 transition-colors">
+                                     <div key={inv.id} className="grid grid-cols-12 gap-4 items-center px-6 py-4 hover:bg-slate-50/50 transition-colors">
                                        <div className="col-span-3">
-                                         <p className="font-bold text-slate-900 text-[11px] sm:text-[13px] truncate">{inv.invoice_number}</p>
-                                         <p className="text-[8px] sm:text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 sm:mt-1 truncate">{isAcademy ? 'Deadline:' : 'Due:'} {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : 'N/A'}</p>
+                                         <p className="font-bold text-slate-900 text-[13px] truncate">{inv.invoice_number}</p>
+                                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 truncate">{isAcademy ? 'Deadline:' : 'Due:'} {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : 'N/A'}</p>
                                        </div>
-                                       <div className="col-span-3 text-[11px] sm:text-[12px] font-medium text-slate-600 truncate pr-2">
+                                       <div className="col-span-3 text-[12px] font-medium text-slate-600 truncate pr-2">
                                          {inv.project_id ? projects.find(p=>p.id===inv.project_id)?.name : 'General / Standalone'}
                                        </div>
                                        <div className="col-span-2">
-                                         <span className={`px-1.5 sm:px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-bold uppercase tracking-widest ${inv.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : inv.status === 'Partially Paid' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>{inv.status}</span>
+                                         <span className={`px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest ${inv.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : inv.status === 'Partially Paid' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>{inv.status}</span>
                                        </div>
-                                       <div className="col-span-2 text-right font-black text-slate-800 text-[12px] sm:text-sm">
+                                       <div className="col-span-2 text-right font-black text-slate-800 text-[14px]">
                                          ₹{parseFloat(inv.total_amount || 0).toLocaleString()}
                                        </div>
-                                       <div className="col-span-2 text-right font-bold text-emerald-600 text-[12px] sm:text-sm">
+                                       <div className="col-span-2 text-right font-bold text-emerald-600 text-[14px]">
                                          ₹{parseFloat(inv.amount_paid || 0).toLocaleString()}
                                        </div>
                                      </div>
@@ -653,58 +643,65 @@ export default function CustomersPage() {
                                  </div>
                                </div>
                              </div>
+                           )}
+                        </div>
+                     </div>
+                  )}
+
+                  {/* TAB 3: SETTINGS (Edit Form) */}
+                  {modalTab === 'settings' && (
+                     <div className="space-y-6 animate-in fade-in max-w-3xl mx-auto w-full">
+                        {role === 'admin' && !activeWorkspace && (
+                          <div className="p-5 rounded-2xl bg-white shadow-sm border border-slate-100">
+                            <label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest block mb-3 px-1">Owning Subsidiary</label>
+                            <select value={formData.company_id} onChange={(e) => setFormData({...formData, company_id: e.target.value})} className="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold outline-none cursor-pointer">
+                              <option value="" disabled>-- Assign to Company --</option>
+                              {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
                           </div>
                         )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="border-t border-slate-100 bg-[#FAFCFF] flex flex-col sm:flex-row justify-between items-center gap-2 sm:gap-4 shrink-0 rounded-b-[2rem] sm:rounded-b-[2.5rem]">
-                  {selectedCustomer && (role === 'admin' || role === 'head') && modalTab === 'profile' ? (
-                    <div className="p-4 sm:p-6 w-full sm:w-auto">
-                      <button onClick={handleDeleteCustomer} disabled={saveStatus !== "idle"} className="w-full sm:w-auto border border-rose-200 text-rose-600 bg-white hover:bg-rose-50 rounded-xl h-10 sm:h-12 px-3 sm:px-5 flex items-center justify-center shadow-sm transition-colors shrink-0">
-                        <Trash2 className="h-4 w-4" /> <span className="sm:hidden ml-2 font-bold text-xs">Delete {isAcademy ? 'Student' : 'Client'}</span>
-                      </button>
-                    </div>
-                  ) : <div className="hidden sm:block p-4 sm:p-6"></div>}
-                  
-                  <div className="w-full sm:w-auto flex-1 flex justify-end">
-                    <AnimatePresence>
-                      {hasUnsavedChanges && modalTab === 'profile' && (
-                        <motion.div 
-                          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} 
-                          className="w-full sm:w-auto flex p-4 sm:p-6"
-                        >
-                          <button 
-                            onClick={handleSaveCustomer} 
-                            disabled={saveStatus !== "idle"} 
-                            className="relative overflow-hidden w-full sm:w-auto bg-gradient-to-r from-blue-900 to-indigo-800 text-white rounded-xl h-10 sm:h-12 px-6 sm:px-10 text-[12px] sm:text-sm font-bold shadow-lg shadow-blue-900/30 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center group"
-                          >
-                            {saveStatus === "idle" && (
-                              <motion.div animate={{ left: ['-100%', '200%'] }} transition={{ repeat: Infinity, duration: 2.5, ease: "linear", repeatDelay: 1.5 }} className="absolute top-0 bottom-0 w-1/2 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 z-0 pointer-events-none" />
-                            )}
-                            <span className="relative z-10 flex items-center">
-                              {saveStatus === "compressing" && <><Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2 animate-spin" /> Compressing...</>}
-                              {saveStatus === "uploading" && <><Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2 animate-spin" /> Uploading...</>}
-                              {saveStatus === "saving" && <><Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2 animate-spin" /> Saving...</>}
-                              {saveStatus === "idle" && "Save Changes"}
-                            </span>
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                    
-                    <AnimatePresence>
-                      {isSuccess && !hasUnsavedChanges && modalTab === 'profile' && (
-                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="p-4 sm:p-6 flex items-center">
-                          <div className="flex items-center gap-1.5 text-emerald-600 font-bold text-[10px] sm:text-[11px] uppercase tracking-wider bg-emerald-50 border border-emerald-100 px-4 py-2 rounded-lg">
-                            <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> Profile Updated
+                        <div className="bg-white border border-slate-100 rounded-3xl p-6 sm:p-8 space-y-5 shadow-sm">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">{isAcademy ? 'Student Full Name *' : 'Company / Entity Name *'}</label>
+                            <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold outline-none focus:border-blue-500 focus:bg-white transition-colors" />
                           </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">{isAcademy ? 'Parent / Guardian Name' : 'Primary Contact'}</label>
+                              <input type="text" placeholder="John Doe" value={formData.contact_person} onChange={(e) => setFormData({...formData, contact_person: e.target.value})} className="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-colors" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">{isAcademy ? 'Student / Guardian Email' : 'Contact Email'}</label>
+                              <input type="email" placeholder="contact@email.com" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-colors" />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">Phone Number</label>
+                              <input type="text" placeholder="+1 234 567 8900" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-colors" />
+                            </div>
+                            <div className="md:col-span-2">
+                              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2 px-1">{isAcademy ? 'Residential Address' : 'Registered Address'}</label>
+                              <textarea value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full h-24 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-colors resize-none" placeholder="123 Example Street..." />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Save Action Block (Only visible in Settings tab) */}
+                        <div className="flex justify-end pt-4">
+                           <AnimatePresence>
+                             {hasUnsavedChanges && (
+                               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="w-full sm:w-auto">
+                                 <button onClick={handleSaveCustomer} disabled={saveStatus !== "idle"} className="relative overflow-hidden w-full sm:w-auto bg-blue-600 text-white rounded-xl h-12 px-10 text-sm font-bold shadow-lg shadow-blue-600/30 hover:shadow-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center">
+                                   {saveStatus === "compressing" && <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Compressing...</>}
+                                   {saveStatus === "uploading" && <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Uploading...</>}
+                                   {saveStatus === "saving" && <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>}
+                                   {saveStatus === "idle" && "Save Changes"}
+                                 </button>
+                               </motion.div>
+                             )}
+                           </AnimatePresence>
+                        </div>
+                     </div>
+                  )}
 
                 </div>
               </motion.div>
